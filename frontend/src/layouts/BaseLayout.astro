@@ -1,0 +1,54 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+const { 
+  title = 'Broadcast Sekali, Terkirim ke Semua Platform',
+  description = 'AUTOIN adalah platform multi-channel broadcasting dan automation modern untuk WhatsApp, Telegram, Discord, Email, dan Webhook dalam satu klik.'
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="id" class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    
+    <!-- Primary Meta Tags -->
+    <title>{title} — AUTOIN</title>
+    <meta name="title" content={`${title} — AUTOIN`} />
+    <meta name="description" content={description} />
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="icon" href="/favicon.ico" />
+
+    <script is:inline>
+      const theme = (() => {
+        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
+          return localStorage.getItem('theme');
+        }
+        return 'dark'; // default
+      })();
+    
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.style.colorScheme = 'light';
+      } else {
+        document.documentElement.classList.add('dark');
+        document.documentElement.style.colorScheme = 'dark';
+      }
+    </script>
+  </head>
+  <body class="bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-50 antialiased font-sans selection:bg-blue-600/30 selection:text-blue-200">
+    <slot />
+  </body>
+</html>
+

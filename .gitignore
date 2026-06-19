@@ -1,0 +1,22 @@
+# Node.js
+**/node_modules/
+**/dist/
+**/.astro/
+
+# PHP / Composer
+**/vendor/
+**/storage/*.key
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.production
+
+# WhatsApp session data
+**/sessions-data/
+**/sessions/
+
+# IDEs & System
+.vscode/
+.idea/
+.DS_Store
