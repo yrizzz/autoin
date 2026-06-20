@@ -16,11 +16,11 @@ class WhatsAppService
         $this->secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
     }
 
-    public function send(Channel $channel, string $content, ?string $mediaUrl = null, ?string $mediaType = null): array
+    public function send(Channel $channel, string $content, ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null): array
     {
         $credentials = $channel->credentials;
         $sessionId   = $credentials['session_id'];
-        $to          = $channel->target_id;
+        $to          = $recipientId ?? $channel->target_id;
 
         $mediaUrls = [];
         if ($mediaUrl) {

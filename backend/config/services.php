@@ -46,4 +46,9 @@ return [
         'secret' => env('WHATSAPP_SERVICE_SECRET', 'autoin-wa-secret'),
     ],
 
+    'telegram' => [
+        'url'    => env('TELEGRAM_SERVICE_URL', 'http://localhost:3002'),
+        'secret' => env('TELEGRAM_SERVICE_SECRET', 'autoin-tg-secret'),
+    ],
+
 ];

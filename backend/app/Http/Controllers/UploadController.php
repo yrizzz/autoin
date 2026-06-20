@@ -44,8 +44,10 @@ class UploadController extends Controller
         elseif (str_starts_with($mime, 'audio/'))   $mediaType = 'audio';
         elseif ($mime === 'application/pdf')         $mediaType = 'pdf';
 
-        $extension = $file->getClientOriginalExtension();
-        $filename  = Str::random(20) . '.' . $extension;
+        $extension    = $file->getClientOriginalExtension();
+        $filename     = Str::random(20) . '.' . $extension;
+        $originalName = $file->getClientOriginalName();
+        $size         = $file->getSize(); // must be read before move()
 
         if (!file_exists(public_path('uploads'))) {
             mkdir(public_path('uploads'), 0755, true);
@@ -57,8 +59,8 @@ class UploadController extends Controller
             'url'       => asset('uploads/' . $filename),
             'mediaType' => $mediaType,
             'mime'      => $mime,
-            'name'      => $file->getClientOriginalName(),
-            'size'      => $file->getSize(),
+            'name'      => $originalName,
+            'size'      => $size,
         ]);
     }
 }

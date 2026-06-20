@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Services\DiscordService;
-use App\Services\TelegramService;
+use App\Services\TelegramUserService;
 use App\Services\WebhookService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
@@ -64,7 +64,7 @@ class ChannelController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
 
         $ok = match($channel->platform) {
-            'telegram'  => app(TelegramService::class)->test($channel),
+            'telegram'  => app(TelegramUserService::class)->test($channel),
             'discord'   => app(DiscordService::class)->test($channel),
             'webhook'   => app(WebhookService::class)->test($channel),
             'whatsapp'  => app(WhatsAppService::class)->test($channel),

@@ -10,7 +10,9 @@ import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
 
-const SESSIONS_DIR = process.env.SESSIONS_DIR || './sessions-data';
+const SESSIONS_DIR   = process.env.SESSIONS_DIR   || './sessions-data';
+const BACKEND_URL    = process.env.BACKEND_URL    || 'http://localhost:8000';
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'autoin-internal-secret';
 
 if (!fs.existsSync(SESSIONS_DIR)) {
   fs.mkdirSync(SESSIONS_DIR, { recursive: true });
@@ -194,6 +196,11 @@ class SessionManager extends EventEmitter {
           // ── Emit real-time events for SSE subscribers ──
           this.emit(`message:${sessionId}:${chatId}`, { type: 'message', message: bubble, chatId });
           this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
+
+          // ── Chatbot auto-reply ──
+          if (!m.key.fromMe && text !== '[Media]') {
+            this._autoreply(sessionId, chatId, text);
+          }
         });
       });
 
@@ -247,11 +254,7 @@ class SessionManager extends EventEmitter {
               time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
               status: 'delivered'
             });
-            // Keep chronological order
-            history.sort((a, b) => {
-              const ta = m.messageTimestamp ? Number(m.messageTimestamp) : 0;
-              return 0; // already sorted by Baileys
-            });
+            // Already sorted by Baileys; no explicit sort needed
             if (history.length > 500) history.splice(0, history.length - 500);
             this._messages.set(key, history);
           });
@@ -309,6 +312,27 @@ class SessionManager extends EventEmitter {
         }, 3000);
       }
     });
+  }
+
+  async _autoreply(sessionId, chatId, text) {
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/internal/chatbot/match`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': INTERNAL_SECRET,
+        },
+        body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.reply) {
+        await new Promise(r => setTimeout(r, 800)); // natural delay
+        await this.send(sessionId, chatId, data.reply);
+      }
+    } catch (_) {
+      // never break message flow on autoreply failure
+    }
   }
 
   async send(sessionId, to, message, mediaUrl = null, mediaType = null) {

@@ -5,9 +5,14 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ChatbotRuleController;
 use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\TelegramUserController;
 use App\Http\Controllers\UploadController;
 use Illuminate\Support\Facades\Route;
+
+// Internal endpoint — called by Node.js services, no user auth required
+Route::post('internal/chatbot/match', [ChatbotRuleController::class, 'matchInternal']);
 
 Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -28,10 +33,23 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('whatsapp/{channel}/stream/chats', [WhatsAppController::class, 'streamChats']);
     Route::post('whatsapp/{channel}/send', [WhatsAppController::class, 'sendMessage']);
 
+    Route::post('telegram/connect', [TelegramUserController::class, 'connect']);
+    Route::post('telegram/{channel}/verify', [TelegramUserController::class, 'verifyCode']);
+    Route::post('telegram/{channel}/verify-2fa', [TelegramUserController::class, 'verify2FA']);
+    Route::get('telegram/{channel}/status', [TelegramUserController::class, 'status']);
+    Route::delete('telegram/{channel}/disconnect', [TelegramUserController::class, 'disconnect']);
+    Route::get('telegram/{channel}/contacts', [TelegramUserController::class, 'getContacts']);
+    Route::get('telegram/{channel}/chats', [TelegramUserController::class, 'getChats']);
+    Route::get('telegram/{channel}/groups', [TelegramUserController::class, 'getGroups']);
+    Route::get('telegram/{channel}/messages/{chatId}', [TelegramUserController::class, 'getMessages']);
+    Route::post('telegram/{channel}/send', [TelegramUserController::class, 'sendMessage']);
+
     Route::apiResource('broadcasts', BroadcastController::class);
     Route::post('broadcasts/{broadcast}/send', [BroadcastController::class, 'send']);
     Route::post('broadcasts/{broadcast}/cancel', [BroadcastController::class, 'cancel']);
     Route::get('broadcasts/{broadcast}/logs', [BroadcastController::class, 'logs']);
+
+    Route::apiResource('chatbot-rules', ChatbotRuleController::class)->except(['show']);
 
     Route::post('upload', [UploadController::class, 'upload']);
 

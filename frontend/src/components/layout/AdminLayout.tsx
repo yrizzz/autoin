@@ -27,7 +27,8 @@ import {
   Tag,
   Receipt,
   PlayCircle,
-  Key
+  Key,
+  BookOpen
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -137,18 +138,18 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
         { id: 'channels', label: 'Device Broadcast', icon: Smartphone, href: '/channels' },
         { id: 'contacts', label: 'Grup Kontak', icon: Users, href: '/contacts' },
-        { id: 'templates', label: 'Daftar template', icon: FileText, href: '#' },
+        { id: 'templates', label: 'Daftar template', icon: FileText, href: '/templates' },
         { id: 'broadcast', label: 'Broadcast Pesan', icon: Rocket, href: '/broadcast' },
-        { id: 'schedule', label: 'Jadwal Broadcast', icon: Calendar, href: '#' },
+        { id: 'schedule', label: 'Jadwal Broadcast', icon: Calendar, href: '/schedule' },
         { id: 'chats', label: 'Obrolan Aktif', icon: MessageSquare, href: '/chats' },
       ]
     },
     {
       title: null,
       items: [
-        { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '#' },
-        { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '#' },
-        { id: 'webhook', label: 'Webhook App', icon: Link, href: '#' },
+        { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '/quick-send' },
+        { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '/chatbot' },
+        { id: 'webhook', label: 'Webhook App', icon: Link, href: '/webhook' },
         { id: 'history', label: 'History Pesan', icon: History, href: '/broadcast/history' },
       ]
     },
@@ -156,9 +157,10 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
       title: 'SETTINGS',
       items: [
         { id: 'pricing', label: 'Daftar Harga', icon: Tag, href: '/#pricing' },
-        { id: 'invoice', label: 'Invoice', icon: Receipt, href: '#' },
-        { id: 'tutorial', label: 'Video Tutorial', icon: PlayCircle, href: '#' },
-        { id: 'api_key', label: 'API Key', icon: Key, href: '#' },
+        { id: 'invoice', label: 'Invoice', icon: Receipt, href: '/invoice' },
+        { id: 'tutorial', label: 'Video Tutorial', icon: PlayCircle, href: '/tutorial' },
+        { id: 'api_key', label: 'API Key', icon: Key, href: '/api-key' },
+        { id: 'api_docs', label: 'Dokumentasi API', icon: BookOpen, href: '/docs' },
       ]
     }
   ];
@@ -319,7 +321,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Header */}
-        <header className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between transition-colors duration-200">
+        <header className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-[#09090b]/85 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between transition-colors duration-200 shadow-sm dark:shadow-none">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setSidebarOpen(true)}
@@ -369,9 +371,9 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
               {notifOpen && (
                 <>
                   <div className="fixed inset-0 z-40 cursor-default" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/40">
-                      <span className="text-[10px] font-extrabold text-zinc-800 dark:text-zinc-200 uppercase tracking-widest">Notifikasi</span>
+                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl dark:shadow-2xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100/80 dark:bg-zinc-950/60">
+                      <span className="text-[10px] font-extrabold text-zinc-700 dark:text-zinc-200 uppercase tracking-widest">Notifikasi</span>
                       {hasUnread && (
                         <button 
                           onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
@@ -389,10 +391,10 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                             setNotifications(notifications.map(item => item.id === n.id ? { ...item, read: true } : item));
                             setNotifOpen(false);
                           }}
-                          className={`p-3.5 flex flex-col gap-1 hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer transition-colors ${!n.read ? 'bg-blue-500/[0.02] dark:bg-blue-500/[0.03]' : ''}`}
+                          className={`p-3.5 flex flex-col gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className={`text-[11px] font-bold ${!n.read ? 'text-zinc-950 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{n.title}</span>
+                            <span className={`text-[11px] font-bold ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
                             <span className="text-[9px] text-zinc-400">{n.time}</span>
                           </div>
                           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">{n.message}</p>
@@ -417,7 +419,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         </header>
 
         {/* Content body */}
-        <main className={noPadding ? 'flex-1 flex flex-col overflow-hidden' : 'flex-1 py-8 px-6 md:px-8 max-w-7xl mx-auto w-full relative z-10 transition-colors duration-200'}>
+        <main className={noPadding ? 'flex-1 flex flex-col overflow-hidden' : 'flex-1 py-8 px-6 md:px-8 max-w-7xl mx-auto w-full relative transition-colors duration-200'}>
           {children}
         </main>
       </div>

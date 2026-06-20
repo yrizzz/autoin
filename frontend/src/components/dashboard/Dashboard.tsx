@@ -245,12 +245,12 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/[0.03] dark:bg-blue-500/[0.05] rounded-full blur-xl pointer-events-none" />
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Total Broadcast</span>
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-450">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <Layers className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">{totalBc}</div>
-                <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-450 mt-2 font-medium">
+                <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 mt-2 font-medium">
                   <span>Aktif & Terkirim</span>
                 </div>
               </div>
@@ -260,7 +260,7 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.05] rounded-full blur-xl pointer-events-none" />
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Success Rate</span>
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-455">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                 </div>
@@ -296,12 +296,12 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/[0.03] dark:bg-yellow-500/[0.05] rounded-full blur-xl pointer-events-none" />
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Terjadwal</span>
-                  <div className="w-8 h-8 rounded-lg bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-100 dark:border-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-450">
+                  <div className="w-8 h-8 rounded-lg bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-100 dark:border-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400">
                     <Clock className="w-4 h-4" />
                   </div>
                 </div>
                 <div className="text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-white">{scheduledCount}</div>
-                <div className="text-[10px] text-zinc-500 dark:text-zinc-550 mt-2">
+                <div className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">
                   Menunggu jadwal pengiriman otomatis
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function Dashboard() {
                 <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/[0.03] dark:bg-purple-500/[0.05] rounded-full blur-xl pointer-events-none" />
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Channel Aktif</span>
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 flex items-center justify-center text-purple-650 dark:text-purple-400">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
                     <Globe className="w-4 h-4" />
                   </div>
                 </div>
@@ -369,7 +369,7 @@ export default function Dashboard() {
                         y2={y} 
                         stroke="currentColor" 
                         strokeWidth="1"
-                        className="text-zinc-150 dark:text-zinc-800/40" 
+                        className="text-zinc-200 dark:text-zinc-800/40" 
                         strokeDasharray="4 4"
                       />
                     );
@@ -464,10 +464,10 @@ export default function Dashboard() {
                         <Icon className="w-5 h-5" />
                       </div>
                       <div className="text-left flex-1 min-w-0">
-                        <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-450 transition-colors">{item.label}</div>
+                        <div className="font-semibold text-sm text-zinc-800 dark:text-zinc-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{item.label}</div>
                         <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 truncate">{item.desc}</div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-650 dark:group-hover:text-zinc-350 transition-colors" />
+                      <ChevronRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 group-hover:text-zinc-500 dark:group-hover:text-zinc-300 transition-colors" />
                     </a>
                   );
                 })}
@@ -500,7 +500,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-3 flex-1">
                     {channels.slice(0, 5).map((ch) => (
-                      <div key={ch.id} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-800 transition-colors">
+                      <div key={ch.id} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-850 transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-lg bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-lg">
                             {platformIcon(ch.platform)}
@@ -547,7 +547,7 @@ export default function Dashboard() {
                 ) : (
                   <div className="space-y-3 flex-1">
                     {broadcasts.slice(0, 5).map((bc) => (
-                      <div key={bc.id} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-800 transition-colors">
+                      <div key={bc.id} className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50/50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-850 transition-colors">
                         <div className="flex-1 min-w-0 pr-4">
                           <div className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 truncate">
                             {bc.title || bc.content}
@@ -610,10 +610,10 @@ export default function Dashboard() {
                   <div className="absolute inset-0 flex flex-col justify-between pointer-events-none py-1">
                     {[0, 0.25, 0.5, 0.75, 1].map((p, idx) => (
                       <div key={idx} className="w-full flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 h-0">
-                        <span className="text-[9px] text-zinc-400 dark:text-zinc-650 select-none bg-white dark:bg-zinc-900 px-1 -translate-y-2">
+                        <span className="text-[9px] text-zinc-400 dark:text-zinc-500 select-none bg-white dark:bg-zinc-900 px-1 -translate-y-2">
                           {Math.round(maxAnalyticVal * (1 - p))}
                         </span>
-                        <div className="w-full h-px bg-zinc-200/20 dark:bg-zinc-800/10 border-t border-dashed border-zinc-200 dark:border-zinc-850" />
+                        <div className="w-full h-px bg-zinc-200/20 dark:bg-zinc-800/10 border-t border-dashed border-zinc-200 dark:border-zinc-800" />
                       </div>
                     ))}
                   </div>
@@ -647,7 +647,7 @@ export default function Dashboard() {
                           </div>
                           
                           {/* Date Label */}
-                          <span className="text-[10px] text-zinc-500 dark:text-zinc-500 mt-3 group-hover:text-zinc-850 dark:group-hover:text-zinc-200 transition-colors">{day.date}</span>
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-500 mt-3 group-hover:text-zinc-800 dark:group-hover:text-zinc-200 transition-colors">{day.date}</span>
                         </div>
                       );
                     })}
@@ -665,8 +665,8 @@ export default function Dashboard() {
                 <div className="space-y-4 flex-1 flex flex-col justify-center">
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-zinc-600 dark:text-zinc-350">Terkirim (Sukses)</span>
-                      <span className="font-bold text-emerald-600 dark:text-emerald-450">{sentCount} ({successRate}%)</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">Terkirim (Sukses)</span>
+                      <span className="font-bold text-emerald-600 dark:text-emerald-400">{sentCount} ({successRate}%)</span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
                       <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${successRate}%` }} />
@@ -675,7 +675,7 @@ export default function Dashboard() {
 
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-zinc-600 dark:text-zinc-350">Gagal Kirim</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">Gagal Kirim</span>
                       <span className="font-bold text-red-600 dark:text-red-400">{failedCount} ({totalBc > 0 ? Math.round((failedCount/totalBc)*100) : 0}%)</span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
@@ -685,7 +685,7 @@ export default function Dashboard() {
 
                   <div>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-zinc-600 dark:text-zinc-350">Terjadwal/Antre</span>
+                      <span className="text-zinc-600 dark:text-zinc-400">Terjadwal/Antre</span>
                       <span className="font-bold text-yellow-600 dark:text-yellow-500">{scheduledCount}</span>
                     </div>
                     <div className="w-full bg-zinc-100 dark:bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
@@ -696,8 +696,8 @@ export default function Dashboard() {
 
                 <div className="border-t border-zinc-200 dark:border-zinc-800 pt-4 mt-6 flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
                   <span>Pembaruan otomatis</span>
-                  <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-450 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-550 dark:bg-emerald-400 animate-pulse" /> LIVE
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" /> LIVE
                   </span>
                 </div>
               </div>
@@ -718,7 +718,7 @@ export default function Dashboard() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {finalChAnalytic.map((ch, idx) => (
-                    <div key={idx} className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 hover:border-zinc-300 dark:hover:border-zinc-800 transition-all duration-300">
+                    <div key={idx} className="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-800 transition-all duration-300">
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                           <span className="text-lg">{platformIcon(ch.channel?.platform || '')}</span>
@@ -736,7 +736,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex items-center justify-between text-xs">
                           <span className="text-zinc-500 dark:text-zinc-400">Success Rate:</span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-450">{ch.success_rate}%</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{ch.success_rate}%</span>
                         </div>
                         <div className="w-full bg-zinc-100 dark:bg-zinc-900 h-1.5 rounded-full overflow-hidden">
                           <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${ch.success_rate}%` }} />

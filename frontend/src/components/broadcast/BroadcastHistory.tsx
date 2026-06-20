@@ -57,7 +57,7 @@ export default function BroadcastHistory() {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Cari kata kunci pesan..."
-            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-xs text-zinc-900 dark:text-zinc-150 placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:border-blue-500 transition-all"
+            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-10 pr-4 py-2 text-xs text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all"
           />
         </div>
 
@@ -76,7 +76,7 @@ export default function BroadcastHistory() {
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
                 statusFilter === chip.id 
                   ? 'bg-blue-50 dark:bg-blue-600/10 border-blue-200 dark:border-blue-500/40 text-blue-600 dark:text-blue-400' 
-                  : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-405 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-850'
+                  : 'bg-transparent border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
               {chip.label}
@@ -86,7 +86,7 @@ export default function BroadcastHistory() {
           <button 
             onClick={fetchBroadcasts} 
             disabled={loading}
-            className="text-xs bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer text-zinc-700 dark:text-zinc-300 ml-2"
+            className="text-xs bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-950 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer text-zinc-700 dark:text-zinc-300 ml-2"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <History className="w-3.5 h-3.5" />}
             <span>Refresh</span>
@@ -137,7 +137,7 @@ export default function BroadcastHistory() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="text-blue-600 dark:text-blue-400 text-[10px] font-bold tracking-wider font-mono">ID: #{bc.id}</span>
-                  <span className="text-zinc-300 dark:text-zinc-750 text-xs">•</span>
+                  <span className="text-zinc-350 dark:text-zinc-700 text-xs">•</span>
                   <span className="flex items-center gap-1 text-[10px] text-zinc-400 dark:text-zinc-500">
                     <Calendar className="w-3 h-3" />
                     {new Date(bc.created_at).toLocaleString('id-ID', {
@@ -150,7 +150,7 @@ export default function BroadcastHistory() {
                   </span>
                 </div>
 
-                <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 truncate max-w-xl group-hover:text-blue-600 dark:group-hover:text-blue-450 transition-colors">
+                <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 truncate max-w-xl group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                   {bc.title || 'Broadcast Tanpa Judul'}
                 </h3>
                 
@@ -159,7 +159,7 @@ export default function BroadcastHistory() {
                 </p>
 
                 {bc.scheduled_at && (
-                  <div className="flex items-center gap-1.5 mt-3 text-[10px] text-yellow-650 bg-yellow-50 dark:bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-250 dark:border-yellow-500/20 w-fit font-medium">
+                  <div className="flex items-center gap-1.5 mt-3 text-[10px] text-yellow-600 bg-yellow-50 dark:bg-yellow-500/10 px-2.5 py-1 rounded-md border border-yellow-200 dark:border-yellow-500/20 w-fit font-medium">
                     <Clock className="w-3 h-3" />
                     <span>Terjadwal: {new Date(bc.scheduled_at).toLocaleString('id-ID')}</span>
                   </div>
@@ -174,7 +174,7 @@ export default function BroadcastHistory() {
                 
                 <div className="flex items-center gap-2">
                   <span className="text-zinc-200 dark:text-zinc-800 text-xs hidden sm:inline">•</span>
-                  <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 group-hover:bg-zinc-100 dark:group-hover:bg-zinc-850 group-hover:border-zinc-300 dark:group-hover:border-zinc-750 transition-all">
+                  <div className="w-8 h-8 rounded-lg bg-zinc-50 dark:bg-zinc-950 flex items-center justify-center border border-zinc-200 dark:border-zinc-800 group-hover:bg-zinc-100 dark:group-hover:bg-zinc-800 group-hover:border-zinc-300 dark:group-hover:border-zinc-700 transition-all">
                     <ChevronRight className="w-4 h-4 text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-700 dark:group-hover:text-zinc-300" />
                   </div>
                 </div>
@@ -192,8 +192,8 @@ function statusColor(s: string): string {
     sent:      'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20 shadow-sm',
     failed:    'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-100 dark:border-red-500/20 shadow-sm',
     scheduled: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-500 border-yellow-100 dark:border-yellow-500/20',
-    queued:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-450 border-blue-100 dark:border-blue-500/20',
-    sending:   'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-450 border-blue-100 dark:border-blue-500/20 animate-pulse',
+    queued:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20',
+    sending:   'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20 animate-pulse',
     draft:     'bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800',
   };
   return m[s] ?? 'bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800';

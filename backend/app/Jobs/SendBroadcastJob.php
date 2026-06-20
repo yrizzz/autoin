@@ -6,7 +6,7 @@ use App\Events\BroadcastStatusUpdated;
 use App\Models\Broadcast;
 use App\Models\BroadcastLog;
 use App\Services\DiscordService;
-use App\Services\TelegramService;
+use App\Services\TelegramUserService;
 use App\Services\WebhookService;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,8 +30,9 @@ class SendBroadcastJob implements ShouldQueue
             ->get();
 
         foreach ($logs as $log) {
-            $channel = $log->channel;
-            $result  = $this->sendToChannel($channel);
+            $channel     = $log->channel;
+            $recipientId = $log->recipient_id;
+            $result      = $this->sendToChannel($channel, $recipientId);
 
             $log->update([
                 'status'   => $result['ok'] ? 'success' : 'failed',
@@ -43,9 +44,6 @@ class SendBroadcastJob implements ShouldQueue
 
             event(new BroadcastStatusUpdated($this->broadcast, $log));
         }
-
-        $hasFailure = BroadcastLog::where('broadcast_id', $this->broadcast->id)
-            ->where('status', 'failed')->exists();
 
         $allFailed = BroadcastLog::where('broadcast_id', $this->broadcast->id)
             ->where('status', 'success')->doesntExist();
@@ -62,17 +60,17 @@ class SendBroadcastJob implements ShouldQueue
         }
     }
 
-    private function sendToChannel($channel): array
+    private function sendToChannel($channel, ?string $recipientId): array
     {
         $content   = $this->broadcast->content;
         $mediaUrl  = $this->broadcast->media_url;
         $mediaType = $this->broadcast->media_type;
 
         return match($channel->platform) {
-            'telegram'  => app(TelegramService::class)->send($channel, $content, $mediaUrl, $mediaType),
+            'telegram'  => app(TelegramUserService::class)->send($channel, $content, $mediaUrl, $recipientId),
             'discord'   => app(DiscordService::class)->send($channel, $content, $mediaUrl),
             'webhook'   => app(WebhookService::class)->send($channel, $content, $mediaUrl),
-            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType),
+            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId),
             default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };
     }

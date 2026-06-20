@@ -19,6 +19,7 @@ cleanup() {
   [ -n "$PID_BACKEND"  ] && kill "$PID_BACKEND"  2>/dev/null
   [ -n "$PID_FRONTEND" ] && kill "$PID_FRONTEND" 2>/dev/null
   [ -n "$PID_WA"       ] && kill "$PID_WA"       2>/dev/null
+  [ -n "$PID_TG"       ] && kill "$PID_TG"       2>/dev/null
   ok "Semua service dihentikan."
   exit 0
 }
@@ -31,7 +32,7 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── Bersihkan proses lama ─────────────────────────────────
-for PORT in 8001 4321 3001; do
+for PORT in 8001 4321 3001 3002; do
   OLD_PID=$(lsof -ti tcp:$PORT 2>/dev/null)
   if [ -n "$OLD_PID" ]; then
     kill "$OLD_PID" 2>/dev/null
@@ -107,6 +108,32 @@ else
   PID_WA=""
 fi
 
+# ── Telegram Service ─────────────────────────────────────
+log "Memulai Telegram Service (GramJS)..."
+
+cd "$ROOT/telegram-service"
+
+if [ ! -f ".env" ]; then
+  cp .env.example .env
+  warn ".env Telegram dibuat. Set TELEGRAM_API_ID dan TELEGRAM_API_HASH di telegram-service/.env"
+fi
+
+if [ ! -d "node_modules" ]; then
+  log "Install dependencies Telegram Service..."
+  npm install --silent
+fi
+
+node --watch src/index.js > /tmp/autoin-tg.log 2>&1 &
+PID_TG=$!
+sleep 3
+if curl -s http://localhost:3002/health | grep -q "ok"; then
+  ok "Telegram Service berjalan → http://localhost:3002"
+else
+  warn "Telegram Service gagal start. Cek /tmp/autoin-tg.log"
+  cat /tmp/autoin-tg.log | tail -5
+  PID_TG=""
+fi
+
 # ── Summary ───────────────────────────────────────────────
 echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
@@ -117,6 +144,8 @@ echo -e "  📡 Dashboard → ${CYAN}http://localhost:4321/dashboard${RESET}"
 echo -e "  🔧 API       → ${CYAN}http://localhost:8001/api${RESET}"
 [ -n "$PID_WA" ] && \
 echo -e "  💬 WhatsApp  → ${CYAN}http://localhost:3001${RESET}"
+[ -n "$PID_TG" ] && \
+echo -e "  ✈️  Telegram  → ${CYAN}http://localhost:3002${RESET}"
 echo ""
 echo -e "  Tekan ${YELLOW}Ctrl+C${RESET} untuk menghentikan semua service"
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"

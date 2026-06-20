@@ -42,6 +42,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Broadcast::class);
     }
 
+    public function chatbotRules()
+    {
+        return $this->hasMany(ChatbotRule::class);
+    }
+
     public function subscription()
     {
         return $this->hasOne(Subscription::class)->latestOfMany();
@@ -50,7 +55,13 @@ class User extends Authenticatable implements JWTSubject
     public function hasActiveSubscription(): bool
     {
         $sub = $this->subscription;
-        if (!$sub) return false;
+        if (!$sub) {
+            $sub = $this->subscription()->create([
+                'plan'       => 'free',
+                'started_at' => now(),
+                'expires_at' => null,
+            ]);
+        }
         if ($sub->plan === 'free') return $this->trial_count > 0;
         return $sub->expires_at === null || $sub->expires_at->isFuture();
     }

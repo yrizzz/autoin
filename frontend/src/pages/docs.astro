@@ -1,0 +1,308 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AdminLayout from '../components/layout/AdminLayout';
+---
+
+<BaseLayout title="Dokumentasi API">
+  <AdminLayout client:load activePage="api_docs" title="Dokumentasi API">
+    <div class="flex flex-col lg:flex-row gap-8">
+      
+      {/* Left Column: API Documentation */}
+      <div class="flex-1 space-y-8 max-w-3xl">
+        <div>
+          <h1 class="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
+            Dokumentasi Developer API
+          </h1>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+            Gunakan REST API AUTOIN untuk mengirim pesan broadcast secara otomatis langsung dari program atau website backend Anda.
+          </p>
+        </div>
+
+        {/* Section 1: Authentication */}
+        <div class="space-y-3">
+          <h2 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">1</span>
+            Autentikasi Token
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Seluruh request API wajib menyertakan HTTP header <code class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/80 font-mono text-[10px] text-blue-600 dark:text-blue-400">Authorization: Bearer &lt;YOUR_API_KEY&gt;</code>. 
+            Anda dapat memperoleh API Key melalui halaman pengaturan Kredensial API Key di dashboard ini.
+          </p>
+        </div>
+
+        {/* Section 2: Get Channels */}
+        <div class="space-y-3">
+          <h2 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">2</span>
+            Mendapatkan ID Channel Broadcast
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Sebelum mengirimkan pesan broadcast, Anda perlu mengetahui list device atau channel sosial media yang aktif di akun Anda. Gunakan endpoint ini untuk list channel beserta parameter ID-nya.
+          </p>
+
+          <div class="bg-zinc-50 dark:bg-[#0e0e11] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-2">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-extrabold uppercase">GET</span>
+              <span class="font-mono text-xs text-zinc-700 dark:text-zinc-300">/api/channels</span>
+            </div>
+            <div class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono">
+              Response format: Array of Channel objects.
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Send Broadcast */}
+        <div class="space-y-3">
+          <h2 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">3</span>
+            Mengirimkan Broadcast Campaign
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Kirim request POST ke endpoint ini dengan payload JSON untuk membuat draf broadcast. Lanjutkan dengan trigger pengiriman untuk mendistribusikan pesan ke seluruh channel.
+          </p>
+
+          <div class="bg-zinc-50 dark:bg-[#0e0e11] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[9px] font-extrabold uppercase">POST</span>
+              <span class="font-mono text-xs text-zinc-700 dark:text-zinc-300">/api/broadcasts</span>
+            </div>
+            
+            <div class="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-3 space-y-1.5">
+              <span class="block text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">Parameter Body (JSON)</span>
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200/40 dark:border-zinc-800/40">
+                    <th class="pb-1.5 font-bold">Field</th>
+                    <th class="pb-1.5 font-bold">Tipe</th>
+                    <th class="pb-1.5 font-bold">Deskripsi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200/20 dark:divide-zinc-800/20 text-[11px] text-zinc-500 dark:text-zinc-455 font-sans">
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">content</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Pesan teks utama (Mendukung HTML tags). *Wajib</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">channel_ids</td>
+                    <td class="py-2 text-blue-500 font-mono">array</td>
+                    <td class="py-2">List ID target channel dari endpoint GET /api/channels. *Wajib</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">title</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Judul kampanye broadcast (Opsional).</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">media_url</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">URL lampiran file/gambar (Opsional).</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">media_type</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Tipe lampiran: <code class="px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px]">image, video, pdf, document</code>.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Right Column: Code Playgrounds */}
+      <div class="w-full lg:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider">Playground Contoh</span>
+          </div>
+          
+          {/* Tab Button Selector */}
+          <div class="flex gap-1 bg-zinc-100 dark:bg-zinc-900 p-0.5 rounded-lg text-[9px] font-bold">
+            <button data-lang-tab="curl" class="px-1.5 py-1 rounded transition-all capitalize cursor-pointer bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm">
+              cURL
+            </button>
+            <button data-lang-tab="javascript" class="px-1.5 py-1 rounded transition-all capitalize cursor-pointer text-zinc-400">
+              JS
+            </button>
+            <button data-lang-tab="php" class="px-1.5 py-1 rounded transition-all capitalize cursor-pointer text-zinc-400">
+              PHP
+            </button>
+            <button data-lang-tab="python" class="px-1.5 py-1 rounded transition-all capitalize cursor-pointer text-zinc-400">
+              Python
+            </button>
+          </div>
+        </div>
+
+        {/* Snippets Area */}
+        <div class="space-y-4">
+          
+          {/* 1. Auth Headers */}
+          <div class="space-y-1.5">
+            <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">1. Tes Autentikasi</span>
+            
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8000/api/me \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+            
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/me', &#123;
+  headers: &#123;
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  &#125;
+&#125;)
+.then(res => res.json())
+.then(data => console.log(data));</pre>
+
+            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+$ch = curl_init('http://localhost:8000/api/me');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+$response = curl_exec($ch);
+$data = json_decode($response, true);</pre>
+
+            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+
+headers = &#123;
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+&#125;
+response = requests.get('http://localhost:8000/api/me', headers=headers)
+print(response.json())</pre>
+          </div>
+
+          {/* 2. List Channels */}
+          <div class="space-y-1.5">
+            <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">2. List Channels</span>
+            
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8000/api/channels \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+            
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/channels', &#123;
+  headers: &#123; 'Authorization': 'Bearer YOUR_API_KEY' &#125;
+&#125;)
+.then(res => res.json())
+.then(channels => console.log(channels));</pre>
+
+            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+$ch = curl_init('http://localhost:8000/api/channels');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY'
+]);
+$response = curl_exec($ch);
+$channels = json_decode($response, true);</pre>
+
+            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+
+headers = &#123;'Authorization': 'Bearer YOUR_API_KEY'&#125;
+response = requests.get('http://localhost:8000/api/channels', headers=headers)
+print(response.json())</pre>
+          </div>
+
+          {/* 3. Send Broadcast */}
+          <div class="space-y-1.5">
+            <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">3. Kirim Broadcast</span>
+            
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST http://localhost:8000/api/broadcasts \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123;
+    "title": "Promo Weekend",
+    "content": "Diskon 50% khusus hari ini!",
+    "channel_ids": [1, 2],
+    "media_url": "https://example.com/image.jpg",
+    "media_type": "image"
+  &#125;'</pre>
+            
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/broadcasts', &#123;
+  method: 'POST',
+  headers: &#123;
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  &#125;,
+  body: JSON.stringify(&#123;
+    title: 'Promo Weekend',
+    content: 'Diskon 50% khusus hari ini!',
+    channel_ids: [1, 2],
+    media_url: 'https://example.com/image.jpg',
+    media_type: 'image'
+  &#125;)
+&#125;)</pre>
+
+            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+$payload = [
+    'title' => 'Promo Weekend',
+    'content' => 'Diskon 50% khusus hari ini!',
+    'channel_ids' => [1, 2],
+    'media_url' => 'https://example.com/image.jpg',
+    'media_type' => 'image'
+];
+
+$ch = curl_init('http://localhost:8000/api/broadcasts');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+$response = curl_exec($ch);
+$result = json_decode($response, true);</pre>
+
+            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+
+payload = &#123;
+    'title': 'Promo Weekend',
+    'content': 'Diskon 50% khusus hari ini!',
+    'channel_ids': [1, 2],
+    'media_url': 'https://example.com/image.jpg',
+    'media_type': 'image'
+&#125;
+headers = &#123;
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+&#125;
+response = requests.post('http://localhost:8000/api/broadcasts', json=payload, headers=headers)
+print(response.json())</pre>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </AdminLayout>
+</BaseLayout>
+
+<script>
+  // Simple client-side javascript to switch code tabs
+  const tabs = document.querySelectorAll('[data-lang-tab]');
+  const snippets = document.querySelectorAll('[data-lang-code]');
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetLang = tab.getAttribute('data-lang-tab');
+      
+      // Update tab styles
+      tabs.forEach(t => {
+        if (t.getAttribute('data-lang-tab') === targetLang) {
+          t.classList.add('bg-white', 'dark:bg-zinc-800', 'text-blue-600', 'dark:text-blue-400', 'shadow-sm');
+          t.classList.remove('text-zinc-400');
+        } else {
+          t.classList.remove('bg-white', 'dark:bg-zinc-800', 'text-blue-600', 'dark:text-blue-400', 'shadow-sm');
+          t.classList.add('text-zinc-400');
+        }
+      });
+      
+      // Update snippet visibility
+      snippets.forEach(s => {
+        if (s.getAttribute('data-lang-code') === targetLang) {
+          s.classList.remove('hidden');
+        } else {
+          s.classList.add('hidden');
+        }
+      });
+    });
+  });
+</script>

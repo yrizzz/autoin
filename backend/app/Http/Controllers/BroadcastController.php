@@ -13,9 +13,13 @@ class BroadcastController extends Controller
 
     public function index(Request $request)
     {
-        $broadcasts = $request->user()->broadcasts()
-            ->latest()
-            ->paginate(20);
+        $query = $request->user()->broadcasts()->latest();
+
+        if ($request->has('status')) {
+            $query->where('status', $request->input('status'));
+        }
+
+        $broadcasts = $query->paginate(20);
 
         return response()->json($broadcasts);
     }
@@ -23,15 +27,18 @@ class BroadcastController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'        => 'nullable|string|max:255',
-            'content'      => 'required|string',
-            'media_url'    => 'nullable|string',
-            'media_type'   => 'nullable|in:image,video,pdf,document',
-            'channel_ids'  => 'required|array|min:1',
-            'channel_ids.*'=> 'exists:channels,id',
-            'scheduled_at' => 'nullable|date|after:now',
-            'recurring'    => 'nullable|in:none,daily,weekly,monthly',
+            'title'          => 'nullable|string|max:255',
+            'content'        => 'required|string',
+            'media_url'      => 'nullable|string',
+            'media_type'     => 'nullable|in:image,video,pdf,document',
+            'channel_ids'    => 'required|array|min:1',
+            'channel_ids.*'  => 'exists:channels,id',
+            'recipients'     => 'nullable|array',
+            'scheduled_at'   => 'nullable|date|after:now',
+            'recurring'      => 'nullable|in:none,daily,weekly,monthly',
         ]);
+
+        $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
 
         $broadcast = $request->user()->broadcasts()->create([
             'title'        => $data['title'] ?? null,
@@ -40,13 +47,16 @@ class BroadcastController extends Controller
             'media_type'   => $data['media_type'] ?? null,
             'scheduled_at' => $data['scheduled_at'] ?? null,
             'recurring'    => $data['recurring'] ?? 'none',
-            'status'       => 'draft',
+            'status'       => $status,
         ]);
+
+        $recipientsMap = $data['recipients'] ?? [];
 
         foreach ($data['channel_ids'] as $channelId) {
             BroadcastTarget::create([
                 'broadcast_id' => $broadcast->id,
                 'channel_id'   => $channelId,
+                'recipients'   => $recipientsMap[$channelId] ?? null,
             ]);
         }
 
@@ -101,11 +111,11 @@ class BroadcastController extends Controller
     {
         $this->authorize($request->user(), $broadcast);
 
-        if ($broadcast->status !== 'scheduled') {
-            return response()->json(['message' => 'Only scheduled broadcasts can be cancelled.'], 422);
+        if (!in_array($broadcast->status, ['scheduled', 'draft', 'queued'])) {
+            return response()->json(['message' => 'Broadcast ini tidak dapat dibatalkan.'], 422);
         }
 
-        $broadcast->update(['status' => 'draft']);
+        $broadcast->update(['status' => 'cancelled']);
 
         return response()->json(['status' => 'cancelled']);
     }

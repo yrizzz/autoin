@@ -8,7 +8,12 @@ class BroadcastTarget extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['broadcast_id', 'channel_id'];
+    protected $fillable = ['broadcast_id', 'channel_id', 'recipients'];
+
+    protected function casts(): array
+    {
+        return ['recipients' => 'array'];
+    }
 
     public function broadcast()
     {
