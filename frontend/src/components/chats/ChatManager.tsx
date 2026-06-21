@@ -15,7 +15,7 @@ interface Chat {
   time: string;
   unread: number;
   ts?: number;
-  type?: 'private' | 'group' | 'channel'; // TG only
+  type?: 'private' | 'group' | 'channel';
 }
 interface Msg {
   id: string;
@@ -28,7 +28,7 @@ interface Msg {
 }
 interface Att { url: string; mediaType: string; name: string; preview?: string; }
 
-const API = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001';
+const API_URL = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001';
 
 function hue(s: string) {
   const p = ['bg-blue-500','bg-violet-500','bg-pink-500','bg-orange-500','bg-emerald-500','bg-sky-500','bg-purple-500','bg-teal-500','bg-rose-500'];
@@ -70,11 +70,18 @@ export default function ChatManager() {
   const [search, setSearch]       = useState('');
   const [tab, setTab]             = useState<Tab>('all');
   const [att, setAtt]             = useState<Att | null>(null);
-  const endRef  = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const inRef   = useRef<HTMLInputElement>(null);
-  const sseMsg  = useRef<EventSource | null>(null);
-  const sseCht  = useRef<EventSource | null>(null);
+  const [syncing, setSyncing]     = useState(false);
+  const endRef     = useRef<HTMLDivElement>(null);
+  const fileRef    = useRef<HTMLInputElement>(null);
+  const inRef      = useRef<HTMLInputElement>(null);
+  const pollMsgRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollChatsRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeRef  = useRef<Chat | null>(null);
+  const chRef      = useRef<Channel | null>(null);
+
+  // Keep refs in sync for use inside intervals
+  useEffect(() => { activeRef.current = active; }, [active]);
+  useEffect(() => { chRef.current = ch; }, [ch]);
 
   // Load all active channels
   useEffect(() => {
@@ -85,59 +92,44 @@ export default function ChatManager() {
     }).catch(() => setChatsL(false));
   }, []);
 
-  // Load chats on channel change
+  const fetchChats = useCallback(async (channel: Channel) => {
+    const endpoint = channel.platform === 'telegram'
+      ? `/api/telegram/${channel.id}/chats`
+      : `/api/whatsapp/${channel.id}/chats`;
+    try {
+      const r = await api.get<{ chats: Chat[] }>(endpoint);
+      const list = (r.chats || []).map(c => ({
+        ...c,
+        time: c.time || (c.ts ? fmtTs(c.ts) : ''),
+      }));
+      setChats(list);
+      return list;
+    } catch {
+      setChats([]);
+      return [];
+    }
+  }, []);
+
+  // Load chats on channel change + start polling chats every 30s (no SSE to avoid blocking PHP)
   useEffect(() => {
     if (!ch) return;
-    setChatsL(true); setChats([]); setActive(null); setMsgs([]);
-    if (sseMsg.current) { sseMsg.current.close(); sseMsg.current = null; }
-    if (sseCht.current) { sseCht.current.close(); sseCht.current = null; }
+    setChatsL(true);
+    setChats([]);
+    setActive(null);
+    setMsgs([]);
 
-    const endpoint = ch.platform === 'telegram'
-      ? `/api/telegram/${ch.id}/chats`
-      : `/api/whatsapp/${ch.id}/chats`;
+    if (pollChatsRef.current) clearInterval(pollChatsRef.current);
+    if (pollMsgRef.current) clearInterval(pollMsgRef.current);
 
-    api.get<{ chats: Chat[] }>(endpoint)
-      .then(r => {
-        const list = (r.chats || []).map(c => ({
-          ...c,
-          time: c.time || (c.ts ? fmtTs(c.ts) : ''),
-        }));
-        setChats(list);
-      })
-      .catch(() => setChats([]))
-      .finally(() => setChatsL(false));
+    fetchChats(ch).finally(() => setChatsL(false));
 
-    // SSE for WhatsApp only
-    if (ch.platform === 'whatsapp') {
-      const token = localStorage.getItem('autoin_token');
-      const sseUrl = `${API}/api/whatsapp/${ch.id}/stream/chats${token ? `?token=${token}` : ''}`;
-      let esChats = new EventSource(sseUrl);
-
-      const setupChatsListeners = (stream: EventSource) => {
-        stream.onmessage = (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            if (data.type === 'chats_updated' && data.chats) setChats(data.chats);
-          } catch {}
-        };
-      };
-      setupChatsListeners(esChats);
-
-      esChats.onerror = () => {
-        const sessId = ch.credentials?.session_id;
-        if (sessId) {
-          esChats.close();
-          const fallback = new EventSource(`http://localhost:3001/sessions/${sessId}/events/chats?secret=autoin-wa-secret`);
-          setupChatsListeners(fallback);
-          sseCht.current = fallback;
-        }
-      };
-
-      sseCht.current = esChats;
-    }
+    // Poll chats every 30s
+    pollChatsRef.current = setInterval(() => {
+      if (chRef.current) fetchChats(chRef.current);
+    }, 30000);
 
     return () => {
-      if (sseCht.current) { sseCht.current.close(); sseCht.current = null; }
+      if (pollChatsRef.current) { clearInterval(pollChatsRef.current); pollChatsRef.current = null; }
     };
   }, [ch?.id]);
 
@@ -149,63 +141,50 @@ export default function ChatManager() {
     const found = chats.find(c => c.id.includes(to));
     if (found) { setActive(found); return; }
     const nc: Chat = { id: `${to}@s.whatsapp.net`, name: to, lastMessage: '', time: '', unread: 0 };
-    setChats(p => [nc, ...p]); setActive(nc);
+    setChats(p => [nc, ...p]);
+    setActive(nc);
   }, [chats, ch?.platform]);
 
-  // Load messages
   const loadMsgs = useCallback(async (channel: Channel, chat: Chat) => {
     try {
       const endpoint = channel.platform === 'telegram'
         ? `/api/telegram/${channel.id}/messages/${encodeURIComponent(chat.id)}`
         : `/api/whatsapp/${channel.id}/messages/${encodeURIComponent(chat.id)}`;
       const r = await api.get<{ messages: Msg[] }>(endpoint);
-      setMsgs(r.messages || []);
-    } catch { setMsgs([]); }
+      const incoming = r.messages || [];
+      setMsgs(prev => {
+        // keep optimistic "sending" messages, merge with incoming
+        const sending = prev.filter(m => m.status === 'sending');
+        const ids = new Set(incoming.map(m => m.id));
+        return [...incoming, ...sending.filter(m => !ids.has(m.id))];
+      });
+    } catch { /* silent */ }
   }, []);
 
+  // Poll messages every 5s while a chat is active (no SSE)
   useEffect(() => {
-    if (!active || !ch) { setMsgs([]); return; }
+    if (pollMsgRef.current) { clearInterval(pollMsgRef.current); pollMsgRef.current = null; }
+
+    if (!active || !ch) {
+      setMsgs([]);
+      return;
+    }
+
     setMsgsL(true);
     loadMsgs(ch, active).finally(() => setMsgsL(false));
 
-    if (sseMsg.current) { sseMsg.current.close(); sseMsg.current = null; }
-
-    // SSE for WhatsApp only
+    // Only poll messages for WhatsApp (TG is load-once)
     if (ch.platform === 'whatsapp') {
-      const token = localStorage.getItem('autoin_token');
-      const url = `${API}/api/whatsapp/${ch.id}/stream/messages/${encodeURIComponent(active.id)}${token ? `?token=${token}` : ''}`;
-      let esMsgs = new EventSource(url);
-
-      const setupMsgListeners = (stream: EventSource) => {
-        stream.onmessage = (e) => {
-          try {
-            const data = JSON.parse(e.data);
-            if (data.type === 'message' && data.message) {
-              setMsgs(p => {
-                if (p.find(m => m.id === data.message.id)) return p;
-                return [...p, data.message];
-              });
-              setChats(p => p.map(c => c.id === active.id ? { ...c, lastMessage: data.message.text, time: data.message.time, unread: 0 } : c));
-            }
-          } catch {}
-        };
-      };
-      setupMsgListeners(esMsgs);
-
-      esMsgs.onerror = () => {
-        const sessId = ch.credentials?.session_id;
-        if (sessId) {
-          esMsgs.close();
-          const fallback = new EventSource(`http://localhost:3001/sessions/${sessId}/events/messages/${encodeURIComponent(active.id)}?secret=autoin-wa-secret`);
-          setupMsgListeners(fallback);
-          sseMsg.current = fallback;
-        }
-      };
-
-      sseMsg.current = esMsgs;
+      pollMsgRef.current = setInterval(() => {
+        const curCh   = chRef.current;
+        const curChat = activeRef.current;
+        if (curCh && curChat) loadMsgs(curCh, curChat);
+      }, 5000);
     }
 
-    return () => { if (sseMsg.current) { sseMsg.current.close(); sseMsg.current = null; } };
+    return () => {
+      if (pollMsgRef.current) { clearInterval(pollMsgRef.current); pollMsgRef.current = null; }
+    };
   }, [active?.id, ch?.id]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [msgs]);
@@ -217,12 +196,32 @@ export default function ChatManager() {
     try {
       const token = localStorage.getItem('autoin_token');
       const fd = new FormData(); fd.append('file', file);
-      const res = await fetch(`${API}/api/upload`, { method: 'POST', headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: fd });
+      const res = await fetch(`${API_URL}/api/upload`, {
+        method: 'POST',
+        headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: fd,
+      });
       if (!res.ok) throw new Error('Upload gagal');
       const d = await res.json();
       setAtt({ url: d.url, mediaType: d.mediaType, name: d.name || file.name, preview: d.mediaType === 'image' ? d.url : undefined });
     } catch (err: any) { alert(err.message); }
     finally { setUploading(false); if (fileRef.current) fileRef.current.value = ''; }
+  };
+
+  // Sync groups from WA server
+  const handleSync = async () => {
+    if (!ch || ch.platform !== 'whatsapp' || syncing) return;
+    setSyncing(true);
+    try {
+      const r = await api.post<{ ok: boolean; chats: Chat[] }>(`/api/whatsapp/${ch.id}/sync`);
+      if (r.chats?.length) {
+        const list = r.chats.map(c => ({ ...c, time: c.time || (c.ts ? fmtTs(c.ts) : '') }));
+        setChats(list);
+      } else {
+        await fetchChats(ch);
+      }
+    } catch { await fetchChats(ch); }
+    setSyncing(false);
   };
 
   // Send
@@ -237,9 +236,9 @@ export default function ChatManager() {
     try {
       setSending(true);
       if (ch.platform === 'telegram') {
-        await api.post(`/api/telegram/${ch.id}/send`, { to: active.id, message: text, mediaUrl: a?.url ?? null });
+        await api.post(`/api/telegram/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null });
       } else {
-        await api.post(`/api/whatsapp/${ch.id}/send`, { to: active.id.split('@')[0], message: text, mediaUrl: a?.url ?? null, mediaType: a?.mediaType ?? null });
+        await api.post(`/api/whatsapp/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null, mediaType: a?.mediaType ?? null });
       }
       setMsgs(p => p.map(m => m.id === tmp.id ? { ...m, status: 'delivered' } : m));
       setChats(p => p.map(c => c.id === active.id ? { ...c, lastMessage: text || `[${a?.mediaType}]`, time: t } : c));
@@ -269,11 +268,11 @@ export default function ChatManager() {
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Obrolan Aktif</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-            WhatsApp &amp; Telegram · real-time via SSE (WA) / polling (TG)
+            WhatsApp &amp; Telegram · polling otomatis setiap 5–30 detik
           </p>
         </div>
         {channels.length > 0 && (
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-2 flex-wrap items-center">
             {channels.map(c => (
               <button key={c.id} onClick={() => setCh(c)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${ch?.id === c.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
@@ -284,6 +283,13 @@ export default function ChatManager() {
                 {c.name}
               </button>
             ))}
+            {ch?.platform === 'whatsapp' && (
+              <button onClick={handleSync} disabled={syncing || chatsLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-50 transition-all">
+                <RefreshCw className={`w-3 h-3 ${syncing ? 'animate-spin' : ''}`} />
+                Sync Grup
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -342,17 +348,16 @@ export default function ChatManager() {
                   const isA = active?.id === c.id;
                   const bg  = hue(c.id);
                   const grp = isGrp(c);
+                  const name = c.name || (ch?.platform === 'whatsapp' ? waPhone(c.id) : c.id);
                   return (
                     <div key={c.id} onClick={() => setActive(c)}
                       className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-all border-l-[3px] ${isA ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-600' : 'border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-800/40'}`}>
                       <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center text-white font-bold text-sm shrink-0`}>
-                        {grp ? <Users className="w-4 h-4" /> : (c.name || c.id)[0].toUpperCase()}
+                        {grp ? <Users className="w-4 h-4" /> : name[0]?.toUpperCase() ?? '?'}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                            {c.name || (ch?.platform === 'whatsapp' ? waPhone(c.id) : c.id)}
-                          </span>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">{name}</span>
                           <span className="text-[9px] text-zinc-400 shrink-0 ml-2">{c.time}</span>
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
@@ -374,7 +379,7 @@ export default function ChatManager() {
                 {/* Header */}
                 <div className="h-14 px-5 flex items-center gap-3 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
                   <div className={`w-9 h-9 rounded-full ${hue(active.id)} flex items-center justify-center text-white font-bold text-sm shrink-0`}>
-                    {isGrp(active) ? <Users className="w-4 h-4" /> : (active.name || active.id)[0].toUpperCase()}
+                    {isGrp(active) ? <Users className="w-4 h-4" /> : ((active.name || active.id)[0]?.toUpperCase() ?? '?')}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate flex items-center gap-2">
@@ -395,7 +400,7 @@ export default function ChatManager() {
                       <SendIcon className="w-3 h-3" />Broadcast
                     </a>
                   )}
-                  <button onClick={() => loadMsgs(ch!, active)} className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
+                  <button onClick={() => ch && loadMsgs(ch, active)} className="p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all">
                     <RefreshCw className="w-4 h-4" />
                   </button>
                 </div>
@@ -490,8 +495,8 @@ export default function ChatManager() {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2 max-w-xs">Klik obrolan dari daftar di sebelah kiri untuk mulai chatting.</p>
                 </div>
                 <div className="flex items-center gap-3 text-[10px] text-zinc-400">
-                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />WA: Real-time SSE</span>
-                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-sky-500" />TG: Load on demand</span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />WA: Auto-refresh 5 detik</span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-sky-500" />TG: Load sekali</span>
                 </div>
               </div>
             )}

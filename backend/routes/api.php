@@ -9,10 +9,14 @@ use App\Http\Controllers\ChatbotRuleController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\TelegramUserController;
 use App\Http\Controllers\UploadController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Internal endpoint — called by Node.js services, no user auth required
 Route::post('internal/chatbot/match', [ChatbotRuleController::class, 'matchInternal']);
+
+// Webhook trigger — public, auth via X-Webhook-Secret header
+Route::post('webhooks/trigger/{uuid}', [WebhookController::class, 'trigger']);
 
 Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -32,6 +36,7 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('whatsapp/{channel}/stream/messages/{chatId}', [WhatsAppController::class, 'streamMessages']);
     Route::get('whatsapp/{channel}/stream/chats', [WhatsAppController::class, 'streamChats']);
     Route::post('whatsapp/{channel}/send', [WhatsAppController::class, 'sendMessage']);
+    Route::post('whatsapp/{channel}/sync', [WhatsAppController::class, 'syncChats']);
 
     Route::post('telegram/connect', [TelegramUserController::class, 'connect']);
     Route::post('telegram/{channel}/verify', [TelegramUserController::class, 'verifyCode']);
@@ -50,6 +55,7 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('broadcasts/{broadcast}/logs', [BroadcastController::class, 'logs']);
 
     Route::apiResource('chatbot-rules', ChatbotRuleController::class)->except(['show']);
+    Route::apiResource('webhooks', WebhookController::class)->except(['show']);
 
     Route::post('upload', [UploadController::class, 'upload']);
 

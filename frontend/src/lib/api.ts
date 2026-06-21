@@ -15,16 +15,19 @@ export function clearToken(): void {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 15000);
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
-  });
+  }).finally(() => clearTimeout(timer));
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Unknown error' }));

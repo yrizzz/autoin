@@ -105,6 +105,20 @@ app.get('/sessions/:sessionId/messages/:chatId', auth, (req, res) => {
   }
 });
 
+// Manual sync: re-fetch groups and populate chat list
+app.post('/sessions/:sessionId/sync', auth, async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    const sock = sessionManager._sessions.get(sessionId);
+    if (!sock) return res.status(404).json({ error: 'Session not found' });
+    await sessionManager._syncGroups(sessionId, sock);
+    const chats = sessionManager.getChats(sessionId);
+    res.json({ ok: true, chats });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete/logout session
 app.delete('/sessions/:sessionId', auth, async (req, res) => {
   await sessionManager.delete(req.params.sessionId);

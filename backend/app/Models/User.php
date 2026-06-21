@@ -47,6 +47,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(ChatbotRule::class);
     }
 
+    public function webhooks()
+    {
+        return $this->hasMany(Webhook::class);
+    }
+
     public function subscription()
     {
         return $this->hasOne(Subscription::class)->latestOfMany();

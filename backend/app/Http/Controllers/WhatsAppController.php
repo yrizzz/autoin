@@ -93,14 +93,16 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        $credentials = $channel->credentials;
-        $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-        $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
-
-        $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
-            ->get("{$baseUrl}/sessions/{$credentials['session_id']}/contacts");
-
-        return response()->json($response->json() ?? ['contacts' => []]);
+        try {
+            $credentials = $channel->credentials;
+            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/contacts");
+            return response()->json($response->json() ?? ['contacts' => []]);
+        } catch (\Throwable) {
+            return response()->json(['contacts' => []]);
+        }
     }
 
     public function getChats(Request $request, Channel $channel)
@@ -108,14 +110,16 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        $credentials = $channel->credentials;
-        $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-        $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
-
-        $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
-            ->get("{$baseUrl}/sessions/{$credentials['session_id']}/chats");
-
-        return response()->json($response->json() ?? ['chats' => []]);
+        try {
+            $credentials = $channel->credentials;
+            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/chats");
+            return response()->json($response->json() ?? ['chats' => []]);
+        } catch (\Throwable) {
+            return response()->json(['chats' => []]);
+        }
     }
 
     public function getGroups(Request $request, Channel $channel)
@@ -123,14 +127,33 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        $credentials = $channel->credentials;
-        $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-        $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+        try {
+            $credentials = $channel->credentials;
+            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups");
+            return response()->json($response->json() ?? ['groups' => []]);
+        } catch (\Throwable) {
+            return response()->json(['groups' => []]);
+        }
+    }
 
-        $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
-            ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups");
+    public function syncChats(Request $request, Channel $channel)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
 
-        return response()->json($response->json() ?? ['groups' => []]);
+        try {
+            $credentials = $channel->credentials;
+            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->withHeader('x-api-secret', $secret)
+                ->post("{$baseUrl}/sessions/{$credentials['session_id']}/sync");
+            return response()->json($response->json() ?? ['ok' => true, 'chats' => []]);
+        } catch (\Throwable) {
+            return response()->json(['ok' => false, 'chats' => []]);
+        }
     }
 
     public function sendMessage(Request $request, Channel $channel)
@@ -144,7 +167,7 @@ class WhatsAppController extends Controller
 
         $data = $request->validate([
             'to'       => 'required|string',
-            'message'  => 'required|string',
+            'message'  => 'nullable|string',
             'mediaUrl' => 'nullable|string',
             'mediaType'=> 'nullable|string',
         ]);
@@ -152,7 +175,7 @@ class WhatsAppController extends Controller
         $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
             ->post("{$baseUrl}/sessions/{$credentials['session_id']}/send", [
                 'to'       => $data['to'],
-                'message'  => $data['message'],
+                'message'  => $data['message'] ?? '',
                 'mediaUrl' => $data['mediaUrl'] ?? null,
                 'mediaType'=> $data['mediaType'] ?? null,
             ]);
@@ -169,10 +192,13 @@ class WhatsAppController extends Controller
         $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
         $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
 
-        $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
-            ->get("{$baseUrl}/sessions/{$credentials['session_id']}/messages/" . urlencode($chatId));
-
-        return response()->json($response->json() ?? ['messages' => []]);
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/messages/" . urlencode($chatId));
+            return response()->json($response->json() ?? ['messages' => []]);
+        } catch (\Throwable) {
+            return response()->json(['messages' => []]);
+        }
     }
 
     /**

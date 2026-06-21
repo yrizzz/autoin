@@ -108,9 +108,12 @@ class TelegramUserController extends Controller
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'telegram', 422);
-
-        $r = $this->_proxy($channel, 'contacts');
-        return response()->json($r->json() ?? ['contacts' => []]);
+        try {
+            $r = $this->_proxy($channel, 'contacts');
+            return response()->json($r->json() ?? ['contacts' => []]);
+        } catch (\Throwable) {
+            return response()->json(['contacts' => []]);
+        }
     }
 
     // ── Proxy: chats ──────────────────────────────────────────────────────
@@ -118,9 +121,12 @@ class TelegramUserController extends Controller
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'telegram', 422);
-
-        $r = $this->_proxy($channel, 'chats');
-        return response()->json($r->json() ?? ['chats' => []]);
+        try {
+            $r = $this->_proxy($channel, 'chats');
+            return response()->json($r->json() ?? ['chats' => []]);
+        } catch (\Throwable) {
+            return response()->json(['chats' => []]);
+        }
     }
 
     // ── Proxy: groups ─────────────────────────────────────────────────────
@@ -128,9 +134,12 @@ class TelegramUserController extends Controller
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'telegram', 422);
-
-        $r = $this->_proxy($channel, 'groups');
-        return response()->json($r->json() ?? ['groups' => []]);
+        try {
+            $r = $this->_proxy($channel, 'groups');
+            return response()->json($r->json() ?? ['groups' => []]);
+        } catch (\Throwable) {
+            return response()->json(['groups' => []]);
+        }
     }
 
     // ── Proxy: messages ───────────────────────────────────────────────────
@@ -138,9 +147,12 @@ class TelegramUserController extends Controller
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'telegram', 422);
-
-        $r = $this->_proxy($channel, 'messages/' . urlencode($chatId));
-        return response()->json($r->json() ?? ['messages' => []]);
+        try {
+            $r = $this->_proxy($channel, 'messages/' . urlencode($chatId));
+            return response()->json($r->json() ?? ['messages' => []]);
+        } catch (\Throwable) {
+            return response()->json(['messages' => []]);
+        }
     }
 
     // ── Proxy: send message ───────────────────────────────────────────────
@@ -148,15 +160,17 @@ class TelegramUserController extends Controller
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'telegram', 422);
-
         $data = $request->validate([
             'to'       => 'required|string',
             'message'  => 'nullable|string',
             'mediaUrl' => 'nullable|string',
         ]);
-
-        $r = $this->_proxyPost($channel, 'send', $data);
-        return response()->json($r->json() ?? ['ok' => false]);
+        try {
+            $r = $this->_proxyPost($channel, 'send', $data);
+            return response()->json($r->json() ?? ['ok' => false]);
+        } catch (\Throwable) {
+            return response()->json(['ok' => false, 'error' => 'Service unavailable']);
+        }
     }
 
     private function _proxy(Channel $channel, string $path)
@@ -165,7 +179,7 @@ class TelegramUserController extends Controller
         $secret    = config('services.telegram.secret', 'autoin-tg-secret');
         $sessionId = $channel->credentials['session_id'];
 
-        return Http::withHeader('x-api-secret', $secret)
+        return Http::timeout(8)->withHeader('x-api-secret', $secret)
             ->get("{$baseUrl}/sessions/{$sessionId}/{$path}");
     }
 
@@ -175,7 +189,7 @@ class TelegramUserController extends Controller
         $secret    = config('services.telegram.secret', 'autoin-tg-secret');
         $sessionId = $channel->credentials['session_id'];
 
-        return Http::withHeader('x-api-secret', $secret)
+        return Http::timeout(8)->withHeader('x-api-secret', $secret)
             ->post("{$baseUrl}/sessions/{$sessionId}/{$path}", $data);
     }
 }

@@ -10,88 +10,120 @@ import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
 
-const SESSIONS_DIR   = process.env.SESSIONS_DIR   || './sessions-data';
-const BACKEND_URL    = process.env.BACKEND_URL    || 'http://localhost:8000';
+const SESSIONS_DIR    = process.env.SESSIONS_DIR    || './sessions-data';
+const BACKEND_URL     = process.env.BACKEND_URL     || 'http://localhost:8000';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'autoin-internal-secret';
 
-if (!fs.existsSync(SESSIONS_DIR)) {
-  fs.mkdirSync(SESSIONS_DIR, { recursive: true });
-}
+if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 
 const logger = pino({ level: 'silent' });
+
+// ── Simple disk persistence ──────────────────────────────────────────────────
+function storeFile(sessionId) {
+  return path.join(SESSIONS_DIR, sessionId, 'store.json');
+}
+function loadStore(sessionId) {
+  try {
+    const f = storeFile(sessionId);
+    if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf8'));
+  } catch {}
+  return { contacts: [], chats: [], messages: {} };
+}
+function saveStore(sessionId, contacts, chats, messages) {
+  try {
+    const f = storeFile(sessionId);
+    fs.mkdirSync(path.dirname(f), { recursive: true });
+    fs.writeFileSync(f, JSON.stringify({ contacts, chats, messages }), 'utf8');
+  } catch {}
+}
 
 class SessionManager extends EventEmitter {
   constructor() {
     super();
-    this.setMaxListeners(100); // support many SSE clients
-    this._sessions = new Map();
-    this._qrs = new Map();
-    this._status = new Map();
+    this.setMaxListeners(100);
+    this._sessions  = new Map();
+    this._qrs       = new Map();
+    this._status    = new Map();
     this._pairingCodes = new Map();
-    this._contacts = new Map();
-    this._chats = new Map();
-    this._messages = new Map(); // chatId -> MessageBubble[]
+    this._contacts  = new Map();
+    this._chats     = new Map();
+    this._messages  = new Map(); // `${sessionId}:${chatId}` → Msg[]
+    this._saveTimers = new Map();
   }
 
-  has(id) {
-    return this._sessions.has(id);
+  // ── Throttled save — at most once per 10s per session ──────────────────────
+  _scheduleSave(sessionId) {
+    if (this._saveTimers.has(sessionId)) return;
+    const t = setTimeout(() => {
+      this._saveTimers.delete(sessionId);
+      const contacts = this._contacts.get(sessionId) || [];
+      const chats    = this._chats.get(sessionId) || [];
+      // Collect all messages for this session
+      const messages = {};
+      for (const [key, msgs] of this._messages.entries()) {
+        if (key.startsWith(sessionId + ':')) {
+          messages[key] = msgs.slice(-200); // keep last 200
+        }
+      }
+      saveStore(sessionId, contacts, chats, messages);
+    }, 10000);
+    this._saveTimers.set(sessionId, t);
   }
 
-  isConnected(id) {
-    return this._status.get(id) === 'connected';
+  // ── Restore from disk ─────────────────────────────────────────────────────
+  _loadFromDisk(sessionId) {
+    const store = loadStore(sessionId);
+    if (store.contacts?.length) this._contacts.set(sessionId, store.contacts);
+    if (store.chats?.length)    this._chats.set(sessionId, store.chats);
+    if (store.messages) {
+      for (const [key, msgs] of Object.entries(store.messages)) {
+        this._messages.set(key, msgs);
+      }
+    }
   }
 
-  getQr(id) {
-    return this._qrs.get(id) ?? null;
-  }
-
-  getPairingCode(id) {
-    return this._pairingCodes.get(id) ?? null;
-  }
+  has(id)         { return this._sessions.has(id); }
+  isConnected(id) { return this._status.get(id) === 'connected'; }
+  getQr(id)       { return this._qrs.get(id) ?? null; }
+  getPairingCode(id) { return this._pairingCodes.get(id) ?? null; }
 
   getStatus(id) {
-    let currentStatus = this._status.get(id) ?? 'not_found';
-    if (currentStatus === 'pairing_pending' && this._pairingCodes.get(id) === 'AUTO-INOK') {
-      if (!this._mockConnectTime) {
-        this._mockConnectTime = {};
-      }
+    let s = this._status.get(id) ?? 'not_found';
+    if (s === 'pairing_pending' && this._pairingCodes.get(id) === 'AUTO-INOK') {
+      if (!this._mockConnectTime) this._mockConnectTime = {};
       if (!this._mockConnectTime[id]) {
         this._mockConnectTime[id] = Date.now();
       } else if (Date.now() - this._mockConnectTime[id] > 15000) {
         this._status.set(id, 'connected');
         this._pairingCodes.delete(id);
-        currentStatus = 'connected';
+        s = 'connected';
       }
     }
-    return currentStatus;
+    return s;
   }
 
-  getContacts(id) {
-    return this._contacts.get(id) || [];
-  }
+  getContacts(id) { return this._contacts.get(id) || []; }
 
   getChats(id) {
-    const chats = this._chats.get(id) || [];
+    const chats    = this._chats.get(id) || [];
     const contacts = this._contacts.get(id) || [];
     return chats
       .map(c => {
-        const contact = contacts.find(conn => conn.id === c.id);
+        const contact = contacts.find(con => con.id === c.id);
         return {
-          id: c.id,
-          name: contact?.name || c.id.split('@')[0],
+          id:          c.id,
+          name:        contact?.name || c.name || c.id.split('@')[0],
           lastMessage: c.lastMessage || '',
-          time: c.time || '',
-          unread: c.unreadCount || 0,
-          ts: c.conversationTimestamp || 0,
+          time:        c.time || '',
+          unread:      c.unreadCount || 0,
+          ts:          c.conversationTimestamp || 0,
         };
       })
-      // Sort newest first — same order as WhatsApp
       .sort((a, b) => b.ts - a.ts);
   }
 
   getMessages(sessionId, chatId) {
-    const key = `${sessionId}:${chatId}`;
-    return this._messages.get(key) || [];
+    return this._messages.get(`${sessionId}:${chatId}`) || [];
   }
 
   async getGroups(id) {
@@ -100,17 +132,18 @@ class SessionManager extends EventEmitter {
     try {
       const groups = await sock.groupFetchAllParticipating();
       return Object.values(groups).map(g => ({
-        id: g.id,
-        name: g.subject,
+        id:                g.id,
+        name:              g.subject,
         participantsCount: g.participants?.length || 0,
-        unreadCount: 0
+        unreadCount:       0,
       }));
-    } catch (err) {
-      return [];
-    }
+    } catch { return []; }
   }
 
   async create(sessionId, usePairingCode = false, phoneNumber = '') {
+    // Load any persisted data before connecting
+    this._loadFromDisk(sessionId);
+
     const authDir = path.join(SESSIONS_DIR, sessionId);
     const { state, saveCreds } = await useMultiFileAuthState(authDir);
     const { version } = await fetchLatestBaileysVersion();
@@ -118,147 +151,154 @@ class SessionManager extends EventEmitter {
     this._status.set(sessionId, 'connecting');
 
     return new Promise((resolve) => {
-      const sock = makeWASocket({
-        version,
-        auth: state,
-        logger,
-        printQRInTerminal: false,
-      });
-
+      const sock = makeWASocket({ version, auth: state, logger, printQRInTerminal: false });
       this._sessions.set(sessionId, sock);
 
-      this._contacts.set(sessionId, []);
-      this._chats.set(sessionId, []);
+      // Ensure maps exist
+      if (!this._contacts.has(sessionId)) this._contacts.set(sessionId, []);
+      if (!this._chats.has(sessionId))    this._chats.set(sessionId, []);
 
+      // ── Contact helpers ────────────────────────────────────────────────────
       const upsertContact = (c) => {
-        const current = this._contacts.get(sessionId) || [];
-        const idx = current.findIndex(e => e.id === c.id);
-        const entry = { id: c.id, name: c.name || c.verifiedName || c.notify || c.id.split('@')[0] };
+        const current = this._contacts.get(sessionId);
+        const idx     = current.findIndex(e => e.id === c.id);
+        const entry   = { id: c.id, name: c.name || c.verifiedName || c.notify || c.id.split('@')[0] };
         if (idx === -1) current.push(entry); else current[idx] = entry;
-        this._contacts.set(sessionId, current);
+        this._scheduleSave(sessionId);
       };
 
-      sock.ev.on('contacts.upsert', (contacts) => contacts.forEach(upsertContact));
-      sock.ev.on('contacts.update', (updates) => updates.forEach(upsertContact));
+      sock.ev.on('contacts.upsert', cs => cs.forEach(upsertContact));
+      sock.ev.on('contacts.update', cs => cs.forEach(upsertContact));
 
+      // ── Chat helpers ───────────────────────────────────────────────────────
       const upsertChat = (c) => {
-        const current = this._chats.get(sessionId) || [];
-        const idx = current.findIndex(e => e.id === c.id);
-        const entry = {
-          id: c.id,
-          unreadCount: c.unreadCount || 0,
-          lastMessage: c.lastMessage?.conversation || c.lastMessage?.extendedTextMessage?.text || '',
-          time: c.conversationTimestamp ? new Date(c.conversationTimestamp * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''
+        const current = this._chats.get(sessionId);
+        const idx     = current.findIndex(e => e.id === c.id);
+        const ts      = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
+        const entry   = {
+          id:                    c.id,
+          name:                  c.name || c.subject || '',
+          unreadCount:           c.unreadCount || 0,
+          lastMessage:           c.lastMessage?.conversation
+                              || c.lastMessage?.extendedTextMessage?.text
+                              || '',
+          conversationTimestamp: ts,
+          time:                  ts
+            ? new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+            : '',
         };
         if (idx === -1) current.push(entry); else current[idx] = { ...current[idx], ...entry };
-        this._chats.set(sessionId, current);
+        this._scheduleSave(sessionId);
       };
 
-      sock.ev.on('chats.upsert', (chats) => {
+      sock.ev.on('chats.upsert', chats => {
         chats.forEach(upsertChat);
-        // Emit chat list update
         this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
       });
-      sock.ev.on('chats.update', (updates) => {
+      sock.ev.on('chats.update', updates => {
         updates.forEach(upsertChat);
         this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
       });
 
-      // Capture incoming real messages
+      // ── Message helpers ───────────────────────────────────────────────────
+      const storeMsg = (m, chatId) => {
+        const key     = `${sessionId}:${chatId}`;
+        const history = this._messages.get(key) || [];
+        if (history.find(e => e.id === m.id)) return; // dedup
+        history.push(m);
+        if (history.length > 500) history.splice(0, history.length - 500);
+        this._messages.set(key, history);
+        this._scheduleSave(sessionId);
+      };
+
       sock.ev.on('messages.upsert', ({ messages: msgs, type }) => {
         if (type !== 'notify') return;
         msgs.forEach(m => {
           if (!m.message) return;
           const chatId = m.key.remoteJid;
-          const key = `${sessionId}:${chatId}`;
-          const history = this._messages.get(key) || [];
-          const text = m.message?.conversation
-            || m.message?.extendedTextMessage?.text
-            || m.message?.imageMessage?.caption
-            || '[Media]';
-          const ts = m.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
-          const timeStr = ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          const text   = m.message?.conversation
+                      || m.message?.extendedTextMessage?.text
+                      || m.message?.imageMessage?.caption
+                      || '[Media]';
+          const ts     = m.messageTimestamp
+            ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
           const bubble = {
-            id: m.key.id,
-            sender: m.key.fromMe ? 'me' : 'them',
+            id:        m.key.id,
+            sender:    m.key.fromMe ? 'me' : 'them',
             text,
-            time: timeStr,
-            status: 'delivered'
+            time:      ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            status:    'delivered',
           };
-          history.push(bubble);
-          // Keep last 200 messages per chat
-          if (history.length > 200) history.splice(0, history.length - 200);
-          this._messages.set(key, history);
+          storeMsg(bubble, chatId);
 
-          // Update chat's lastMessage + time
-          upsertChat({ id: chatId, unreadCount: m.key.fromMe ? 0 : 1, lastMessage: { conversation: text }, conversationTimestamp: m.messageTimestamp });
+          upsertChat({
+            id:                    chatId,
+            unreadCount:           m.key.fromMe ? 0 : 1,
+            lastMessage:           { conversation: text },
+            conversationTimestamp: m.messageTimestamp,
+          });
 
-          // ── Emit real-time events for SSE subscribers ──
           this.emit(`message:${sessionId}:${chatId}`, { type: 'message', message: bubble, chatId });
           this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
 
-          // ── Chatbot auto-reply ──
           if (!m.key.fromMe && text !== '[Media]') {
             this._autoreply(sessionId, chatId, text);
           }
         });
       });
 
-      sock.ev.on('messaging-history.set', ({ chats, contacts, messages: histMsgs }) => {
-        // ── Contacts ──
-        if (contacts) {
-          const current = this._contacts.get(sessionId) || [];
-          contacts.forEach(c => {
-            const idx = current.findIndex(e => e.id === c.id);
+      sock.ev.on('messaging-history.set', ({ chats: hChats, contacts: hContacts, messages: hMsgs }) => {
+        // ── Contacts ───────────────────────────────────────────────────────
+        if (hContacts?.length) {
+          const current = this._contacts.get(sessionId);
+          hContacts.forEach(c => {
+            const idx   = current.findIndex(e => e.id === c.id);
             const entry = { id: c.id, name: c.name || c.verifiedName || c.notify || c.id.split('@')[0] };
             if (idx === -1) current.push(entry); else current[idx] = entry;
           });
-          this._contacts.set(sessionId, current);
         }
-        // ── Chats (with timestamp for ordering) ──
-        if (chats) {
-          const current = this._chats.get(sessionId) || [];
-          chats.forEach(c => {
-            const idx = current.findIndex(e => e.id === c.id);
-            const lm = c.lastMessage?.conversation || c.lastMessage?.extendedTextMessage?.text || '';
-            const ts = c.conversationTimestamp || 0;
+        // ── Chats ──────────────────────────────────────────────────────────
+        if (hChats?.length) {
+          const current = this._chats.get(sessionId);
+          hChats.forEach(c => {
+            const idx   = current.findIndex(e => e.id === c.id);
+            const ts    = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
             const entry = {
-              id: c.id,
-              unreadCount: c.unreadCount || 0,
-              lastMessage: lm,
-              conversationTimestamp: Number(ts),
-              time: ts ? new Date(Number(ts) * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : ''
+              id:                    c.id,
+              name:                  c.name || c.subject || '',
+              unreadCount:           c.unreadCount || 0,
+              lastMessage:           c.lastMessage?.conversation
+                                  || c.lastMessage?.extendedTextMessage?.text || '',
+              conversationTimestamp: ts,
+              time:                  ts
+                ? new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                : '',
             };
             if (idx === -1) current.push(entry); else current[idx] = { ...current[idx], ...entry };
           });
-          this._chats.set(sessionId, current);
           this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
         }
-        // ── Full message history ──
-        if (histMsgs && Array.isArray(histMsgs)) {
-          histMsgs.forEach(m => {
+        // ── Messages ───────────────────────────────────────────────────────
+        if (hMsgs?.length) {
+          hMsgs.forEach(m => {
             if (!m.message) return;
             const chatId = m.key.remoteJid;
-            const key = `${sessionId}:${chatId}`;
-            const history = this._messages.get(key) || [];
-            if (history.find(e => e.id === m.key.id)) return; // deduplicate
-            const text = m.message?.conversation
-              || m.message?.extendedTextMessage?.text
-              || m.message?.imageMessage?.caption
-              || '[Media]';
-            const ts = m.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
-            history.push({
-              id: m.key.id,
+            const text   = m.message?.conversation
+                        || m.message?.extendedTextMessage?.text
+                        || m.message?.imageMessage?.caption
+                        || '[Media]';
+            const ts     = m.messageTimestamp
+              ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
+            storeMsg({
+              id:     m.key.id,
               sender: m.key.fromMe ? 'me' : 'them',
               text,
-              time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-              status: 'delivered'
-            });
-            // Already sorted by Baileys; no explicit sort needed
-            if (history.length > 500) history.splice(0, history.length - 500);
-            this._messages.set(key, history);
+              time:   ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+              status: 'delivered',
+            }, chatId);
           });
         }
+        this._scheduleSave(sessionId);
       });
 
       sock.ev.on('creds.update', saveCreds);
@@ -276,7 +316,6 @@ class SessionManager extends EventEmitter {
         if (connection === 'close') {
           const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
           this._status.set(sessionId, 'disconnected');
-
           if (reason !== DisconnectReason.loggedOut) {
             this.create(sessionId, usePairingCode, phoneNumber);
           } else {
@@ -291,6 +330,8 @@ class SessionManager extends EventEmitter {
           this._qrs.delete(sessionId);
           this._pairingCodes.delete(sessionId);
           resolve({ status: 'connected' });
+          // Auto-sync groups after connecting so they appear immediately
+          setTimeout(() => this._syncGroups(sessionId, sock), 4000);
         }
       });
 
@@ -303,7 +344,7 @@ class SessionManager extends EventEmitter {
             this._status.set(sessionId, 'pairing_pending');
             resolve({ status: 'pairing_code', code });
           } catch (err) {
-            console.error('Gagal memproses pairing code, using fallback:', err);
+            console.error('Pairing code failed, using fallback:', err);
             const fallbackCode = 'AUTO-INOK';
             this._pairingCodes.set(sessionId, fallbackCode);
             this._status.set(sessionId, 'pairing_pending');
@@ -314,12 +355,35 @@ class SessionManager extends EventEmitter {
     });
   }
 
+  async _syncGroups(sessionId, sock) {
+    try {
+      const groups  = await sock.groupFetchAllParticipating();
+      const current = this._chats.get(sessionId) || [];
+      for (const g of Object.values(groups)) {
+        const idx   = current.findIndex(e => e.id === g.id);
+        const entry = {
+          id:                    g.id,
+          name:                  g.subject || g.id,
+          unreadCount:           0,
+          lastMessage:           '',
+          conversationTimestamp: g.creation || 0,
+          time:                  '',
+        };
+        if (idx === -1) current.push(entry);
+        else current[idx] = { ...current[idx], name: g.subject || current[idx].name };
+      }
+      this._chats.set(sessionId, current);
+      this._scheduleSave(sessionId);
+      this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
+    } catch { /* ignore — not critical */ }
+  }
+
   async _autoreply(sessionId, chatId, text) {
     try {
       const res = await fetch(`${BACKEND_URL}/api/internal/chatbot/match`, {
-        method: 'POST',
+        method:  'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type':    'application/json',
           'X-Internal-Secret': INTERNAL_SECRET,
         },
         body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
@@ -327,38 +391,27 @@ class SessionManager extends EventEmitter {
       if (!res.ok) return;
       const data = await res.json();
       if (data.reply) {
-        await new Promise(r => setTimeout(r, 800)); // natural delay
+        await new Promise(r => setTimeout(r, 800));
         await this.send(sessionId, chatId, data.reply);
       }
-    } catch (_) {
-      // never break message flow on autoreply failure
-    }
+    } catch { /* never break message flow */ }
   }
 
   async send(sessionId, to, message, mediaUrl = null, mediaType = null) {
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
+    if (!message && !mediaUrl) throw new Error('Message or media required');
 
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
 
     if (mediaUrl) {
       switch (mediaType) {
         case 'image':
-          return sock.sendMessage(jid, {
-            image: { url: mediaUrl },
-            caption: message || '',
-          });
+          return sock.sendMessage(jid, { image: { url: mediaUrl }, caption: message || '' });
         case 'video':
-          return sock.sendMessage(jid, {
-            video: { url: mediaUrl },
-            caption: message || '',
-          });
+          return sock.sendMessage(jid, { video: { url: mediaUrl }, caption: message || '' });
         case 'audio':
-          return sock.sendMessage(jid, {
-            audio: { url: mediaUrl },
-            mimetype: 'audio/mp4',
-            ptt: false,
-          });
+          return sock.sendMessage(jid, { audio: { url: mediaUrl }, mimetype: 'audio/mp4', ptt: false });
         case 'document':
         case 'pdf':
           return sock.sendMessage(jid, {
@@ -368,44 +421,38 @@ class SessionManager extends EventEmitter {
             caption: message || '',
           });
         default:
-          // fallback: try image
-          return sock.sendMessage(jid, {
-            image: { url: mediaUrl },
-            caption: message || '',
-          });
+          return sock.sendMessage(jid, { image: { url: mediaUrl }, caption: message || '' });
       }
     }
 
-    return sock.sendMessage(jid, { text: message });
+    return sock.sendMessage(jid, { text: message || '' });
   }
 
   async delete(sessionId) {
     const sock = this._sessions.get(sessionId);
-    if (sock) {
-      await sock.logout();
-      sock.end();
-    }
+    if (sock) { try { await sock.logout(); } catch {} sock.end(); }
     this._sessions.delete(sessionId);
     this._qrs.delete(sessionId);
     this._status.delete(sessionId);
+    // Clear save timer
+    const t = this._saveTimers.get(sessionId);
+    if (t) { clearTimeout(t); this._saveTimers.delete(sessionId); }
 
     const authDir = path.join(SESSIONS_DIR, sessionId);
-    if (fs.existsSync(authDir)) {
-      fs.rmSync(authDir, { recursive: true });
-    }
+    if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true });
   }
+
   async restoreSessions() {
     if (!fs.existsSync(SESSIONS_DIR)) return;
     try {
-      const files = fs.readdirSync(SESSIONS_DIR);
-      for (const file of files) {
-        const authDir = path.join(SESSIONS_DIR, file);
-        if (fs.statSync(authDir).isDirectory()) {
-          console.log(`Restoring session: ${file}`);
-          this.create(file).catch(err => {
-            console.error(`Failed to restore session ${file}:`, err.message);
-          });
-        }
+      const dirs = fs.readdirSync(SESSIONS_DIR).filter(f =>
+        fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
+      );
+      for (const dir of dirs) {
+        console.log(`Restoring session: ${dir}`);
+        this.create(dir).catch(err => {
+          console.error(`Failed to restore session ${dir}:`, err.message);
+        });
       }
     } catch (err) {
       console.error('Failed to read sessions directory:', err);
@@ -414,5 +461,4 @@ class SessionManager extends EventEmitter {
 }
 
 export const sessionManager = new SessionManager();
-// Restore sessions asynchronously on startup
 sessionManager.restoreSessions();

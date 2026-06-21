@@ -46,7 +46,7 @@ export default function BroadcastHistory() {
   });
 
   return (
-    <AdminLayout activePage="broadcast" title="Riwayat Broadcast">
+    <AdminLayout activePage="history" title="Riwayat Broadcast">
       {/* Filters Bar */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-center mb-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl shadow-sm">
         {/* Search */}
