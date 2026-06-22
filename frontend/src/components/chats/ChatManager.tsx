@@ -28,7 +28,7 @@ interface Msg {
 }
 interface Att { url: string; mediaType: string; name: string; preview?: string; }
 
-const API_URL = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_URL = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001';
 
 function hue(s: string) {
   const p = ['bg-blue-500','bg-violet-500','bg-pink-500','bg-orange-500','bg-emerald-500','bg-sky-500','bg-purple-500','bg-teal-500','bg-rose-500'];

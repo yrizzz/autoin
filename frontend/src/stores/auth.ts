@@ -40,6 +40,6 @@ export function logout(): void {
 }
 
 export function loginWithGoogle(): void {
-  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
   window.location.href = `${apiUrl}/auth/google`;
 }

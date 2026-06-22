@@ -8,8 +8,8 @@ import {
 } from 'lucide-react';
 
 const API_BASE = typeof window !== 'undefined'
-  ? ((import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8000')
-  : 'http://localhost:8000';
+  ? ((import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001')
+  : 'http://localhost:8001';
 
 export default function ApiKeyManager() {
   const [apiKey, setApiKey] = useState<string>('');

@@ -141,10 +141,10 @@ import AdminLayout from '../components/layout/AdminLayout';
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">1. Tes Autentikasi</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8000/api/me \
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8001/api/me \
   -H "Authorization: Bearer YOUR_API_KEY"</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/me', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/me', &#123;
   headers: &#123;
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
@@ -154,7 +154,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 .then(data => console.log(data));</pre>
 
             <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
-$ch = curl_init('http://localhost:8000/api/me');
+$ch = curl_init('http://localhost:8001/api/me');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY',
@@ -169,7 +169,7 @@ headers = &#123;
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 &#125;
-response = requests.get('http://localhost:8000/api/me', headers=headers)
+response = requests.get('http://localhost:8001/api/me', headers=headers)
 print(response.json())</pre>
           </div>
 
@@ -177,17 +177,17 @@ print(response.json())</pre>
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">2. List Channels</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8000/api/channels \
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8001/api/channels \
   -H "Authorization: Bearer YOUR_API_KEY"</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/channels', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/channels', &#123;
   headers: &#123; 'Authorization': 'Bearer YOUR_API_KEY' &#125;
 &#125;)
 .then(res => res.json())
 .then(channels => console.log(channels));</pre>
 
             <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
-$ch = curl_init('http://localhost:8000/api/channels');
+$ch = curl_init('http://localhost:8001/api/channels');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY'
@@ -198,7 +198,7 @@ $channels = json_decode($response, true);</pre>
             <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
 
 headers = &#123;'Authorization': 'Bearer YOUR_API_KEY'&#125;
-response = requests.get('http://localhost:8000/api/channels', headers=headers)
+response = requests.get('http://localhost:8001/api/channels', headers=headers)
 print(response.json())</pre>
           </div>
 
@@ -206,7 +206,7 @@ print(response.json())</pre>
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">3. Kirim Broadcast</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST http://localhost:8000/api/broadcasts \
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST http://localhost:8001/api/broadcasts \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;
@@ -217,7 +217,7 @@ print(response.json())</pre>
     "media_type": "image"
   &#125;'</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8000/api/broadcasts', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/broadcasts', &#123;
   method: 'POST',
   headers: &#123;
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -241,7 +241,7 @@ $payload = [
     'media_type' => 'image'
 ];
 
-$ch = curl_init('http://localhost:8000/api/broadcasts');
+$ch = curl_init('http://localhost:8001/api/broadcasts');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -265,7 +265,7 @@ headers = &#123;
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 &#125;
-response = requests.post('http://localhost:8000/api/broadcasts', json=payload, headers=headers)
+response = requests.post('http://localhost:8001/api/broadcasts', json=payload, headers=headers)
 print(response.json())</pre>
           </div>
 

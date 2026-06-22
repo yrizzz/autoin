@@ -17,7 +17,7 @@ interface AdminLayoutProps {
   refreshing?: boolean;
 }
 
-const GOOGLE_AUTH_URL = 'http://localhost:8000/auth/google';
+const GOOGLE_AUTH_URL = 'http://localhost:8001/auth/google';
 
 
 function md5(string: string) {

@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;

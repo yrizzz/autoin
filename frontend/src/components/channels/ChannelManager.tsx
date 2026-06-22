@@ -363,7 +363,7 @@ export default function ChannelManager() {
               <button
                 type="button"
                 onClick={() => {
-                  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+                  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
                   window.location.href = `${apiUrl}/auth/google`;
                 }}
                 className="btn-primary font-bold px-6 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2"

@@ -14,7 +14,7 @@ import pino from 'pino';
 import { EventEmitter } from 'events';
 
 const MEDIA_DIR = './media-temp';
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8001';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'autoin-internal-secret';
 
 if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });

@@ -37,7 +37,7 @@ pkill -f "node.*whatsapp-service.*index.js" 2>/dev/null || true
 pkill -f "node --watch" 2>/dev/null || true
 sleep 1
 
-for PORT in 8000 4322 3001; do
+for PORT in 8001 4322 3001; do
   OLD_PID=$(lsof -ti tcp:$PORT 2>/dev/null)
   if [ -n "$OLD_PID" ]; then
     kill "$OLD_PID" 2>/dev/null
@@ -60,12 +60,12 @@ php artisan migrate --force --quiet 2>/dev/null
 php artisan config:clear --quiet 2>/dev/null
 
 export PHP_CLI_SERVER_WORKERS=5
-php artisan serve --port=8000 --quiet > /tmp/autoin-backend.log 2>&1 &
+php artisan serve --port=8001 --quiet > /tmp/autoin-backend.log 2>&1 &
 PID_BACKEND=$!
 
 sleep 2
 if kill -0 "$PID_BACKEND" 2>/dev/null; then
-  ok "Backend berjalan → http://localhost:8000"
+  ok "Backend berjalan → http://localhost:8001"
 else
   err "Backend gagal start. Cek /tmp/autoin-backend.log"
   cat /tmp/autoin-backend.log | tail -5
@@ -120,7 +120,7 @@ echo -e "  ${GREEN}Semua service siap!${RESET}"
 echo ""
 echo -e "  🌐 App       → ${CYAN}http://localhost:4322${RESET}"
 echo -e "  📡 Dashboard → ${CYAN}http://localhost:4322/dashboard${RESET}"
-echo -e "  🔧 API       → ${CYAN}http://localhost:8000/api${RESET}"
+echo -e "  🔧 API       → ${CYAN}http://localhost:8001/api${RESET}"
 [ -n "$PID_WA" ] && \
 echo -e "  💬 WhatsApp  → ${CYAN}http://localhost:3001${RESET}"
 echo ""

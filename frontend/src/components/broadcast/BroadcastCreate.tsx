@@ -375,7 +375,7 @@ export default function BroadcastCreate() {
         const file = files[i];
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000'}/api/upload`, {
+        const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
           method: 'POST',
           headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
           body: formData,

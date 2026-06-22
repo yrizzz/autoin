@@ -16,9 +16,9 @@ export default function ApiDocs() {
 
   const codeBlocks = {
     auth: {
-      curl: `curl -X GET http://localhost:8000/api/me \\
+      curl: `curl -X GET http://localhost:8001/api/me \\
   -H "Authorization: Bearer YOUR_API_KEY"`,
-      javascript: `fetch('http://localhost:8000/api/me', {
+      javascript: `fetch('http://localhost:8001/api/me', {
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
@@ -27,7 +27,7 @@ export default function ApiDocs() {
 .then(res => res.json())
 .then(data => console.log(data));`,
       php: `<?php
-$ch = curl_init('http://localhost:8000/api/me');
+$ch = curl_init('http://localhost:8001/api/me');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY',
@@ -41,19 +41,19 @@ headers = {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 }
-response = requests.get('http://localhost:8000/api/me', headers=headers)
+response = requests.get('http://localhost:8001/api/me', headers=headers)
 print(response.json())`
     },
     channels: {
-      curl: `curl -X GET http://localhost:8000/api/channels \\
+      curl: `curl -X GET http://localhost:8001/api/channels \\
   -H "Authorization: Bearer YOUR_API_KEY"`,
-      javascript: `fetch('http://localhost:8000/api/channels', {
+      javascript: `fetch('http://localhost:8001/api/channels', {
   headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
 })
 .then(res => res.json())
 .then(channels => console.log(channels));`,
       php: `<?php
-$ch = curl_init('http://localhost:8000/api/channels');
+$ch = curl_init('http://localhost:8001/api/channels');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY'
@@ -63,11 +63,11 @@ $channels = json_decode($response, true);`,
       python: `import requests
 
 headers = {'Authorization': 'Bearer YOUR_API_KEY'}
-response = requests.get('http://localhost:8000/api/channels', headers=headers)
+response = requests.get('http://localhost:8001/api/channels', headers=headers)
 print(response.json())`
     },
     send: {
-      curl: `curl -X POST http://localhost:8000/api/broadcasts \\
+      curl: `curl -X POST http://localhost:8001/api/broadcasts \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -77,7 +77,7 @@ print(response.json())`
     "media_url": "https://example.com/image.jpg",
     "media_type": "image"
   }'`,
-      javascript: `fetch('http://localhost:8000/api/broadcasts', {
+      javascript: `fetch('http://localhost:8001/api/broadcasts', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
@@ -102,7 +102,7 @@ $payload = [
     'media_type' => 'image'
 ];
 
-$ch = curl_init('http://localhost:8000/api/broadcasts');
+$ch = curl_init('http://localhost:8001/api/broadcasts');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -125,7 +125,7 @@ headers = {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 }
-response = requests.post('http://localhost:8000/api/broadcasts', json=payload, headers=headers)
+response = requests.post('http://localhost:8001/api/broadcasts', json=payload, headers=headers)
 print(response.json())`
     }
   };

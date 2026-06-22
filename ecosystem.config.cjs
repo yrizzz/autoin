@@ -12,7 +12,7 @@ module.exports = {
       name: 'autoin-backend',
       cwd: path.join(ROOT, 'backend'),
       script: 'vendor/bin/artisan',
-      args: 'serve --host=0.0.0.0 --port=8000',
+      args: 'serve --host=0.0.0.0 --port=8001',
       interpreter: 'php',
       watch: false,
       autorestart: true,
