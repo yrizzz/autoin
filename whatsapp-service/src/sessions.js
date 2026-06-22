@@ -186,6 +186,15 @@ class SessionManager extends EventEmitter {
       const contacts = this._contacts.get(sessionId) || [];
       const chats = this.getChats(sessionId) || [];
 
+      // Collect last 100 messages per chat for persistence
+      const messages = {};
+      for (const [key, msgs] of this._messages.entries()) {
+        if (key.startsWith(`${sessionId}:`)) {
+          const chatId = key.slice(sessionId.length + 1);
+          messages[chatId] = msgs.slice(-100);
+        }
+      }
+
       this.getGroups(sessionId).then(groups => {
         const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
         fetch(url, {
@@ -198,7 +207,8 @@ class SessionManager extends EventEmitter {
             session_id: sessionId,
             contacts,
             chats,
-            groups
+            groups,
+            messages
           })
         }).catch(err => console.error('Failed to sync to database:', err));
       }).catch(err => console.error('Failed to get groups for database sync:', err));
@@ -228,6 +238,15 @@ class SessionManager extends EventEmitter {
             time: c.time || '',
           }));
           this._chats.set(sessionId, mappedChats);
+        }
+        // Restore persisted message history
+        if (store.messages && typeof store.messages === 'object') {
+          for (const [chatId, msgs] of Object.entries(store.messages)) {
+            if (Array.isArray(msgs) && msgs.length > 0) {
+              this._messages.set(`${sessionId}:${chatId}`, msgs);
+            }
+          }
+          console.log(`[_loadFromDb] Restored messages for ${Object.keys(store.messages).length} chats`);
         }
       }
     } catch (err) {
@@ -737,6 +756,11 @@ class SessionManager extends EventEmitter {
         history.push(bubble);
         if (history.length > 500) history.splice(0, history.length - 500);
         this._messages.set(key, history);
+        // Immediately flush this message to DB (don't wait 10s throttle)
+        if (this._saveTimers.has(sessionId)) {
+          clearTimeout(this._saveTimers.get(sessionId));
+          this._saveTimers.delete(sessionId);
+        }
         this._scheduleSave(sessionId);
       }
 

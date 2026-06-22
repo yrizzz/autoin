@@ -179,6 +179,7 @@ class WhatsAppController extends Controller
             'chats'      => 'nullable|array',
             'groups'     => 'nullable|array',
             'contacts'   => 'nullable|array',
+            'messages'   => 'nullable|array',
         ]);
 
         $sessionId = $data['session_id'];
@@ -199,6 +200,14 @@ class WhatsAppController extends Controller
         }
         if (isset($data['contacts'])) {
             $syncedData['contacts'] = $data['contacts'];
+        }
+        if (isset($data['messages'])) {
+            // Deep-merge: keep existing chats, only overwrite chats that have new data
+            $existing = $syncedData['messages'] ?? [];
+            foreach ($data['messages'] as $chatId => $msgs) {
+                $existing[$chatId] = $msgs;
+            }
+            $syncedData['messages'] = $existing;
         }
 
         $channel->update(['synced_data' => $syncedData]);
@@ -226,6 +235,7 @@ class WhatsAppController extends Controller
             'chats'    => [],
             'groups'   => [],
             'contacts' => [],
+            'messages' => [],
         ]);
     }
 

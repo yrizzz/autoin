@@ -167,10 +167,17 @@ export default function ChatManager() {
       const r = await api.get<{ messages: Msg[] }>(endpoint);
       const incoming = r.messages || [];
       setMsgs(prev => {
-        // keep optimistic "sending" messages, merge with incoming
+        // If server returns empty, keep existing messages (server may not have history yet)
+        if (incoming.length === 0) return prev;
+        // Merge: server data is authoritative for confirmed msgs, preserve local 'sending' ones
         const sending = prev.filter(m => m.status === 'sending');
-        const ids = new Set(incoming.map(m => m.id));
-        return [...incoming, ...sending.filter(m => !ids.has(m.id))];
+        const incomingIds = new Set(incoming.map(m => m.id));
+        const pendingSending = sending.filter(m => !incomingIds.has(m.id));
+        // Also keep existing messages not in incoming (to avoid losing optimistic bubbles)
+        const existingIds = new Set(prev.map(m => m.id));
+        const truly_new = incoming.filter(m => !existingIds.has(m.id) || prev.find(p => p.id === m.id)?.status === 'sending');
+        // Rebuild: all confirmed incoming + unsent pending
+        return [...incoming, ...pendingSending];
       });
     } catch { /* silent */ }
   }, []);
