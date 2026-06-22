@@ -5,7 +5,7 @@ import AdminLayout from '../layout/AdminLayout';
 import {
   Search, Send as SendIcon, Loader2, CheckCheck, Check,
   RefreshCw, Users, MessageSquare, Paperclip, X,
-  FileText, Film, Music
+  FileText, Film, Music, Trash2, ChevronDown, ZoomIn
 } from 'lucide-react';
 
 interface Chat {
@@ -65,11 +65,29 @@ function formatMessageText(text: string) {
   return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
 }
 
-function MediaBubble({ url, type }: { url: string; type: string }) {
-  if (type === 'image') return <img src={url} className="max-w-[200px] rounded-lg mb-1" alt="" />;
-  if (type === 'video') return <video src={url} controls className="max-w-[200px] rounded-lg mb-1" />;
-  if (type === 'audio') return <audio src={url} controls className="w-full mb-1" />;
-  return <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 mb-1 text-xs underline"><FileText className="w-3.5 h-3.5" />{url.split('/').pop()}</a>;
+function MediaBubble({ url, type, me }: { url: string; type: string; me: boolean }) {
+  if (type === 'image') return (
+    <a href={url} target="_blank" rel="noreferrer" className="block group/img relative">
+      <img src={url}
+        className="w-full max-w-[280px] rounded-xl object-cover"
+        style={{ minWidth: 180, maxHeight: 320 }}
+        alt=""
+        onError={e => { (e.target as HTMLImageElement).style.display='none'; }}
+      />
+      <div className="absolute inset-0 flex items-center justify-center rounded-xl opacity-0 group-hover/img:opacity-100 bg-black/20 transition-all">
+        <ZoomIn className="w-7 h-7 text-white drop-shadow" />
+      </div>
+    </a>
+  );
+  if (type === 'video') return <video src={url} controls className="w-full max-w-[280px] rounded-xl" />;
+  if (type === 'audio') return <audio src={url} controls className="w-full min-w-[200px]" />;
+  return (
+    <a href={url} target="_blank" rel="noreferrer"
+      className={`flex items-center gap-2 px-3 py-2 rounded-xl ${me ? 'bg-blue-700/60' : 'bg-zinc-100 dark:bg-zinc-700'} text-xs`}>
+      <FileText className="w-4 h-4 shrink-0" />
+      <span className="truncate max-w-[180px]">{url.split('/').pop()}</span>
+    </a>
+  );
 }
 
 type Tab = 'all' | 'personal' | 'group';
@@ -254,12 +272,17 @@ export default function ChatManager() {
     setInput(''); setAtt(null); inRef.current?.focus();
     try {
       setSending(true);
-        await api.post(`/api/whatsapp/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null, mediaType: a?.mediaType ?? null });
+      await api.post(`/api/whatsapp/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null, mediaType: a?.mediaType ?? null });
       setMsgs(p => p.map(m => m.id === tmp.id ? { ...m, status: 'delivered' } : m));
       setChats(p => p.map(c => c.id === active.id ? { ...c, lastMessage: text || `[${a?.mediaType}]`, time: t } : c));
     } catch {
       setMsgs(p => p.map(m => m.id === tmp.id ? { ...m, status: 'sent' } : m));
     } finally { setSending(false); }
+  };
+
+  // Delete message (optimistic local removal only — WA doesn't expose delete API via Baileys for others' messages)
+  const deleteMsg = (msgId: string) => {
+    setMsgs(p => p.filter(m => m.id !== msgId));
   };
 
   const visible = chats.filter(c => {
@@ -443,16 +466,86 @@ export default function ChatManager() {
                   ) : (
                     msgs.map(m => {
                       const me = m.sender === 'me';
+                      const isImageOnly = m.mediaType === 'image' && !m.text;
+                      const isImageWithCaption = m.mediaType === 'image' && !!m.text;
                       return (
-                        <div key={m.id} className={`flex ${me ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`relative max-w-[65%] px-3.5 py-2 rounded-2xl text-sm shadow-sm ${me ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-bl-sm'}`}>
-                            {m.mediaUrl && <MediaBubble url={m.mediaUrl} type={m.mediaType || 'document'} />}
-                            {m.text && <div className={`${m.mediaUrl ? 'text-xs mt-1' : 'pr-12 leading-relaxed'} whitespace-pre-wrap break-words`}>{formatMessageText(m.text)}</div>}
-                            <div className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${me ? 'text-blue-200' : 'text-zinc-400 dark:text-zinc-500'}`}>
-                              <span>{m.time}</span>
-                              {me && (<>{m.status==='sending'&&<Loader2 className="w-2.5 h-2.5 animate-spin"/>}{m.status==='sent'&&<Check className="w-3 h-3"/>}{m.status==='delivered'&&<CheckCheck className="w-3 h-3 text-sky-300"/>}</>)}
-                            </div>
+                        <div key={m.id} className={`group flex items-end gap-1.5 ${me ? 'justify-end' : 'justify-start'}`}>
+
+                          {/* Delete button — appears on hover, left of bubble for me, right for them */}
+                          {!me && (
+                            <button onClick={() => deleteMsg(m.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-full text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 mb-0.5">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* Bubble */}
+                          <div className={`relative ${
+                            isImageOnly
+                              ? 'p-0.5 overflow-hidden'
+                              : 'px-3 py-2'
+                          } rounded-2xl text-sm shadow-sm max-w-[72%] ${
+                            me
+                              ? 'bg-blue-600 text-white rounded-br-sm'
+                              : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-bl-sm'
+                          }`}>
+
+                            {/* Image-only bubble: image fills bubble, timestamp overlaid */}
+                            {isImageOnly && (
+                              <div className="relative">
+                                <MediaBubble url={m.mediaUrl!} type="image" me={me} />
+                                <div className={`absolute bottom-1.5 right-2 flex items-center gap-1 text-[9px] bg-black/40 text-white px-1.5 py-0.5 rounded-full backdrop-blur-sm`}>
+                                  <span>{m.time}</span>
+                                  {me && (<>{m.status==='sending'&&<Loader2 className="w-2 h-2 animate-spin"/>}{m.status==='sent'&&<Check className="w-2.5 h-2.5"/>}{m.status==='delivered'&&<CheckCheck className="w-2.5 h-2.5 text-sky-300"/>}</>)}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Image with caption */}
+                            {isImageWithCaption && (
+                              <>
+                                <div className="-mx-3 -mt-2 mb-1.5 overflow-hidden rounded-t-2xl">
+                                  <MediaBubble url={m.mediaUrl!} type="image" me={me} />
+                                </div>
+                                <div className="text-xs leading-relaxed whitespace-pre-wrap break-words">{formatMessageText(m.text)}</div>
+                                <div className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${me ? 'text-blue-200' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                                  <span>{m.time}</span>
+                                  {me && (<>{m.status==='sending'&&<Loader2 className="w-2.5 h-2.5 animate-spin"/>}{m.status==='sent'&&<Check className="w-3 h-3"/>}{m.status==='delivered'&&<CheckCheck className="w-3 h-3 text-sky-300"/>}</>)}
+                                </div>
+                              </>
+                            )}
+
+                            {/* Video / audio / document */}
+                            {m.mediaUrl && m.mediaType !== 'image' && (
+                              <>
+                                <MediaBubble url={m.mediaUrl} type={m.mediaType || 'document'} me={me} />
+                                {m.text && <div className="text-xs mt-1.5 leading-relaxed whitespace-pre-wrap break-words">{formatMessageText(m.text)}</div>}
+                                <div className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${me ? 'text-blue-200' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                                  <span>{m.time}</span>
+                                  {me && (<>{m.status==='sending'&&<Loader2 className="w-2.5 h-2.5 animate-spin"/>}{m.status==='sent'&&<Check className="w-3 h-3"/>}{m.status==='delivered'&&<CheckCheck className="w-3 h-3 text-sky-300"/>}</>)}
+                                </div>
+                              </>
+                            )}
+
+                            {/* Text-only bubble */}
+                            {!m.mediaUrl && (
+                              <>
+                                <div className="pr-10 leading-relaxed whitespace-pre-wrap break-words">{formatMessageText(m.text)}</div>
+                                <div className={`flex items-center justify-end gap-1 text-[9px] mt-0.5 ${me ? 'text-blue-200' : 'text-zinc-400 dark:text-zinc-500'}`}>
+                                  <span>{m.time}</span>
+                                  {me && (<>{m.status==='sending'&&<Loader2 className="w-2.5 h-2.5 animate-spin"/>}{m.status==='sent'&&<Check className="w-3 h-3"/>}{m.status==='delivered'&&<CheckCheck className="w-3 h-3 text-sky-300"/>}</>)}
+                                </div>
+                              </>
+                            )}
                           </div>
+
+                          {/* Delete button right side for my messages */}
+                          {me && (
+                            <button onClick={() => deleteMsg(m.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded-full text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all shrink-0 mb-0.5">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       );
                     })

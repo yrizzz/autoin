@@ -180,6 +180,7 @@ class WhatsAppController extends Controller
             'groups'     => 'nullable|array',
             'contacts'   => 'nullable|array',
             'messages'   => 'nullable|array',
+            'lidMap'     => 'nullable|array',
         ]);
 
         $sessionId = $data['session_id'];
@@ -209,6 +210,13 @@ class WhatsAppController extends Controller
             }
             $syncedData['messages'] = $existing;
         }
+        if (isset($data['lidMap'])) {
+            $existing = $syncedData['lidMap'] ?? [];
+            foreach ($data['lidMap'] as $lid => $phone) {
+                $existing[$lid] = $phone;
+            }
+            $syncedData['lidMap'] = $existing;
+        }
 
         $channel->update(['synced_data' => $syncedData]);
 
@@ -236,6 +244,7 @@ class WhatsAppController extends Controller
             'groups'   => [],
             'contacts' => [],
             'messages' => [],
+            'lidMap'   => [],
         ]);
     }
 

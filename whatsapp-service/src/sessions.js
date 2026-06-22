@@ -195,6 +195,15 @@ class SessionManager extends EventEmitter {
         }
       }
 
+      // Persist LID → phone mapping so it survives restarts
+      const lidMap = {};
+      const prefix = `${sessionId}:`;
+      for (const [k, v] of this._lidToPhone.entries()) {
+        if (k.startsWith(prefix)) {
+          lidMap[k.slice(prefix.length)] = v;
+        }
+      }
+
       this.getGroups(sessionId).then(groups => {
         const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
         fetch(url, {
@@ -208,7 +217,8 @@ class SessionManager extends EventEmitter {
             contacts,
             chats,
             groups,
-            messages
+            messages,
+            lidMap
           })
         }).catch(err => console.error('Failed to sync to database:', err));
       }).catch(err => console.error('Failed to get groups for database sync:', err));
@@ -227,7 +237,25 @@ class SessionManager extends EventEmitter {
       });
       if (res.ok) {
         const store = await res.json();
-        if (store.contacts?.length) this._contacts.set(sessionId, store.contacts);
+        if (store.contacts?.length) {
+          this._contacts.set(sessionId, store.contacts);
+          // Rebuild LID → phone mapping from stored contacts
+          // Contacts may have an `lid` field stored if we ever save it, but mostly we rely
+          // on the chats list: any @lid chat whose name matches a @s.whatsapp.net contact
+          // can be resolved. Store contacts have id in @s.whatsapp.net format.
+          // We use the chats list to cross-reference: if a @lid chat name matches a phone contact, map it.
+          if (store.chats?.length) {
+            const phoneChats = store.chats.filter(c => c.id && c.id.endsWith('@s.whatsapp.net'));
+            const lidChats   = store.chats.filter(c => c.id && c.id.endsWith('@lid'));
+            for (const lidChat of lidChats) {
+              // Find phone chat with same name
+              const match = phoneChats.find(p => p.name && lidChat.name && p.name === lidChat.name);
+              if (match) {
+                this._lidToPhone.set(`${sessionId}:${lidChat.id}`, match.id);
+              }
+            }
+          }
+        }
         if (store.chats?.length) {
           const mappedChats = store.chats.map(c => ({
             id: c.id,
@@ -247,6 +275,13 @@ class SessionManager extends EventEmitter {
             }
           }
           console.log(`[_loadFromDb] Restored messages for ${Object.keys(store.messages).length} chats`);
+        }
+        // Restore LID → phone mapping
+        if (store.lidMap && typeof store.lidMap === 'object') {
+          for (const [lid, phone] of Object.entries(store.lidMap)) {
+            this._lidToPhone.set(`${sessionId}:${lid}`, phone);
+          }
+          console.log(`[_loadFromDb] Restored ${Object.keys(store.lidMap).length} LID mappings`);
         }
       }
     } catch (err) {
@@ -345,24 +380,84 @@ class SessionManager extends EventEmitter {
   getChats(id) {
     const chats = this._chats.get(id) || [];
     const contacts = this._contacts.get(id) || [];
-    return chats
-      .map(c => {
-        const contact = contacts.find(con => con.id === c.id);
-        return {
-          id: c.id,
-          name: contact?.name || c.name || c.id.split('@')[0],
-          lastMessage: c.lastMessage || '',
-          time: c.time || '',
-          unread: c.unreadCount || 0,
-          ts: c.conversationTimestamp || 0,
-        };
-      })
+
+    const mapped = chats.map(c => {
+      // Translate LID to phone number if mapping is available
+      const resolvedId = this.translateJid(id, c.id);
+      const contact = contacts.find(con => con.id === resolvedId || con.id === c.id);
+      return {
+        id: resolvedId,           // Use resolved (phone) ID when possible
+        _rawId: c.id,             // Keep raw for fallback
+        name: contact?.name || c.name || resolvedId.split('@')[0],
+        lastMessage: c.lastMessage || '',
+        time: c.time || '',
+        unread: c.unreadCount || 0,
+        ts: c.conversationTimestamp || 0,
+      };
+    });
+
+    // Deduplicate by canonical ID first, then by name as fallback
+    const byId = new Map();
+    for (const c of mapped) {
+      const key = c.id;   // already translated
+      if (!byId.has(key)) {
+        byId.set(key, c);
+      } else {
+        const existing = byId.get(key);
+        // Merge: keep more recent data
+        byId.set(key, {
+          ...existing,
+          name: existing.name.length > c.name.length ? existing.name : c.name,
+          lastMessage: existing.ts >= c.ts ? (existing.lastMessage || c.lastMessage) : (c.lastMessage || existing.lastMessage),
+          ts: Math.max(existing.ts, c.ts),
+          unread: Math.max(existing.unread, c.unread),
+        });
+      }
+    }
+
+    // Secondary dedup: if two entries share the same name AND one is still @lid, merge them
+    const byName = new Map();
+    for (const c of byId.values()) {
+      const isLid = c.id.endsWith('@lid');
+      const key = c.name;
+      if (!byName.has(key)) {
+        byName.set(key, c);
+      } else {
+        const existing = byName.get(key);
+        const existingIsLid = existing.id.endsWith('@lid');
+        if (existingIsLid && !isLid) {
+          byName.set(key, { ...c, lastMessage: c.lastMessage || existing.lastMessage, ts: Math.max(c.ts, existing.ts), unread: Math.max(c.unread, existing.unread) });
+        } else if (!existingIsLid && isLid) {
+          byName.set(key, { ...existing, lastMessage: existing.lastMessage || c.lastMessage, ts: Math.max(existing.ts, c.ts), unread: Math.max(existing.unread, c.unread) });
+        } else {
+          if (c.ts > existing.ts) byName.set(key, c);
+        }
+      }
+    }
+
+    return Array.from(byName.values())
+      .map(({ _rawId, ...rest }) => rest)  // strip internal field
       .sort((a, b) => b.ts - a.ts);
   }
-
   getMessages(sessionId, chatId) {
-    return this._messages.get(`${sessionId}:${chatId}`) || [];
+    // Primary lookup
+    const direct = this._messages.get(`${sessionId}:${chatId}`) || [];
+    if (direct.length > 0) return direct;
+
+    // Fallback: if chatId is a phone number, check if there's a LID key with same contact
+    // (happens when messages were stored under @lid before translation was available)
+    const allKeys = Array.from(this._messages.keys()).filter(k => k.startsWith(`${sessionId}:`));
+    for (const key of allKeys) {
+      const keyJid = key.slice(sessionId.length + 1);
+      // Translate the stored key's JID and see if it resolves to chatId
+      const translated = this.translateJid(sessionId, keyJid);
+      if (translated === chatId && keyJid !== chatId) {
+        return this._messages.get(key) || [];
+      }
+    }
+    return [];
   }
+
 
   async getGroups(id) {
     const sock = this._sessions.get(id);
