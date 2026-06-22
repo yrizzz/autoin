@@ -319,6 +319,10 @@ class SessionManager extends EventEmitter {
 
   getContacts(id) { return this._contacts.get(id) || []; }
 
+  updateContacts(id, contacts) {
+    this._contacts.set(id, contacts);
+  }
+
   getChats(id) {
     const chats = this._chats.get(id) || [];
     const contacts = this._contacts.get(id) || [];

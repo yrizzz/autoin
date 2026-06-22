@@ -4,7 +4,8 @@ import type { Channel } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
 import {
   Search, RefreshCw, MessageSquare, Phone, Users, User,
-  Download, Upload, LayoutGrid, LayoutList, Copy, Check, X
+  Download, Upload, LayoutGrid, LayoutList, Copy, Check, X,
+  ChevronLeft, ChevronRight, Info
 } from 'lucide-react';
 
 interface WaContact { id: string; name: string; }
@@ -117,7 +118,23 @@ export default function ContactManager() {
   const [view, setView]                   = useState<'list' | 'grid'>('list');
   const [copied, setCopied]               = useState<string | null>(null);
   const [importPreview, setImportPreview] = useState<{ name: string; phone: string }[] | null>(null);
+  const [importing, setImporting]         = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Checkbox Selection State
+  const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set());
+
+  // Pagination State
+  const [currentPage, setCurrentPage]     = useState(1);
+  const itemsPerPage = 50;
+
+  // Reset page and selection on search/channel change
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  }, [search, activeChannel]);
+
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const fetchWaContacts = async (ch: Channel) => {
     const res = await api.get<{ contacts: WaContact[] }>(`/api/whatsapp/${ch.id}/contacts`);
@@ -179,21 +196,119 @@ export default function ContactManager() {
     );
   }, [contacts, search]);
 
+  // Paginated contacts
+  const paginatedContacts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredContacts.slice(start, start + itemsPerPage);
+  }, [filteredContacts, currentPage]);
+
+  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
+
   const grouped = useMemo(() => {
     const map: Record<string, NormalContact[]> = {};
-    filteredContacts.forEach(c => {
+    paginatedContacts.forEach(c => {
       const letter = c.name?.[0]?.toUpperCase() || '#';
       const key = /[A-Z]/.test(letter) ? letter : '#';
       (map[key] = map[key] || []).push(c);
     });
     return Object.entries(map).sort(([a], [b]) => a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b));
-  }, [filteredContacts]);
+  }, [paginatedContacts]);
 
   const channels   = waChannels;
   const emptyLabel = 'WhatsApp';
+  const platform   = 'whatsapp';
+
+  // Toggle selection for a single contact
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  // Toggle select all on current page
+  const toggleSelectAllPage = () => {
+    const allPageSelected = paginatedContacts.every(c => selectedIds.has(c.id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allPageSelected) {
+        paginatedContacts.forEach(c => next.delete(c.id));
+      } else {
+        paginatedContacts.forEach(c => next.add(c.id));
+      }
+      return next;
+    });
+  };
+
+  const handleExport = () => {
+    const toExport = selectedIds.size > 0 
+      ? contacts.filter(c => selectedIds.has(c.id))
+      : filteredContacts;
+    downloadCsv(contactsToCsv(toExport), `kontak-${platform}-${new Date().toISOString().slice(0,10)}.csv`);
+  };
+
+  const downloadTemplateCsv = () => {
+    const csvContent = "Nama,Nomor/ID\nBudi Prasetyo,081234567890\nSiti Aminah,628987654321";
+    downloadCsv(csvContent, "template_kontak.csv");
+  };
+
+  const handleImportSubmit = async () => {
+    if (!activeChannel || !importPreview) return;
+    setImporting(true);
+    try {
+      const newContacts = importPreview.map((item, idx) => {
+        let phone = item.phone.replace(/\D/g, '');
+        if (phone.startsWith('0')) {
+          phone = '62' + phone.slice(1);
+        }
+        return {
+          id: phone + '@s.whatsapp.net',
+          name: item.name || `Kontak ${idx + 1}`
+        };
+      });
+
+      const res = await api.post<{ contacts: any[] }>(`/api/whatsapp/${activeChannel.id}/contacts`, {
+        contacts: newContacts
+      });
+
+      const real = (res.contacts || []).filter(c =>
+        (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@') && !c.id.startsWith('0@')
+      );
+      setContacts(real.map(c => ({ id: c.id, name: c.name || '', phone: formatWaPhone(c.id) })));
+
+      setMsg({ ok: true, text: `✓ Sukses mengimpor ${newContacts.length} kontak!` });
+      setImportPreview(null);
+    } catch (err: any) {
+      console.error(err);
+      setMsg({ ok: false, text: err.message ?? 'Gagal mengimpor kontak.' });
+    } finally {
+      setImporting(false);
+    }
+  };
 
   return (
     <AdminLayout activePage="contacts" title="Daftar Kontak">
+      {/* Msg alerts */}
+      {msg && (
+        <div className={`rounded-xl p-4 border text-sm flex items-start gap-3 mb-5 animate-fadeIn ${
+          msg.ok 
+            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
+            : 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]'
+        }`}>
+          <div className="text-xs font-semibold leading-relaxed flex-1">
+            {msg.text}
+          </div>
+          <button onClick={() => setMsg(null)} className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
         <div>
@@ -214,10 +329,11 @@ export default function ContactManager() {
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
           </div>
-          <button onClick={() => downloadCsv(contactsToCsv(filteredContacts), `kontak-${platform}-${new Date().toISOString().slice(0,10)}.csv`)}
+          <button onClick={handleExport}
             disabled={filteredContacts.length === 0}
             className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer disabled:opacity-40">
-            <Download className="w-3.5 h-3.5" />Export CSV
+            <Download className="w-3.5 h-3.5" />
+            {selectedIds.size > 0 ? `Export Pilihan (${selectedIds.size})` : 'Export CSV'}
           </button>
           <label className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer">
             <Upload className="w-3.5 h-3.5" />Import CSV
@@ -230,6 +346,11 @@ export default function ContactManager() {
                 if (fileRef.current) fileRef.current.value = '';
               }} />
           </label>
+          <button onClick={downloadTemplateCsv}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all cursor-pointer"
+            title="Download Template CSV">
+            <Info className="w-3.5 h-3.5 text-blue-500" />Contoh CSV
+          </button>
           <button onClick={handleSync} disabled={syncing || loading || !activeChannel}
             className="btn-primary flex items-center gap-1.5 px-3 py-2 font-bold text-xs rounded-xl shadow-sm cursor-pointer disabled:opacity-50">
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />Sinkronisasi
@@ -237,17 +358,32 @@ export default function ContactManager() {
         </div>
       </div>
 
-      {/* Channel tabs + search */}
+      {/* Channel Select & Search */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        {channels.length > 1 && channels.map(ch => (
-          <button key={ch.id} onClick={() => handleChannelSwitch(ch)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
-              activeChannel?.id === ch.id
-                ? 'tab-active'
-                : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
-            }`}>{ch.name}
-          </button>
-        ))}
+        {channels.length > 0 ? (
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Device:</span>
+            <select
+              value={activeChannel?.id ?? ''}
+              onChange={(e) => {
+                const ch = channels.find(c => c.id === Number(e.target.value));
+                if (ch) handleChannelSwitch(ch);
+              }}
+              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-xs text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-bold transition-all shadow-sm cursor-pointer"
+            >
+              {channels.map(ch => (
+                <option key={ch.id} value={ch.id}>
+                  {ch.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold bg-zinc-100 dark:bg-zinc-800 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+            Belum ada device aktif
+          </div>
+        )}
+
         <div className="ml-auto">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
@@ -259,26 +395,48 @@ export default function ContactManager() {
         </div>
       </div>
 
-      {/* Stats row */}
+      {/* Selection Control Bar & Stats */}
       {!loading && contacts.length > 0 && (
-        <div className="flex items-center gap-4 mb-4 px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm font-extrabold text-zinc-900 dark:text-white">{contacts.length.toLocaleString()}</span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400">total kontak</span>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-sm">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-extrabold text-zinc-900 dark:text-white">{contacts.length.toLocaleString()}</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">total</span>
+            </div>
+            <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-extrabold text-zinc-900 dark:text-white">{filteredContacts.length.toLocaleString()}</span>
+              <span className="text-[10px] text-zinc-500 dark:text-zinc-400">ditemukan</span>
+            </div>
           </div>
-          {search && (
-            <>
-              <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-extrabold text-zinc-900 dark:text-white">{filteredContacts.length.toLocaleString()}</span>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400">ditemukan</span>
-                <button onClick={() => setSearch('')} className="text-zinc-400 hover:text-red-500 cursor-pointer ml-1">
-                  <X className="w-3 h-3" />
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-400 font-semibold cursor-pointer">
+              <input
+                type="checkbox"
+                checked={paginatedContacts.length > 0 && paginatedContacts.every(c => selectedIds.has(c.id))}
+                onChange={toggleSelectAllPage}
+                className="w-3.5 h-3.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              Pilih Halaman Ini
+            </label>
+
+            {selectedIds.size > 0 && (
+              <>
+                <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-700 hidden sm:block" />
+                <span className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-lg">
+                  {selectedIds.size} dipilih
+                </span>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-xs text-red-600 dark:text-red-400 hover:underline font-bold cursor-pointer"
+                >
+                  Batal Pilihan
                 </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -335,8 +493,16 @@ export default function ContactManager() {
         </div>
       ) : view === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
-          {filteredContacts.map(c => (
-            <ContactCard key={c.id} c={c} platform={platform} onCopy={handleCopy} copied={copied} />
+          {paginatedContacts.map(c => (
+            <ContactCard
+              key={c.id}
+              c={c}
+              platform={platform}
+              onCopy={handleCopy}
+              copied={copied}
+              selected={selectedIds.has(c.id)}
+              onSelect={() => toggleSelect(c.id)}
+            />
           ))}
         </div>
       ) : (
@@ -351,9 +517,16 @@ export default function ContactManager() {
                 {items.map(c => {
                   const displayName = c.name || c.phone || c.id;
                   const phoneOrId   = c.phone || (platform === 'whatsapp' ? formatWaPhone(c.id) : c.id);
+                  const isSel       = selectedIds.has(c.id);
                   return (
                     <div key={c.id}
-                      className="flex items-center gap-4 px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors group">
+                      className={`flex items-center gap-4 px-5 py-3 ${isSel ? 'bg-blue-500/5' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'} transition-colors group`}>
+                      <input
+                        type="checkbox"
+                        checked={isSel}
+                        onChange={() => toggleSelect(c.id)}
+                        className="w-3.5 h-3.5 rounded border-zinc-300 text-blue-600 focus:ring-blue-500 cursor-pointer mr-1 shrink-0"
+                      />
                       <Avatar contact={c} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{displayName}</div>
@@ -385,16 +558,47 @@ export default function ContactManager() {
         </div>
       )}
 
+      {/* Pagination Controls */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-5 py-3 rounded-2xl shadow-sm">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">
+            Menampilkan <span className="font-bold text-zinc-800 dark:text-zinc-200">{((currentPage - 1) * itemsPerPage + 1).toLocaleString()}</span> - <span className="font-bold text-zinc-800 dark:text-zinc-200">{Math.min(currentPage * itemsPerPage, filteredContacts.length).toLocaleString()}</span> dari <span className="font-bold text-zinc-800 dark:text-zinc-200">{filteredContacts.length.toLocaleString()}</span> kontak
+          </p>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="p-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl disabled:opacity-40 transition-all cursor-pointer text-zinc-600 dark:text-zinc-400"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            
+            {/* Page indicator */}
+            <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 px-3 py-1.5 border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl">
+              {currentPage} / {totalPages}
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+              className="p-2 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl disabled:opacity-40 transition-all cursor-pointer text-zinc-600 dark:text-zinc-400"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Import preview modal */}
       {importPreview && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fadeIn">
           <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
             <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100 dark:bg-zinc-900/60">
               <div>
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Preview Import CSV</h3>
                 <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">{importPreview.length} kontak terdeteksi</p>
               </div>
-              <button onClick={() => setImportPreview(null)} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-1">
+              <button onClick={() => setImportPreview(null)} disabled={importing} className="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -416,13 +620,24 @@ export default function ContactManager() {
             </div>
             <div className="px-6 py-3 bg-amber-50 dark:bg-amber-500/5 border-t border-amber-100 dark:border-amber-500/20">
               <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                <strong>Catatan:</strong> Import CSV hanya preview. Kontak diambil langsung dari WhatsApp. Untuk menambah kontak, lakukan di aplikasinya langsung.
+                <strong>Konfirmasi:</strong> Klik tombol Impor di bawah untuk memasukkan semua kontak yang dideteksi ke database device <strong>{activeChannel?.name}</strong>.
               </p>
             </div>
-            <div className="px-6 py-4 flex justify-end">
-              <button onClick={() => setImportPreview(null)}
-                className="px-4 py-2 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-all cursor-pointer">
-                Tutup
+            <div className="px-6 py-4 flex justify-end gap-3 bg-zinc-50 dark:bg-zinc-900/60 border-t border-zinc-200 dark:border-zinc-800">
+              <button onClick={() => setImportPreview(null)} disabled={importing}
+                className="px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer">
+                Batal
+              </button>
+              <button onClick={handleImportSubmit} disabled={importing || !activeChannel}
+                className="btn-primary px-5 py-2 font-bold text-xs rounded-xl shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-1.5">
+                {importing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    Mengimpor...
+                  </>
+                ) : (
+                  'Impor Kontak'
+                )}
               </button>
             </div>
           </div>

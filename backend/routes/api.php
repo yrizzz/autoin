@@ -51,6 +51,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('whatsapp/{channel}/status', [WhatsAppController::class, 'status']);
     Route::delete('whatsapp/{channel}/disconnect', [WhatsAppController::class, 'disconnect']);
     Route::get('whatsapp/{channel}/contacts', [WhatsAppController::class, 'getContacts']);
+    Route::post('whatsapp/{channel}/contacts', [WhatsAppController::class, 'updateContacts']);
     Route::get('whatsapp/{channel}/chats', [WhatsAppController::class, 'getChats']);
     Route::get('whatsapp/{channel}/groups', [WhatsAppController::class, 'getGroups']);
     Route::get('whatsapp/{channel}/messages/{chatId}', [WhatsAppController::class, 'getMessages']);

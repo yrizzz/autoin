@@ -80,6 +80,21 @@ app.get('/sessions/:sessionId/contacts', auth, (req, res) => {
   }
 });
 
+// Update contacts
+app.post('/sessions/:sessionId/contacts', auth, (req, res) => {
+  const { sessionId } = req.params;
+  const { contacts } = req.body || {};
+  if (!Array.isArray(contacts)) {
+    return res.status(400).json({ error: 'Contacts array required' });
+  }
+  try {
+    sessionManager.updateContacts(sessionId, contacts);
+    res.json({ status: 'success' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get chats
 app.get('/sessions/:sessionId/chats', auth, (req, res) => {
   const { sessionId } = req.params;

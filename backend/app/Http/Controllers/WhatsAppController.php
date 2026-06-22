@@ -102,6 +102,53 @@ class WhatsAppController extends Controller
         return response()->json(['contacts' => $synced['contacts'] ?? []]);
     }
 
+    public function updateContacts(Request $request, Channel $channel)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
+
+        $data = $request->validate([
+            'contacts' => 'required|array',
+            'contacts.*.id' => 'required|string',
+            'contacts.*.name' => 'nullable|string',
+        ]);
+
+        $syncedData = $channel->synced_data ?? [];
+        $existingContacts = $syncedData['contacts'] ?? [];
+
+        $contactsMap = [];
+        foreach ($existingContacts as $c) {
+            if (isset($c['id'])) {
+                $contactsMap[$c['id']] = $c;
+            }
+        }
+
+        foreach ($data['contacts'] as $newContact) {
+            $id = $newContact['id'];
+            if (!str_contains($id, '@')) {
+                $id = preg_replace('/\D/', '', $id) . '@s.whatsapp.net';
+            }
+            $contactsMap[$id] = [
+                'id' => $id,
+                'name' => $newContact['name'] ?? $contactsMap[$id]['name'] ?? '',
+            ];
+        }
+
+        $syncedData['contacts'] = array_values($contactsMap);
+        $channel->update(['synced_data' => $syncedData]);
+
+        try {
+            \Illuminate\Support\Facades\Http::withHeader('x-api-secret', config('services.whatsapp.secret', 'autoin-wa-secret'))
+                ->post(config('services.whatsapp.url', 'http://localhost:3001') . "/sessions/{$channel->credentials['session_id']}/contacts", [
+                    'contacts' => array_values($contactsMap),
+                ]);
+        } catch (\Exception $e) {
+            // Ignore Node.js service failures, DB is source of truth
+        }
+
+        return response()->json(['status' => 'success', 'contacts' => $syncedData['contacts']]);
+    }
+
     public function getChats(Request $request, Channel $channel)
     {
         abort_if($channel->user_id !== $request->user()->id, 403);
