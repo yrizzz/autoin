@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Broadcast;
 use App\Models\BroadcastTarget;
 use App\Services\BroadcastService;
+use App\Services\PlanLimits;
 use Illuminate\Http\Request;
 
 class BroadcastController extends Controller
@@ -26,6 +27,31 @@ class BroadcastController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+
+        // Support message / content aliases
+        if ($request->has('message') && !$request->has('content')) {
+            $request->merge(['content' => $request->input('message')]);
+        }
+        // Support channel_id / channel_ids aliases
+        if ($request->has('channel_id') && !$request->has('channel_ids')) {
+            $request->merge(['channel_ids' => [$request->input('channel_id')]]);
+        }
+        // Support mediaUrl / media_url aliases
+        if ($request->has('mediaUrl') && !$request->has('media_url')) {
+            $request->merge(['media_url' => $request->input('mediaUrl')]);
+        }
+        // Support mediaType / media_type aliases
+        if ($request->has('mediaType') && !$request->has('media_type')) {
+            $request->merge(['media_type' => $request->input('mediaType')]);
+        }
+
+        // Free plan: max 3 broadcasts lifetime
+        $count = $user->broadcasts()->count();
+        if (!PlanLimits::can($user, 'broadcasts', $count)) {
+            return PlanLimits::denyResponse('broadcasts');
+        }
+
         $data = $request->validate([
             'title'          => 'nullable|string|max:255',
             'content'        => 'required|string',
@@ -52,12 +78,27 @@ class BroadcastController extends Controller
 
         $recipientsMap = $data['recipients'] ?? [];
 
+        // If recipients is a flat sequential array, map it to all target channel IDs
+        if (!empty($recipientsMap) && array_keys($recipientsMap) === range(0, count($recipientsMap) - 1)) {
+            $flatRecipients = $recipientsMap;
+            $recipientsMap = [];
+            foreach ($data['channel_ids'] as $channelId) {
+                $recipientsMap[$channelId] = $flatRecipients;
+            }
+        }
+
         foreach ($data['channel_ids'] as $channelId) {
             BroadcastTarget::create([
                 'broadcast_id' => $broadcast->id,
                 'channel_id'   => $channelId,
                 'recipients'   => $recipientsMap[$channelId] ?? null,
             ]);
+        }
+
+        // If send_now parameter is set (defaults to true if using developer aliases, false otherwise)
+        $sendNowDefault = ($request->has('message') || $request->has('channel_id'));
+        if (empty($data['scheduled_at']) && $request->input('send_now', $sendNowDefault)) {
+            $this->service->send($broadcast);
         }
 
         return response()->json($broadcast->load('targets.channel'), 201);
@@ -98,8 +139,11 @@ class BroadcastController extends Controller
 
         $user = $request->user();
 
-        if (!$user->hasActiveSubscription()) {
-            return response()->json(['message' => 'No active subscription or trial exhausted.'], 402);
+        // Check free plan allows sending (has active plan or still within free tier)
+        $plan = PlanLimits::activePlan($user);
+        if ($plan === 'free') {
+            // Free users can send but count against their 3-broadcast limit
+            // (already checked at create time — allow send to proceed)
         }
 
         $this->service->send($broadcast);

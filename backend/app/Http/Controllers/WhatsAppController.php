@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Channel;
+use App\Models\WhatsAppAuth;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -97,16 +98,8 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        try {
-            $credentials = $channel->credentials;
-            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
-            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
-                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/contacts");
-            return response()->json($response->json() ?? ['contacts' => []]);
-        } catch (\Throwable) {
-            return response()->json(['contacts' => []]);
-        }
+        $synced = $channel->synced_data ?? [];
+        return response()->json(['contacts' => $synced['contacts'] ?? []]);
     }
 
     public function getChats(Request $request, Channel $channel)
@@ -114,16 +107,8 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        try {
-            $credentials = $channel->credentials;
-            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
-            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
-                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/chats");
-            return response()->json($response->json() ?? ['chats' => []]);
-        } catch (\Throwable) {
-            return response()->json(['chats' => []]);
-        }
+        $synced = $channel->synced_data ?? [];
+        return response()->json(['chats' => $synced['chats'] ?? []]);
     }
 
     public function getGroups(Request $request, Channel $channel)
@@ -131,16 +116,141 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        try {
-            $credentials = $channel->credentials;
-            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
-            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
-            $response = \Illuminate\Support\Facades\Http::timeout(8)->withHeader('x-api-secret', $secret)
-                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups");
-            return response()->json($response->json() ?? ['groups' => []]);
-        } catch (\Throwable) {
-            return response()->json(['groups' => []]);
+        $synced = $channel->synced_data ?? [];
+        return response()->json(['groups' => $synced['groups'] ?? []]);
+    }
+
+    public function syncInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
         }
+
+        $data = $request->validate([
+            'session_id' => 'required|string',
+            'chats'      => 'nullable|array',
+            'groups'     => 'nullable|array',
+            'contacts'   => 'nullable|array',
+        ]);
+
+        $sessionId = $data['session_id'];
+        $channel = Channel::all()->first(function ($c) use ($sessionId) {
+            return ($c->credentials['session_id'] ?? null) === $sessionId;
+        });
+
+        if (!$channel) {
+            return response()->json(['message' => 'Channel not found.'], 404);
+        }
+
+        $syncedData = $channel->synced_data ?? [];
+        if (isset($data['chats'])) {
+            $syncedData['chats'] = $data['chats'];
+        }
+        if (isset($data['groups'])) {
+            $syncedData['groups'] = $data['groups'];
+        }
+        if (isset($data['contacts'])) {
+            $syncedData['contacts'] = $data['contacts'];
+        }
+
+        $channel->update(['synced_data' => $syncedData]);
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function getSyncInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $sessionId = $request->query('session_id');
+        $channel = Channel::all()->first(function ($c) use ($sessionId) {
+            return ($c->credentials['session_id'] ?? null) === $sessionId;
+        });
+
+        if (!$channel) {
+            return response()->json(['message' => 'Channel not found.'], 404);
+        }
+
+        return response()->json($channel->synced_data ?? [
+            'chats'    => [],
+            'groups'   => [],
+            'contacts' => [],
+        ]);
+    }
+
+    public function getAuthInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $sessionId = $request->query('session_id');
+        $auths = WhatsAppAuth::where('session_id', $sessionId)->get()->pluck('value', 'key');
+
+        return response()->json($auths);
+    }
+
+    public function saveAuthInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $data = $request->validate([
+            'session_id' => 'required|string',
+            'data'       => 'required|array',
+        ]);
+
+        $sessionId = $data['session_id'];
+        foreach ($data['data'] as $key => $value) {
+            if (is_null($value)) {
+                WhatsAppAuth::where('session_id', $sessionId)->where('key', $key)->delete();
+            } else {
+                WhatsAppAuth::updateOrCreate(
+                    ['session_id' => $sessionId, 'key' => $key],
+                    ['value' => $value]
+                );
+            }
+        }
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function deleteAuthInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $sessionId = $request->query('session_id');
+        WhatsAppAuth::where('session_id', $sessionId)->delete();
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function getSessionsInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $sessionIds = Channel::where('platform', 'whatsapp')
+            ->get()
+            ->map(function ($c) {
+                return $c->credentials['session_id'] ?? null;
+            })
+            ->filter()
+            ->values();
+
+        return response()->json($sessionIds);
     }
 
     public function syncChats(Request $request, Channel $channel)

@@ -28,7 +28,7 @@ const {
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
-    <link rel="icon" href="/favicon.ico" />
+    <link rel="icon" type="image/webp" href="/autoin-logo.webp" />
 
     <script is:inline>
       const theme = (() => {
@@ -46,8 +46,10 @@ const {
         document.documentElement.style.colorScheme = 'dark';
       }
     </script>
+    <!-- Duitku POP -->
+    <script src="https://app-sandbox.duitku.com/lib/js/duitku.js" is:inline></script>
   </head>
-  <body class="bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-50 antialiased font-sans selection:bg-blue-600/30 selection:text-blue-200">
+  <body class="w-full bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-50 antialiased font-sans selection:bg-blue-600/30 selection:text-blue-200 overflow-x-hidden">
     <slot />
   </body>
 </html>

@@ -6,21 +6,42 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotRuleController;
+use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\AIController;
+use App\Services\PlanLimits;
 use Illuminate\Support\Facades\Route;
 
 // Internal endpoint — called by Node.js services, no user auth required
 Route::post('internal/chatbot/match', [ChatbotRuleController::class, 'matchInternal']);
+Route::post('internal/whatsapp/sync', [WhatsAppController::class, 'syncInternal']);
+Route::get('internal/whatsapp/sync-data', [WhatsAppController::class, 'getSyncInternal']);
+Route::get('internal/whatsapp/auth', [WhatsAppController::class, 'getAuthInternal']);
+Route::post('internal/whatsapp/auth', [WhatsAppController::class, 'saveAuthInternal']);
+Route::delete('internal/whatsapp/auth', [WhatsAppController::class, 'deleteAuthInternal']);
+Route::get('internal/whatsapp/sessions', [WhatsAppController::class, 'getSessionsInternal']);
 
 // Webhook trigger — public, auth via X-Webhook-Secret header
 Route::post('webhooks/trigger/{uuid}', [WebhookController::class, 'trigger']);
 
-Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
+// Duitku IPN Callback
+Route::post('duitku/callback', [\App\Http\Controllers\BillingController::class, 'callback'])->name('duitku.callback');
+
+// Unauthorized fallback route
+Route::get('login', function () {
+    return response()->json(['message' => 'Unauthorized.'], 401);
+})->name('login');
+
+Route::middleware('auth:api')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me/limits', function (\Illuminate\Http\Request $r) {
+        return response()->json(PlanLimits::usageSummary($r->user()));
+    });
+
+    Route::apiResource('templates', TemplateController::class)->except(['show']);
 
     Route::apiResource('channels', ChannelController::class);
     Route::post('channels/{channel}/test', [ChannelController::class, 'test']);
@@ -37,8 +58,6 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::get('whatsapp/{channel}/stream/chats', [WhatsAppController::class, 'streamChats']);
     Route::post('whatsapp/{channel}/send', [WhatsAppController::class, 'sendMessage']);
     Route::post('whatsapp/{channel}/sync', [WhatsAppController::class, 'syncChats']);
-
-
 
     Route::apiResource('broadcasts', BroadcastController::class);
     Route::post('broadcasts/{broadcast}/send', [BroadcastController::class, 'send']);
@@ -62,5 +81,20 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::post('billing/purchase', [BillingController::class, 'purchase']);
     Route::get('billing/history', [BillingController::class, 'history']);
     Route::get('billing/active', [BillingController::class, 'active']);
+    Route::get('billing/config', [BillingController::class, 'config']);
     Route::get('admin/subscribers', [BillingController::class, 'subscribers']);
+    Route::get('admin/settings', [\App\Http\Controllers\AdminController::class, 'getAdminSettings']);
+    Route::post('admin/settings', [\App\Http\Controllers\AdminController::class, 'saveAdminSettings']);
+    Route::post('admin/subscribers/{user}/extend', [\App\Http\Controllers\AdminController::class, 'extendSubscription']);
+    Route::delete('admin/subscribers/{user}', [\App\Http\Controllers\AdminController::class, 'deleteUser']);
+    Route::delete('admin/subscribers/{user}/subscription', [\App\Http\Controllers\AdminController::class, 'cancelSubscription']);
+    Route::get('announcement', [\App\Http\Controllers\AdminController::class, 'getPublicAnnouncement']);
+
+    // Promo Codes API
+    Route::post('billing/promo/check', [\App\Http\Controllers\PromoCodeController::class, 'check']);
+    Route::post('billing/promo/redeem', [\App\Http\Controllers\PromoCodeController::class, 'redeem']);
+    Route::get('admin/promo-codes', [\App\Http\Controllers\PromoCodeController::class, 'index']);
+    Route::post('admin/promo-codes', [\App\Http\Controllers\PromoCodeController::class, 'store']);
+    Route::post('admin/promo-codes/{promoCode}/toggle', [\App\Http\Controllers\PromoCodeController::class, 'toggle']);
+    Route::delete('admin/promo-codes/{promoCode}', [\App\Http\Controllers\PromoCodeController::class, 'destroy']);
 });

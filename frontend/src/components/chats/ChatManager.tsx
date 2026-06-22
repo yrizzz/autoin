@@ -28,7 +28,7 @@ interface Msg {
 }
 interface Att { url: string; mediaType: string; name: string; preview?: string; }
 
-const API_URL = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001';
+const API_URL = (import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8000';
 
 function hue(s: string) {
   const p = ['bg-blue-500','bg-violet-500','bg-pink-500','bg-orange-500','bg-emerald-500','bg-sky-500','bg-purple-500','bg-teal-500','bg-rose-500'];
@@ -488,7 +488,7 @@ export default function ChatManager() {
                     onKeyDown={e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(e as any); } }}
                     className="flex-1 px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 dark:focus:border-blue-500 transition-all" />
                   <button type="submit" disabled={(!input.trim() && !att) || sending || uploading}
-                    className="w-10 h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center justify-center shadow-sm transition-all disabled:opacity-40 cursor-pointer shrink-0">
+                    className="w-10 h-10 bg-gradient-brand hover:opacity-95 text-white rounded-xl flex items-center justify-center shadow-sm transition-all disabled:opacity-40 cursor-pointer shrink-0">
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendIcon className="w-4 h-4" />}
                   </button>
                 </form>

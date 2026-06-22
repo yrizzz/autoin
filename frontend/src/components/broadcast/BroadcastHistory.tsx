@@ -31,6 +31,7 @@ export default function BroadcastHistory() {
     setLoading(true);
     api.get<{ data: Broadcast[] }>('/api/broadcasts')
       .then((r) => setBroadcasts(r.data))
+      .catch(() => setBroadcasts([]))
       .finally(() => setLoading(false));
   };
 
@@ -120,7 +121,7 @@ export default function BroadcastHistory() {
           <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-6">Tidak ada riwayat broadcast yang cocok</p>
           <a 
             href="/broadcast" 
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
+            className="inline-flex items-center gap-2 bg-gradient-brand hover:opacity-95 text-white font-semibold px-6 py-2.5 rounded-xl transition-all text-xs cursor-pointer"
           >
             Buat Campaign Baru
           </a>

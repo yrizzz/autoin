@@ -20,6 +20,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: 'include',        // send HttpOnly cookie automatically
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',

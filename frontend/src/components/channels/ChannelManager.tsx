@@ -49,6 +49,7 @@ export default function ChannelManager() {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<Platform | null>(null);
   const [form, setForm] = useState<Record<string, string>>({ name: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -146,6 +147,7 @@ export default function ChannelManager() {
   function fetchChannels() {
     api.get<Channel[]>('/api/channels')
       .then(setChannels)
+      .catch(() => setChannels([]))
       .finally(() => setLoading(false));
 
     api.get<User>('/api/me')
@@ -154,7 +156,23 @@ export default function ChannelManager() {
   }
 
   async function handleAdd() {
-    if (!adding || !form.name) return;
+    if (!adding) return;
+    
+    const newErrors: Record<string, string> = {};
+    if (!form.name || form.name.trim() === '') {
+      newErrors.name = 'Nama Device wajib diisi!';
+    }
+    
+    if (adding === 'whatsapp' && waMethod === 'code' && (!waPhoneNumber || waPhoneNumber.trim() === '')) {
+      newErrors.phone_number = 'Nomor HP WhatsApp wajib diisi jika menggunakan metode Pairing Code!';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    setErrors({});
     setSaving(true);
     setMsg(null);
 
@@ -548,10 +566,23 @@ export default function ChannelManager() {
                   <input
                     type="text"
                     value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    onChange={(e) => {
+                      setForm({ ...form, name: e.target.value });
+                      if (errors.name) {
+                        setErrors({ ...errors, name: '' });
+                      }
+                    }}
                     placeholder="Contoh: WhatsApp Utama / CS Alert"
-                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all"
+                    className={`w-full bg-white dark:bg-zinc-950 border rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-all ${
+                      errors.name ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800'
+                    }`}
                   />
+                  {errors.name && (
+                    <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1.5 animate-fadeIn">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span className="font-semibold">{errors.name}</span>
+                    </p>
+                  )}
                 </div>
 
                 {platformDef?.fields.map((f) => (
@@ -615,10 +646,23 @@ export default function ChannelManager() {
                         <input
                           type="text"
                           value={waPhoneNumber}
-                          onChange={(e) => setWaPhoneNumber(e.target.value)}
+                          onChange={(e) => {
+                            setWaPhoneNumber(e.target.value);
+                            if (errors.phone_number) {
+                              setErrors({ ...errors, phone_number: '' });
+                            }
+                          }}
                           placeholder="Masukkan nomor WA akun Anda (contoh: 628123456789)"
-                          className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all"
+                          className={`w-full bg-white dark:bg-zinc-950 border rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition-all ${
+                            errors.phone_number ? 'border-red-500 focus:border-red-500' : 'border-zinc-200 dark:border-zinc-800'
+                          }`}
                         />
+                        {errors.phone_number && (
+                          <p className="mt-1.5 text-xs text-red-500 flex items-center gap-1.5 animate-fadeIn">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span className="font-semibold">{errors.phone_number}</span>
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -636,7 +680,7 @@ export default function ChannelManager() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAdding(null); setWaSession(null); }}
+                  onClick={() => { setAdding(null); setWaSession(null); setErrors({}); }}
                   className="bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 font-bold px-5 py-2 rounded-xl text-xs transition-all cursor-pointer"
                 >
                   Batal

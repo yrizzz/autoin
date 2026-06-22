@@ -116,3 +116,66 @@ body {
   box-shadow: none !important;
   cursor: not-allowed !important;
 }
+
+/* Global Consistent Gradient Badges & Labels */
+.badge-active {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.15) !important;
+}
+
+.badge-gradient {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.12) 0%, rgba(29, 78, 216, 0.12) 100%) !important;
+  color: #3b82f6 !important;
+  border: 1px solid rgba(59, 130, 246, 0.25) !important;
+}
+.dark .badge-gradient {
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
+  color: #60a5fa !important;
+  border: 1px solid rgba(96, 165, 250, 0.2) !important;
+}
+
+.badge-purple-gradient {
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(109, 40, 217, 0.12) 100%) !important;
+  color: #7c3aed !important;
+  border: 1px solid rgba(124, 58, 237, 0.25) !important;
+}
+.dark .badge-purple-gradient {
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%) !important;
+  color: #a78bfa !important;
+  border: 1px solid rgba(167, 139, 250, 0.2) !important;
+}
+
+.badge-emerald-gradient {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(4, 120, 87, 0.12) 100%) !important;
+  color: #10b981 !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+}
+.dark .badge-emerald-gradient {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%) !important;
+  color: #34d399 !important;
+  border: 1px solid rgba(52, 211, 153, 0.2) !important;
+}
+
+.badge-amber-gradient {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(180, 83, 9, 0.12) 100%) !important;
+  color: #f59e0b !important;
+  border: 1px solid rgba(245, 158, 11, 0.25) !important;
+}
+.dark .badge-amber-gradient {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.2) !important;
+}
+
+.badge-rose-gradient {
+  background: linear-gradient(135deg, rgba(244, 63, 94, 0.12) 0%, rgba(190, 24, 74, 0.12) 100%) !important;
+  color: #f43f5e !important;
+  border: 1px solid rgba(244, 63, 94, 0.25) !important;
+}
+.dark .badge-rose-gradient {
+  background: linear-gradient(135deg, rgba(251, 113, 133, 0.08) 0%, rgba(244, 63, 94, 0.08) 100%) !important;
+  color: #fb7185 !important;
+  border: 1px solid rgba(251, 113, 133, 0.2) !important;
+}

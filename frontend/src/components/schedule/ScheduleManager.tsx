@@ -441,7 +441,7 @@ function DetailModal({
                 {isScheduleable && (
                   <>
                     <button type="button" onClick={() => onSendNow(broadcast)}
-                      className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
+                      className="flex items-center gap-1.5 px-3 py-2 bg-gradient-brand hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm">
                       <Send className="w-3.5 h-3.5" /> Kirim Sekarang
                     </button>
                     <button type="button" onClick={() => onCancel(broadcast)}
@@ -479,6 +479,54 @@ export default function ScheduleManager() {
   const [detail, setDetail]         = useState<Broadcast | null>(null);
   const [overview, setOverview]     = useState<Overview | null>(null);
 
+  // Custom action confirmation modal states
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: React.ReactNode;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+    type: 'blue' | 'red';
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    confirmText: '',
+    cancelText: '',
+    onConfirm: () => {},
+    type: 'blue',
+  });
+
+  function triggerConfirm({
+    title,
+    message,
+    confirmText,
+    cancelText,
+    onConfirm,
+    type,
+  }: {
+    title: string;
+    message: React.ReactNode;
+    confirmText: string;
+    cancelText: string;
+    onConfirm: () => void;
+    type: 'blue' | 'red';
+  }) {
+    setConfirmModal({
+      open: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmModal(prev => ({ ...prev, open: false }));
+      },
+      type,
+    });
+  }
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -498,27 +546,78 @@ export default function ScheduleManager() {
   useEffect(() => { load(); }, [load]);
 
   async function handleSendNow(b: Broadcast) {
-    if (!confirm(`Kirim "${b.title || 'broadcast ini'}" sekarang?`)) return;
-    setActionId(b.id);
-    try { await api.post(`/api/broadcasts/${b.id}/send`); await load(); }
-    catch (e: any) { alert(e.message ?? 'Gagal mengirim.'); }
-    setActionId(null);
+    triggerConfirm({
+      title: 'Kirim Broadcast Sekarang',
+      message: (
+        <>
+          Apakah Anda yakin ingin mengirim broadcast <strong>"{b.title || `Broadcast #${b.id}`}"</strong> sekarang? Pesan akan langsung dimasukkan ke dalam antrean pengiriman.
+        </>
+      ),
+      confirmText: 'Kirim Sekarang',
+      cancelText: 'Batal',
+      type: 'blue',
+      onConfirm: async () => {
+        setActionId(b.id);
+        try {
+          await api.post(`/api/broadcasts/${b.id}/send`);
+          await load();
+          setDetail(null);
+        } catch (e: any) {
+          alert(e.message ?? 'Gagal mengirim.');
+        }
+        setActionId(null);
+      }
+    });
   }
 
   async function handleCancel(b: Broadcast) {
-    if (!confirm(`Batalkan "${b.title || 'broadcast ini'}"?`)) return;
-    setActionId(b.id);
-    try { await api.post(`/api/broadcasts/${b.id}/cancel`); await load(); setDetail(null); }
-    catch (e: any) { alert(e.message ?? 'Gagal membatalkan.'); }
-    setActionId(null);
+    triggerConfirm({
+      title: 'Batalkan Jadwal Broadcast',
+      message: (
+        <>
+          Apakah Anda yakin ingin membatalkan jadwal broadcast <strong>"{b.title || `Broadcast #${b.id}`}"</strong>? Status broadcast akan diubah menjadi dibatalkan.
+        </>
+      ),
+      confirmText: 'Batalkan',
+      cancelText: 'Batal',
+      type: 'red',
+      onConfirm: async () => {
+        setActionId(b.id);
+        try {
+          await api.post(`/api/broadcasts/${b.id}/cancel`);
+          await load();
+          setDetail(null);
+        } catch (e: any) {
+          alert(e.message ?? 'Gagal membatalkan.');
+        }
+        setActionId(null);
+      }
+    });
   }
 
   async function handleDelete(b: Broadcast) {
-    if (!confirm(`Hapus "${b.title || 'broadcast ini'}" dari riwayat?`)) return;
-    setActionId(b.id);
-    try { await api.delete(`/api/broadcasts/${b.id}`); await load(); setDetail(null); }
-    catch (e: any) { alert(e.message ?? 'Gagal menghapus.'); }
-    setActionId(null);
+    triggerConfirm({
+      title: 'Hapus Riwayat Broadcast',
+      message: (
+        <>
+          Apakah Anda yakin ingin menghapus broadcast <strong>"{b.title || `Broadcast #${b.id}`}"</strong> dari riwayat? Tindakan ini tidak dapat dibatalkan.
+        </>
+      ),
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      type: 'red',
+      onConfirm: async () => {
+        setActionId(b.id);
+        try {
+          await api.delete(`/api/broadcasts/${b.id}`);
+          await load();
+          setDetail(null);
+        } catch (e: any) {
+          alert(e.message ?? 'Gagal menghapus.');
+        }
+        setActionId(null);
+      }
+    });
   }
 
   async function openDetail(b: Broadcast) {
@@ -586,7 +685,7 @@ export default function ScheduleManager() {
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               activeTab === tab
-                ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                ? 'tab-active'
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}>
             {TAB_LABELS[tab]}
@@ -719,6 +818,42 @@ export default function ScheduleManager() {
               </div>
             );
           })}
+        </div>
+      )}
+      {/* Custom Confirmation Modal */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              confirmModal.type === 'red' ? 'bg-rose-500/10 text-rose-600' : 'bg-blue-500/10 text-blue-600'
+            }`}>
+              {confirmModal.type === 'red' ? <Trash2 className="w-6 h-6" /> : <Play className="w-6 h-6" />}
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">{confirmModal.title}</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                {confirmModal.cancelText}
+              </button>
+              <button
+                type="button"
+                onClick={confirmModal.onConfirm}
+                className={`flex-1 py-2.5 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer ${
+                  confirmModal.type === 'red'
+                    ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-500/10'
+                    : 'bg-gradient-brand hover:opacity-95 shadow-blue-500/10'
+                }`}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </AdminLayout>

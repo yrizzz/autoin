@@ -65,7 +65,24 @@ class SendBroadcastJob implements ShouldQueue
 
         return match($channel->platform) {
             'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId),
+            'telegram'  => $this->sendTelegram($channel, $content),
             default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };
+    }
+
+    private function sendTelegram($channel, string $content): array
+    {
+        $token = $channel->credentials['bot_token'] ?? '';
+        $chatId = $channel->target_id;
+
+        $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
+            'chat_id' => $chatId,
+            'text'    => $content,
+        ]);
+
+        return [
+            'ok'       => $response->successful() && $response->json('ok'),
+            'response' => $response->json(),
+        ];
     }
 }

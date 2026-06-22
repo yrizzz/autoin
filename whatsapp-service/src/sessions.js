@@ -1,8 +1,9 @@
 import makeWASocket, {
   DisconnectReason,
-  useMultiFileAuthState,
   fetchLatestBaileysVersion,
   downloadMediaMessage,
+  BufferJSON,
+  initAuthCreds,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
@@ -11,33 +12,126 @@ import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
 
-const SESSIONS_DIR    = process.env.SESSIONS_DIR    || './sessions-data';
 const MEDIA_DIR       = './media-temp';
-const BACKEND_URL     = process.env.BACKEND_URL     || 'http://localhost:8001';
+const BACKEND_URL     = process.env.BACKEND_URL     || 'http://localhost:8000';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'autoin-internal-secret';
 
-if (!fs.existsSync(SESSIONS_DIR)) fs.mkdirSync(SESSIONS_DIR, { recursive: true });
 if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 const logger = pino({ level: 'silent' });
 
-// ── Simple disk persistence ──────────────────────────────────────────────────
-function storeFile(sessionId) {
-  return path.join(SESSIONS_DIR, sessionId, 'store.json');
-}
-function loadStore(sessionId) {
+// ── Persisted via Laravel MySQL database API ─────────────────────────────────
+const KEY_MAP = {
+  'pre-key': 'pre-key-',
+  'session': 'session-',
+  'sender-key': 'sender-key-',
+  'sender-key-memory': 'sender-key-memory-',
+  'app-state-sync-key': 'app-state-sync-key-',
+  'app-state-sync-version': 'app-state-sync-version-'
+};
+
+async function useMySQLAuthState(sessionId) {
+  const getUrl = `${BACKEND_URL}/api/internal/whatsapp/auth?session_id=${sessionId}`;
+  let dbData = {};
   try {
-    const f = storeFile(sessionId);
-    if (fs.existsSync(f)) return JSON.parse(fs.readFileSync(f, 'utf8'));
-  } catch {}
-  return { contacts: [], chats: [], messages: {}, lidToPhone: {} };
-}
-function saveStore(sessionId, contacts, chats, messages, lidToPhone = {}) {
-  try {
-    const f = storeFile(sessionId);
-    fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, JSON.stringify({ contacts, chats, messages, lidToPhone }), 'utf8');
-  } catch {}
+    const res = await fetch(getUrl, {
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+    });
+    if (res.ok) {
+      dbData = await res.json();
+    }
+  } catch (err) {
+    console.error('Failed to load auth state from database:', err);
+  }
+
+  const authCache = {};
+  for (const [key, value] of Object.entries(dbData)) {
+    try {
+      authCache[key] = JSON.parse(JSON.stringify(value), BufferJSON.reviver);
+    } catch {}
+  }
+
+  if (!authCache['creds']) {
+    authCache['creds'] = initAuthCreds();
+  }
+
+  let pendingUpdates = {};
+  let updateTimeout = null;
+
+  const flushUpdates = () => {
+    if (updateTimeout) clearTimeout(updateTimeout);
+    updateTimeout = null;
+
+    const payload = { ...pendingUpdates };
+    pendingUpdates = {};
+
+    const saveUrl = `${BACKEND_URL}/api/internal/whatsapp/auth`;
+    fetch(saveUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': INTERNAL_SECRET
+      },
+      body: JSON.stringify({
+        session_id: sessionId,
+        data: payload
+      })
+    }).catch(err => console.error('Failed to save auth state to database:', err));
+  };
+
+  const queueUpdate = (key, value) => {
+    if (value) {
+      pendingUpdates[key] = JSON.parse(JSON.stringify(value, BufferJSON.replacer));
+    } else {
+      pendingUpdates[key] = null;
+    }
+
+    if (!updateTimeout) {
+      updateTimeout = setTimeout(flushUpdates, 2000);
+    }
+  };
+
+  const creds = authCache['creds'];
+  
+  return {
+    state: {
+      creds,
+      keys: {
+        get: (type, ids) => {
+          const dict = {};
+          const keyPrefix = KEY_MAP[type] || `${type}-`;
+          for (const id of ids) {
+            const cacheKey = `${keyPrefix}${id}`;
+            let value = authCache[cacheKey];
+            if (value) {
+              dict[id] = value;
+            }
+          }
+          return dict;
+        },
+        set: (data) => {
+          for (const type of Object.keys(data)) {
+            const keyPrefix = KEY_MAP[type] || `${type}-`;
+            for (const id of Object.keys(data[type])) {
+              const cacheKey = `${keyPrefix}${id}`;
+              const value = data[type][id];
+              if (value) {
+                authCache[cacheKey] = value;
+                queueUpdate(cacheKey, value);
+              } else {
+                delete authCache[cacheKey];
+                queueUpdate(cacheKey, null);
+              }
+            }
+          }
+        }
+      }
+    },
+    saveCreds: () => {
+      authCache['creds'] = creds;
+      queueUpdate('creds', creds);
+    }
+  };
 }
 
 function getRealMessage(message) {
@@ -73,47 +167,60 @@ class SessionManager extends EventEmitter {
     return jid;
   }
 
-  // ── Throttled save — at most once per 10s per session ──────────────────────
+  // ── Throttled save — at most once per 10s per session to MySQL database ─────
   _scheduleSave(sessionId) {
     if (this._saveTimers.has(sessionId)) return;
     const t = setTimeout(() => {
       this._saveTimers.delete(sessionId);
       const contacts = this._contacts.get(sessionId) || [];
-      const chats    = this._chats.get(sessionId) || [];
-      // Collect all messages for this session
-      const messages = {};
-      for (const [key, msgs] of this._messages.entries()) {
-        if (key.startsWith(sessionId + ':')) {
-          messages[key] = msgs.slice(-200); // keep last 200
-        }
-      }
-      // Collect lidToPhone mapping for this session
-      const lidToPhone = {};
-      for (const [key, pn] of this._lidToPhone.entries()) {
-        if (key.startsWith(sessionId + ':')) {
-          const lid = key.substring(sessionId.length + 1);
-          lidToPhone[lid] = pn;
-        }
-      }
-      saveStore(sessionId, contacts, chats, messages, lidToPhone);
+      const chats    = this.getChats(sessionId) || [];
+      
+      this.getGroups(sessionId).then(groups => {
+        const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
+        fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Internal-Secret': INTERNAL_SECRET
+          },
+          body: JSON.stringify({
+            session_id: sessionId,
+            contacts,
+            chats,
+            groups
+          })
+        }).catch(err => console.error('Failed to sync to database:', err));
+      }).catch(err => console.error('Failed to get groups for database sync:', err));
     }, 10000);
     this._saveTimers.set(sessionId, t);
   }
 
-  // ── Restore from disk ─────────────────────────────────────────────────────
-  _loadFromDisk(sessionId) {
-    const store = loadStore(sessionId);
-    if (store.contacts?.length) this._contacts.set(sessionId, store.contacts);
-    if (store.chats?.length)    this._chats.set(sessionId, store.chats);
-    if (store.messages) {
-      for (const [key, msgs] of Object.entries(store.messages)) {
-        this._messages.set(key, msgs);
+  // ── Restore from MySQL ────────────────────────────────────────────────────
+  async _loadFromDb(sessionId) {
+    try {
+      const url = `${BACKEND_URL}/api/internal/whatsapp/sync-data?session_id=${sessionId}`;
+      const res = await fetch(url, {
+        headers: {
+          'X-Internal-Secret': INTERNAL_SECRET
+        }
+      });
+      if (res.ok) {
+        const store = await res.json();
+        if (store.contacts?.length) this._contacts.set(sessionId, store.contacts);
+        if (store.chats?.length) {
+          const mappedChats = store.chats.map(c => ({
+            id:                    c.id,
+            name:                  c.name,
+            unreadCount:           c.unread || 0,
+            lastMessage:           c.lastMessage || '',
+            conversationTimestamp: c.ts || 0,
+            time:                  c.time || '',
+          }));
+          this._chats.set(sessionId, mappedChats);
+        }
       }
-    }
-    if (store.lidToPhone) {
-      for (const [lid, pn] of Object.entries(store.lidToPhone)) {
-        this._lidToPhone.set(`${sessionId}:${lid}`, pn);
-      }
+    } catch (err) {
+      console.error('Failed to load sync data from database:', err);
     }
   }
 
@@ -239,10 +346,9 @@ class SessionManager extends EventEmitter {
 
   async create(sessionId, usePairingCode = false, phoneNumber = '') {
     // Load any persisted data before connecting
-    this._loadFromDisk(sessionId);
+    await this._loadFromDb(sessionId);
 
-    const authDir = path.join(SESSIONS_DIR, sessionId);
-    const { state, saveCreds } = await useMultiFileAuthState(authDir);
+    const { state, saveCreds } = await useMySQLAuthState(sessionId);
     const { version } = await fetchLatestBaileysVersion();
 
     this._status.set(sessionId, 'connecting');
@@ -645,28 +751,33 @@ class SessionManager extends EventEmitter {
     this._sessions.delete(sessionId);
     this._qrs.delete(sessionId);
     this._status.delete(sessionId);
-    // Clear save timer
     const t = this._saveTimers.get(sessionId);
     if (t) { clearTimeout(t); this._saveTimers.delete(sessionId); }
 
-    const authDir = path.join(SESSIONS_DIR, sessionId);
-    if (fs.existsSync(authDir)) fs.rmSync(authDir, { recursive: true });
+    const deleteUrl = `${BACKEND_URL}/api/internal/whatsapp/auth?session_id=${sessionId}`;
+    fetch(deleteUrl, {
+      method: 'DELETE',
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+    }).catch(err => console.error('Failed to delete auth state from database:', err));
   }
 
   async restoreSessions() {
-    if (!fs.existsSync(SESSIONS_DIR)) return;
     try {
-      const dirs = fs.readdirSync(SESSIONS_DIR).filter(f =>
-        fs.statSync(path.join(SESSIONS_DIR, f)).isDirectory()
-      );
-      for (const dir of dirs) {
-        console.log(`Restoring session: ${dir}`);
-        this.create(dir).catch(err => {
-          console.error(`Failed to restore session ${dir}:`, err.message);
-        });
+      const url = `${BACKEND_URL}/api/internal/whatsapp/sessions`;
+      const res = await fetch(url, {
+        headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+      });
+      if (res.ok) {
+        const sessionIds = await res.json();
+        for (const sessionId of sessionIds) {
+          console.log(`Restoring session from MySQL: ${sessionId}`);
+          this.create(sessionId).catch(err => {
+            console.error(`Failed to restore session ${sessionId}:`, err.message);
+          });
+        }
       }
     } catch (err) {
-      console.error('Failed to read sessions directory:', err);
+      console.error('Failed to restore sessions from database:', err);
     }
   }
 }

@@ -1,34 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { User } from '../../types';
-import { 
-  LayoutDashboard, 
-  Send, 
-  History, 
-  LogOut, 
-  User as UserIcon, 
-  RefreshCw, 
-  Bell,
-  ChevronRight,
-  Menu,
-  X,
-  Radio,
-  Globe,
-  Sun,
-  Moon,
-  MessageSquare,
-  Users,
-  Smartphone,
-  FileText,
-  Rocket,
-  Calendar,
-  Cpu,
-  Link,
-  Tag,
-  Receipt,
-  PlayCircle,
-  Key,
-  BookOpen
+import {
+  LayoutDashboard, Send, History, LogOut, User as UserIcon,
+  RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
+  MessageSquare, Users, Smartphone, FileText, Rocket,
+  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -40,107 +17,274 @@ interface AdminLayoutProps {
   refreshing?: boolean;
 }
 
+const GOOGLE_AUTH_URL = 'http://localhost:8000/auth/google';
+
+
+function md5(string: string) {
+  function RotateLeft(lValue: number, iShiftBits: number) {
+    return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits));
+  }
+  function AddUnsigned(lX: number, lY: number) {
+    var lX4, lY4, lX8, lY8, lResult;
+    lX8 = (lX & 0x80000000);
+    lY8 = (lY & 0x80000000);
+    lX4 = (lX & 0x40000000);
+    lY4 = (lY & 0x40000000);
+    lResult = (lX & 0x3FFFFFFF) + (lY & 0x3FFFFFFF);
+    if (lX4 & lY4) {
+      return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
+    }
+    if (lX4 | lY4) {
+      if (lResult & 0x40000000) {
+        return (lResult ^ 0xC0000000 ^ lX8 ^ lY8);
+      } else {
+        return (lResult ^ 0x40000000 ^ lX8 ^ lY8);
+      }
+    } else {
+      return (lResult ^ lX8 ^ lY8);
+    }
+  }
+  function F(x: number, y: number, z: number) { return (x & y) | ((~x) & z); }
+  function G(x: number, y: number, z: number) { return (x & z) | (y & (~z)); }
+  function H(x: number, y: number, z: number) { return (x ^ y ^ z); }
+  function I(x: number, y: number, z: number) { return (y ^ (x | (~z))); }
+  function FF(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    a = AddUnsigned(a, AddUnsigned(AddUnsigned(F(b, c, d), x), ac));
+    return AddUnsigned(RotateLeft(a, s), b);
+  }
+  function GG(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    a = AddUnsigned(a, AddUnsigned(AddUnsigned(G(b, c, d), x), ac));
+    return AddUnsigned(RotateLeft(a, s), b);
+  }
+  function HH(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    a = AddUnsigned(a, AddUnsigned(AddUnsigned(H(b, c, d), x), ac));
+    return AddUnsigned(RotateLeft(a, s), b);
+  }
+  function II(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    a = AddUnsigned(a, AddUnsigned(AddUnsigned(I(b, c, d), x), ac));
+    return AddUnsigned(RotateLeft(a, s), b);
+  }
+  function ConvertToWordArray(string: string) {
+    var lWordCount;
+    var lMessageLength = string.length;
+    var lNumberOfWords_temp1 = lMessageLength + 8;
+    var lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
+    var lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
+    var lWordArray = Array(lNumberOfWords);
+    var lBytePosition = 0;
+    var lByteCount = 0;
+    while (lByteCount < lMessageLength) {
+      lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+      lBytePosition = (lByteCount % 4) * 8;
+      lWordArray[lWordCount] = (lWordArray[lWordCount] | (string.charCodeAt(lByteCount) << lBytePosition));
+      lByteCount++;
+    }
+    lWordCount = (lByteCount - (lByteCount % 4)) / 4;
+    lBytePosition = (lByteCount % 4) * 8;
+    lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition);
+    lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
+    lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
+    return lWordArray;
+  }
+  function WordToHex(lValue: number) {
+    var WordToHexValue = "", WordToHexValue_temp = "", lByte, lCount;
+    for (lCount = 0; lCount <= 3; lCount++) {
+      lByte = (lValue >>> (lCount * 8)) & 255;
+      WordToHexValue_temp = "0" + lByte.toString(16);
+      WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length - 2, 2);
+    }
+    return WordToHexValue;
+  }
+  function Utf8Encode(string: string) {
+    string = string.replace(/\r\n/g, "\n");
+    var utftext = "";
+    for (var n = 0; n < string.length; n++) {
+      var c = string.charCodeAt(n);
+      if (c < 128) {
+        utftext += String.fromCharCode(c);
+      } else if ((c > 127) && (c < 2048)) {
+        utftext += String.fromCharCode((c >> 6) | 192);
+        utftext += String.fromCharCode((c & 63) | 128);
+      } else {
+        utftext += String.fromCharCode((c >> 12) | 224);
+        utftext += String.fromCharCode(((c >> 6) & 63) | 128);
+        utftext += String.fromCharCode((c & 63) | 128);
+      }
+    }
+    return utftext;
+  }
+  var x = Array();
+  var k, S11 = 7, S12 = 12, S13 = 17, S14 = 22;
+  var S21 = 5, S22 = 9, S23 = 14, S24 = 20;
+  var S31 = 4, S32 = 11, S33 = 16, S34 = 23;
+  var S41 = 6, S42 = 10, S43 = 15, S44 = 21;
+  string = Utf8Encode(string);
+  x = ConvertToWordArray(string);
+  var a = 0x67452301;
+  var b = 0xEFCDAB89;
+  var c = 0x98BADCFE;
+  var d = 0x10325476;
+  for (k = 0; k < x.length; k += 16) {
+    var AA = a;
+    var BB = b;
+    var CC = c;
+    var DD = d;
+    a = FF(a, b, c, d, x[k + 0], S11, 0xD76AA478);
+    d = FF(d, a, b, c, x[k + 1], S12, 0xE8C7B756);
+    c = FF(c, d, a, b, x[k + 2], S13, 0x242070DB);
+    b = FF(b, c, d, a, x[k + 3], S14, 0xC1BDCEEE);
+    a = FF(a, b, c, d, x[k + 4], S11, 0xF57C0FAF);
+    d = FF(d, a, b, c, x[k + 5], S12, 0x4787C62A);
+    c = FF(c, d, a, b, x[k + 6], S13, 0xA8304613);
+    b = FF(b, c, d, a, x[k + 7], S14, 0xFD469501);
+    a = FF(a, b, c, d, x[k + 8], S11, 0x698098D8);
+    d = FF(d, a, b, c, x[k + 9], S12, 0x8B44F7AF);
+    c = FF(c, d, a, b, x[k + 10], S13, 0xFFFF5BB1);
+    b = FF(b, c, d, a, x[k + 11], S14, 0x895CD7BE);
+    a = FF(a, b, c, d, x[k + 12], S11, 0x6B901122);
+    d = FF(d, a, b, c, x[k + 13], S12, 0xFD987193);
+    c = FF(c, d, a, b, x[k + 14], S13, 0xA679438E);
+    b = FF(b, c, d, a, x[k + 15], S14, 0x49B40821);
+    a = GG(a, b, c, d, x[k + 1], S21, 0xF61E2562);
+    d = GG(d, a, b, c, x[k + 6], S22, 0xC040B340);
+    c = GG(c, d, a, b, x[k + 11], S23, 0x265E5A51);
+    b = GG(b, c, d, a, x[k + 0], S24, 0xE9B6C7AA);
+    a = GG(a, b, c, d, x[k + 5], S21, 0xD62F105D);
+    d = GG(d, a, b, c, x[k + 10], S22, 0x2441453);
+    c = GG(c, d, a, b, x[k + 15], S23, 0xD8A1E681);
+    b = GG(b, c, d, a, x[k + 4], S24, 0xE7D3FBC8);
+    a = GG(a, b, c, d, x[k + 9], S21, 0x21E1CDE6);
+    d = GG(d, a, b, c, x[k + 14], S22, 0xC33707D6);
+    c = GG(c, d, a, b, x[k + 3], S23, 0xF4D50D87);
+    b = GG(b, c, d, a, x[k + 8], S24, 0x455A14ED);
+    a = GG(a, b, c, d, x[k + 13], S21, 0xA9E3E905);
+    d = GG(d, a, b, c, x[k + 2], S22, 0xFCEFA3F8);
+    c = GG(c, d, a, b, x[k + 7], S23, 0x676F02D9);
+    b = GG(b, c, d, a, x[k + 12], S24, 0x8D2A4C8A);
+    a = HH(a, b, c, d, x[k + 5], S31, 0xFFFA3942);
+    d = HH(d, a, b, c, x[k + 8], S32, 0x8771F681);
+    c = HH(c, d, a, b, x[k + 11], S33, 0x6D9D6122);
+    b = HH(b, c, d, a, x[k + 14], S34, 0xFDE5380C);
+    a = HH(a, b, c, d, x[k + 1], S31, 0xA4BEEA44);
+    d = HH(d, a, b, c, x[k + 4], S32, 0x4BDECFA9);
+    c = HH(c, d, a, b, x[k + 7], S33, 0xF6BB4B60);
+    b = HH(b, c, d, a, x[k + 10], S34, 0xBEBFBC70);
+    a = HH(a, b, c, d, x[k + 13], S31, 0x289B7EC6);
+    d = HH(d, a, b, c, x[k + 0], S32, 0xEAA127FA);
+    c = HH(c, d, a, b, x[k + 3], S33, 0xD4EF3085);
+    b = HH(b, c, d, a, x[k + 6], S34, 0x4881D05);
+    a = HH(a, b, c, d, x[k + 9], S31, 0xD9D4D039);
+    d = HH(d, a, b, c, x[k + 12], S32, 0xE6DB99E5);
+    c = HH(c, d, a, b, x[k + 15], S33, 0x1FA27CF8);
+    b = HH(b, c, d, a, x[k + 2], S34, 0xC4AC5665);
+    a = II(a, b, c, d, x[k + 0], S41, 0xF4292244);
+    d = II(d, a, b, c, x[k + 7], S42, 0x432AFF97);
+    c = II(c, d, a, b, x[k + 14], S43, 0xAB9423A7);
+    b = II(b, c, d, a, x[k + 5], S44, 0xFC93A039);
+    a = II(a, b, c, d, x[k + 12], S41, 0x655B59C3);
+    d = II(d, a, b, c, x[k + 3], S42, 0x8F0CCC92);
+    c = II(c, d, a, b, x[k + 10], S43, 0xFFEFF47D);
+    b = II(b, c, d, a, x[k + 1], S44, 0x85845DD1);
+    a = II(a, b, c, d, x[k + 8], S41, 0x6FA87E4F);
+    d = II(d, a, b, c, x[k + 15], S42, 0xFE2CE6E0);
+    c = II(c, d, a, b, x[k + 6], S43, 0xA3014314);
+    b = II(b, c, d, a, x[k + 13], S44, 0x4E0811A1);
+    a = II(a, b, c, d, x[k + 4], S41, 0xF7537E82);
+    d = II(d, a, b, c, x[k + 11], S42, 0xBD3AF235);
+    c = II(c, d, a, b, x[k + 2], S43, 0x2AD7D2BB);
+    b = II(b, c, d, a, x[k + 9], S44, 0xEB86D391);
+    a = AddUnsigned(a, AA);
+    b = AddUnsigned(b, BB);
+    c = AddUnsigned(c, CC);
+    d = AddUnsigned(d, DD);
+  }
+  var temp = WordToHex(a) + WordToHex(b) + WordToHex(c) + WordToHex(d);
+  return temp.toLowerCase();
+}
+
+const formatDisplayName = (name: string) => {
+  return name;
+};
+
+const getAvatarUrl = (user: User | null) => {
+  if (!user) return '';
+  if (user.avatar) return user.avatar;
+  const hash = md5(user.email.trim().toLowerCase());
+  return `https://www.gravatar.com/avatar/${hash}?d=mp`;
+};
+
 export default function AdminLayout({ children, activePage, title, noPadding, onRefresh, refreshing }: AdminLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [sidebarChats, setSidebarChats] = useState<any[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState([
-    { id: 1, title: 'Broadcast Sukses', message: 'Campaign #1024 terkirim ke 150 kontak.', time: '5m lalu', read: false },
-
-    { id: 3, title: 'Kontak Tersinkron', message: '54 kontak baru berhasil diimpor dari WhatsApp.', time: '3j lalu', read: true },
-  ]);
+  const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; time: string; read: boolean }>>([]);
+  const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(null);
 
   const hasUnread = notifications.some(n => !n.read);
 
   useEffect(() => {
-    api.get<User>('/api/me')
-      .then(setUser)
-      .catch((err) => console.error('Gagal mengambil data user:', err));
-
-    // Handle theme initialization
-    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
-    const initialTheme = savedTheme || 'dark';
-    setTheme(initialTheme);
-    if (initialTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tokenFromUrl = params.get('token');
+      if (tokenFromUrl) {
+        localStorage.setItem('autoin_token', tokenFromUrl);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
 
-    const loadChats = () => {
-      api.get<any[]>('/api/channels')
-        .then(channels => {
-          const activeWa = channels.find(c => c.platform === 'whatsapp' && c.status === 'active');
-          if (activeWa) {
-            api.get<{ chats: any[] }>(`/api/whatsapp/${activeWa.id}/chats`)
-              .then(res => {
-                setSidebarChats((res.chats || []).slice(0, 3));
-              })
-              .catch(() => {
-                setSidebarChats([
-                  { name: 'Budi Santoso', lastMessage: 'Halo bro, besok rapat...', unread: 2 },
-                  { name: 'Siti Rahma', lastMessage: 'Siap, terima kasih...', unread: 0 },
-                  { name: 'Andi Wijaya', lastMessage: 'Broadcast sukses...', unread: 0 }
-                ]);
-              });
-          } else {
-            setSidebarChats([
-              { name: 'Budi Santoso', lastMessage: 'Halo bro, besok rapat...', unread: 2 },
-              { name: 'Siti Rahma', lastMessage: 'Siap, terima kasih...', unread: 0 },
-              { name: 'Andi Wijaya', lastMessage: 'Broadcast sukses...', unread: 0 }
-            ]);
-          }
-        })
-        .catch(() => {
-          setSidebarChats([
-            { name: 'Budi Santoso', lastMessage: 'Halo bro, besok rapat...', unread: 2 },
-            { name: 'Siti Rahma', lastMessage: 'Siap, terima kasih...', unread: 0 },
-            { name: 'Andi Wijaya', lastMessage: 'Broadcast sukses...', unread: 0 }
-          ]);
-        });
-    };
+    const token = localStorage.getItem('autoin_token');
+    if (!token) {
+      window.location.href = GOOGLE_AUTH_URL;
+      return;
+    }
 
-    loadChats();
-    const interval = setInterval(loadChats, 10000);
-    return () => clearInterval(interval);
+    api.get<User>('/api/me')
+      .then(setUser)
+      .catch(() => {
+        localStorage.removeItem('autoin_token');
+        window.location.href = GOOGLE_AUTH_URL;
+      });
+
+    api.get<any>('/api/announcement')
+      .then(res => {
+        if (res && res.text) {
+          setAnnouncement(res);
+        }
+      })
+      .catch(() => { });
+
+    const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
+    const initial = savedTheme || 'dark';
+    setTheme(initial);
+    document.documentElement.classList.toggle('dark', initial === 'dark');
+    document.documentElement.style.colorScheme = initial;
   }, []);
 
   const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    localStorage.setItem('theme', nextTheme);
-    if (nextTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.style.colorScheme = 'dark';
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.style.colorScheme = 'light';
-    }
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.classList.toggle('dark', next === 'dark');
+    document.documentElement.style.colorScheme = next;
   };
 
   const handleLogout = async () => {
-    try {
-      await api.post('/api/logout');
-      localStorage.removeItem('autoin_token');
-      window.location.href = '/';
-    } catch {
-      localStorage.removeItem('autoin_token');
-      window.location.href = '/';
-    }
+    try { await api.post('/api/logout'); } catch { }
+    localStorage.removeItem('autoin_token');
+    window.location.href = '/';
   };
 
   const settingsItems = [
     { id: 'pricing', label: 'Daftar Harga', icon: Tag, href: '/#pricing' },
-    { id: 'invoice', label: 'Invoice', icon: Receipt, href: '/invoice' },
-    { id: 'tutorial', label: 'Video Tutorial', icon: PlayCircle, href: '/tutorial' },
+    { id: 'subscription', label: 'Berlangganan', icon: Receipt, href: '/subscription' },
     { id: 'api_key', label: 'API Key', icon: Key, href: '/api-key' },
     { id: 'api_docs', label: 'Dokumentasi API', icon: BookOpen, href: '/docs' },
   ];
-
-  if (user?.email === 'Arisedyhandoko@gmail.com') {
-    settingsItems.unshift({ id: 'subscribers', label: 'Daftar Pelanggan', icon: Users, href: '/subscribers' });
+  if (user?.email?.toLowerCase() === 'arisedyhandoko@gmail.com') {
+    settingsItems.unshift({ id: 'promo_codes', label: 'Kode Promo', icon: Ticket, href: '/promo-codes' });
+    settingsItems.unshift({ id: 'users', label: 'Daftar Pelanggan', icon: Users, href: '/users' });
+    settingsItems.unshift({ id: 'admin_settings', label: 'Sistem Admin', icon: Settings, href: '/admin-settings' });
   }
 
   const navGroups = [
@@ -150,7 +294,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
         { id: 'channels', label: 'Device Connected', icon: Smartphone, href: '/channels' },
         { id: 'contacts', label: 'Grup Kontak', icon: Users, href: '/contacts' },
-        { id: 'templates', label: 'Daftar template', icon: FileText, href: '/templates' },
+        { id: 'templates', label: 'Template Pesan', icon: FileText, href: '/templates' },
         { id: 'broadcast', label: 'Broadcast Pesan', icon: Rocket, href: '/broadcast' },
         { id: 'schedule', label: 'Jadwal Broadcast', icon: Calendar, href: '/schedule' },
         { id: 'chats', label: 'Obrolan Aktif', icon: MessageSquare, href: '/chats' },
@@ -165,191 +309,159 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'history', label: 'History Pesan', icon: History, href: '/broadcast/history' },
       ]
     },
-    {
-      title: 'SETTINGS',
-      items: settingsItems
-    }
+    { title: 'PENGATURAN', items: settingsItems }
   ];
 
-  return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-50 font-sans flex antialiased transition-colors duration-200">
-      {/* Background soft blue radial glow */}
-      <div className="absolute top-0 left-1/4 w-[1000px] h-[300px] bg-blue-500/[0.02] dark:bg-blue-500/[0.03] rounded-full blur-[100px] pointer-events-none" />
+  const mobileNav = [
+    { id: 'dashboard', icon: LayoutDashboard, href: '/dashboard', label: 'Home' },
+    { id: 'broadcast', icon: Rocket, href: '/broadcast', label: 'Broadcast' },
+    { id: 'chats', icon: MessageSquare, href: '/chats', label: 'Chat' },
+    { id: 'channels', icon: Smartphone, href: '/channels', label: 'Device' },
+    { id: 'sidebar', icon: Menu, href: '#', label: 'Menu' },
+  ];
 
-      {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 shrink-0">
-        {/* Sidebar Header */}
-        <div className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2.5 bg-zinc-50/50 dark:bg-[#09090b]">
-          <div className="w-8 h-8 rounded-lg logo-gradient flex items-center justify-center shadow-md shadow-blue-500/20">
-            <Radio className="w-4.5 h-4.5 text-white" />
+  const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
+    <>
+      <div className="h-16 px-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#09090b]">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm">
+            <img src="/autoin-logo.webp" alt="AUTOIN" className="w-full h-full object-cover" />
           </div>
           <div>
-            <span className="font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white uppercase">AUTOIN</span>
-            <span className="text-[9px] text-zinc-500 dark:text-zinc-400 font-medium block -mt-1 uppercase">Workspace Admin</span>
+            <span className="font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white uppercase leading-none block">AUTOIN</span>
+            <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium leading-none">Workspace Admin</span>
           </div>
         </div>
-
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 py-4 px-4 overflow-y-auto space-y-3 bg-white dark:bg-[#09090b]">
-          {navGroups.map((group, groupIdx) => (
-            <div key={groupIdx} className="space-y-1">
-              {group.title && (
-                <div className="px-4 pt-2 pb-1.5 text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                  {group.title}
-                </div>
-              )}
-              <div className="space-y-1">
-                {group.items.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activePage === item.id;
-                  return (
-                    <a
-                      key={item.id}
-                      href={item.href}
-                      className={`flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
-                        isActive 
-                          ? 'nav-active-item' 
-                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                      }`}
-                    >
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
-                      <span>{item.label}</span>
-                    </a>
-                  );
-                })}
-              </div>
-              {groupIdx < navGroups.length - 1 && (
-                <div className="my-2 border-t border-zinc-100 dark:border-zinc-800/60" />
-              )}
-            </div>
-          ))}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/80 dark:bg-[#0c0c0e]/50">
-          <div className="flex items-center gap-3 px-2 py-1.5 rounded-lg mb-3">
-            <div className="w-8 h-8 rounded-full bg-blue-600/10 border border-blue-500/25 flex items-center justify-center shrink-0">
-              <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="text-left overflow-hidden">
-              <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate leading-none">{user?.name ?? 'Loading...'}</div>
-              <div className="text-[10px] text-zinc-500 dark:text-zinc-500 truncate leading-none mt-1">{user?.email ?? ''}</div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/10 bg-red-50 dark:bg-red-500/5 rounded-lg transition-all cursor-pointer"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Keluar Sesi</span>
+        {onNav && (
+          <button onClick={onNav} className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer">
+            <X className="w-4 h-4" />
           </button>
+        )}
+      </div>
+
+      <nav className="flex-1 py-3 px-3 overflow-y-auto space-y-4 bg-white dark:bg-[#09090b]">
+        {navGroups.map((group, gi) => (
+          <div key={gi} className="space-y-0.5">
+            {group.title && (
+              <div className="px-3 pt-1 pb-1.5 text-[9px] font-extrabold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">
+                {group.title}
+              </div>
+            )}
+            {group.items.map(item => {
+              const Icon = item.icon;
+              const active = activePage === item.id;
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  onClick={onNav}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-semibold tracking-wide transition-all ${active
+                      ? 'nav-active-item'
+                      : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
+                    }`}
+                >
+                  <Icon className={`w-4 h-4 shrink-0 ${active ? 'text-white' : 'text-zinc-400 dark:text-zinc-500'}`} />
+                  <span className="truncate">{item.label}</span>
+                </a>
+              );
+            })}
+            {gi < navGroups.length - 1 && (
+              <div className="my-1 border-t border-zinc-100 dark:border-zinc-800/60 !mt-3" />
+            )}
+          </div>
+        ))}
+      </nav>
+
+      <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
+        {user ? (
+          <div className="p-3 space-y-2">
+            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
+                <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
+                  {formatDisplayName(user.name)}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 rounded-xl transition-all cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Keluar Sesi
+            </button>
+          </div>
+        ) : (
+          <div className="p-3">
+            <a
+              href={GOOGLE_AUTH_URL}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-xl transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
+            >
+              <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
+              Masuk dengan Google
+            </a>
+          </div>
+        )}
+
+        <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-center gap-1.5">
+          <span className="text-[9px] text-zinc-400 dark:text-zinc-600">Crafted by</span>
+          <a href="https://yrizzz.my.id" target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-blue-500 hover:underline">YrizzzDev</a>
+          <Heart className="w-2.5 h-2.5 text-red-400 fill-current" />
         </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="min-h-screen bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-50 font-sans flex antialiased transition-colors duration-200 overflow-x-hidden">
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex flex-col w-[220px] fixed top-0 bottom-0 left-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] z-20">
+        <SidebarContent />
       </aside>
 
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
-        <div className="fixed inset-0 z-50 flex md:hidden bg-black/50 dark:bg-black/70 backdrop-blur-sm">
-          <aside className="w-64 bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 flex flex-col animate-slideIn">
-            <div className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-[#09090b]">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg logo-gradient flex items-center justify-center">
-                  <Radio className="w-4.5 h-4.5 text-white" />
-                </div>
-                <div>
-                  <span className="font-extrabold text-sm tracking-tight text-zinc-900 dark:text-white uppercase">AUTOIN</span>
-                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 font-medium block -mt-1">Workspace Admin</span>
-                </div>
-              </div>
-              <button onClick={() => setSidebarOpen(false)} className="p-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <nav className="flex-1 py-4 px-4 overflow-y-auto space-y-3 bg-white dark:bg-[#09090b]">
-              {navGroups.map((group, groupIdx) => (
-                <div key={groupIdx} className="space-y-1">
-                  {group.title && (
-                    <div className="px-4 pt-2 pb-1.5 text-[9px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
-                      {group.title}
-                    </div>
-                  )}
-                  <div className="space-y-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activePage === item.id;
-                      return (
-                        <a
-                          key={item.id}
-                          href={item.href}
-                          onClick={() => setSidebarOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
-                            isActive 
-                              ? 'nav-active-item' 
-                              : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
-                          }`}
-                        >
-                          <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-400'}`} />
-                          <span>{item.label}</span>
-                        </a>
-                      );
-                    })}
-                  </div>
-                  {groupIdx < navGroups.length - 1 && (
-                    <div className="my-2 border-t border-zinc-100 dark:border-zinc-800/60" />
-                  )}
-                </div>
-              ))}
-            </nav>
-
-            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-[#0c0c0e]/50">
-              <div className="flex items-center gap-3 px-2 py-1.5 rounded-lg mb-3">
-                <div className="w-8 h-8 rounded-full bg-blue-600/10 border border-blue-500/25 flex items-center justify-center shrink-0">
-                  <UserIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="text-left overflow-hidden">
-                  <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate leading-none">{user?.name ?? 'Loading...'}</div>
-                  <div className="text-[10px] text-zinc-500 dark:text-zinc-500 truncate leading-none mt-1">{user?.email ?? ''}</div>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:text-white hover:bg-red-600 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/10 bg-red-50 dark:bg-red-500/5 rounded-lg transition-all cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Keluar Sesi</span>
-              </button>
-            </div>
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm" />
+          <aside
+            className="absolute left-0 top-0 bottom-0 w-[220px] flex flex-col bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <SidebarContent onNav={() => setSidebarOpen(false)} />
           </aside>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main column */}
+      <div className="flex-1 flex flex-col min-w-0 md:pl-[220px] min-h-screen">
+
         {/* Top Header */}
-        <header className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-[#09090b]/85 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between transition-colors duration-200 shadow-sm dark:shadow-none">
-          <div className="flex items-center gap-4">
-            <button 
+        <header className="h-14 px-4 sm:px-6 border-b border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between shadow-sm dark:shadow-none transition-colors duration-200 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
               onClick={() => setSidebarOpen(true)}
-              className="p-1.5 -ml-1.5 text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 md:hidden"
+              className="md:hidden p-1.5 rounded-lg text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer shrink-0"
             >
               <Menu className="w-5 h-5" />
             </button>
-
-            {/* Breadcrumb / Section Title */}
-            <div className="flex items-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">
-              <span className="text-zinc-400 dark:text-zinc-500">AUTOIN</span>
-              <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600" />
-              <span className="text-zinc-800 dark:text-zinc-200 font-bold">{title}</span>
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold min-w-0">
+              <span className="text-zinc-400 dark:text-zinc-500 shrink-0">AUTOIN</span>
+              <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-700 shrink-0" />
+              <span className="text-zinc-800 dark:text-zinc-200 font-bold truncate">{title}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle Button */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all cursor-pointer"
-              title={theme === 'dark' ? 'Aktifkan Mode Terang' : 'Aktifkan Mode Gelap'}
+              title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -358,52 +470,44 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
               <button
                 onClick={onRefresh}
                 className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all cursor-pointer"
-                title="Refresh Data"
+                title="Refresh"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
             )}
 
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setNotifOpen(!notifOpen)}
-                className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all relative cursor-pointer"
-                title="Notifikasi"
+                className="p-2 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-all cursor-pointer relative"
               >
                 <Bell className="w-4 h-4" />
                 {hasUnread && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />}
               </button>
-
               {notifOpen && (
                 <>
-                  <div className="fixed inset-0 z-40 cursor-default" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-xl dark:shadow-2xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100/80 dark:bg-zinc-950/60">
-                      <span className="text-[10px] font-extrabold text-zinc-700 dark:text-zinc-200 uppercase tracking-widest">Notifikasi</span>
+                  <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                  <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/60">
+                      <span className="text-[10px] font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-widest">Notifikasi</span>
                       {hasUnread && (
-                        <button 
-                          onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
-                          className="text-[10px] text-blue-600 dark:text-blue-400 font-bold hover:underline cursor-pointer"
-                        >
-                          Tandai semua dibaca
+                        <button onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} className="text-[10px] text-blue-500 font-bold hover:underline cursor-pointer">
+                          Tandai dibaca
                         </button>
                       )}
                     </div>
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-64 overflow-y-auto">
                       {notifications.map(n => (
-                        <div 
-                          key={n.id} 
-                          onClick={() => {
-                            setNotifications(notifications.map(item => item.id === n.id ? { ...item, read: true } : item));
-                            setNotifOpen(false);
-                          }}
-                          className={`p-3.5 flex flex-col gap-1 hover:bg-zinc-100 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
+                        <div
+                          key={n.id}
+                          onClick={() => { setNotifications(notifications.map(i => i.id === n.id ? { ...i, read: true } : i)); setNotifOpen(false); }}
+                          className={`px-4 py-3 flex flex-col gap-1 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className={`text-[11px] font-bold ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
-                            <span className="text-[9px] text-zinc-400">{n.time}</span>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className={`text-[11px] font-bold truncate ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
+                            <span className="text-[9px] text-zinc-400 shrink-0">{n.time}</span>
                           </div>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">{n.message}</p>
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug">{n.message}</p>
                         </div>
                       ))}
                     </div>
@@ -412,23 +516,111 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
               )}
             </div>
 
-            <div className="h-5 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block" />
-
-            {/* User display */}
-            <div className="hidden sm:flex items-center gap-2.5">
-              <div className="text-right">
-                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 leading-none">{user?.name ?? 'Admin'}</div>
-                <div className="text-[9px] text-zinc-400 dark:text-zinc-500 leading-none mt-1">Workspace Admin</div>
-              </div>
+            <div className="hidden sm:flex items-center gap-2 pl-1.5 border-l border-zinc-200 dark:border-zinc-800 ml-0.5">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold overflow-hidden">
+                    <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="text-right hidden lg:block">
+                    <div className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 leading-none">
+                      {formatDisplayName(user.name)}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <a
+                  href={GOOGLE_AUTH_URL}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-lg transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
+                >
+                  <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
+                  Masuk
+                </a>
+              )}
             </div>
           </div>
         </header>
 
-        {/* Content body */}
-        <main className={noPadding ? 'flex-1 flex flex-col overflow-hidden' : 'flex-1 py-8 px-6 md:px-8 max-w-7xl mx-auto w-full relative transition-colors duration-200'}>
+        {/* Content Body */}
+        <main className={
+          noPadding
+            ? 'flex-1 flex flex-col overflow-hidden'
+            : 'flex-1 py-5 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full relative'
+        }>
+          {announcement && (
+            <div className={`mb-6 p-4 rounded-2xl border text-xs font-bold flex items-center justify-between gap-3 shadow-xs ${announcement.type === 'success'
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450'
+                : announcement.type === 'warning'
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-450'
+                  : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-450'
+              }`}>
+              <div className="flex items-center gap-2">
+                <Bell className="w-4.5 h-4.5 shrink-0" />
+                <span>{announcement.text}</span>
+              </div>
+            </div>
+          )}
           {children}
         </main>
+
+        {/* Universal Footer */}
+        <footer className="hidden md:flex w-full h-14 px-6 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] shrink-0 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-sm flex items-center justify-center bg-zinc-50 dark:bg-zinc-900">
+              <img src="/autoin-logo.webp" alt="AUTOIN" className="w-full h-full object-cover" />
+            </div>
+            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 tracking-wider">AUTOIN</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-mono">v2.0.0</span>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+            <span>Crafted by</span>
+            <a href="https://yrizzz.my.id" target="_blank" rel="noopener noreferrer" className="font-extrabold text-blue-600 dark:text-blue-400 hover:underline">YrizzzDev</a>
+            <span>·</span>
+            <span>Built with</span>
+            <Heart className="w-3 h-3 text-red-500 fill-current mx-0.5" />
+            <span>in Indonesia</span>
+          </div>
+        </footer>
+
+        {/* Mobile bottom nav spacer inside main column */}
+        <div className="md:hidden h-24 shrink-0" />
       </div>
+
+      {/* Mobile Bottom Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-[#09090b]/95 backdrop-blur-md border-t border-zinc-200 dark:border-zinc-800 px-2 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around h-[72px]">
+          {mobileNav.map(item => {
+            const Icon = item.icon;
+            const active = activePage === item.id;
+            if (item.id === 'sidebar') {
+              return (
+                <button
+                  key="sidebar"
+                  onClick={() => setSidebarOpen(true)}
+                  className="flex flex-col items-center justify-center w-16 h-full py-1 cursor-pointer"
+                >
+                  <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-blue-600 text-white' : 'text-zinc-400'}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <span className={`text-[9px] font-bold mt-1.5 ${active ? 'text-blue-600' : 'text-zinc-450 dark:text-zinc-400'}`}>{item.label}</span>
+                </button>
+              );
+            }
+            return (
+              <a
+                key={item.id}
+                href={item.href}
+                className="flex flex-col items-center justify-center w-16 h-full py-1"
+              >
+                <div className={`p-1.5 rounded-xl transition-all ${active ? 'bg-blue-600 shadow-sm shadow-blue-500/30' : ''}`}>
+                  <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-zinc-400'}`} />
+                </div>
+                <span className={`text-[9px] font-bold mt-1.5 ${active ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-450 dark:text-zinc-400'}`}>{item.label}</span>
+              </a>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }

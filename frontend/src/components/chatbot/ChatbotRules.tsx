@@ -206,27 +206,26 @@ export default function ChatbotRules() {
                 </div>
                 <div className="space-y-1.5 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs font-extrabold text-blue-600 dark:text-blue-400 bg-blue-500/[0.06] border border-blue-500/10 px-2.5 py-0.5 rounded-lg">
+                    <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-lg badge-gradient">
                       IF: "{rule.trigger}"
                     </span>
-                    <span className="px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 text-[9px] font-extrabold uppercase">
+                    <span className="px-2 py-0.5 rounded text-[9px] font-extrabold uppercase badge-gradient">
                       {MATCH_LABELS[rule.match_type] ?? rule.match_type}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                      rule.platform === 'whatsapp' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                      'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400'
+                      rule.platform === 'whatsapp' ? 'badge-emerald-gradient' : 'badge-gradient'
                     }`}>
                       {rule.platform === 'all' ? 'Semua' : rule.platform}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                      rule.reply_type === 'quote' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                      rule.reply_type === 'quote' ? 'badge-purple-gradient' : 'badge-amber-gradient'
                     }`}>
                       {rule.reply_type === 'quote' ? 'Reply / Quote' : 'Balas Biasa'}
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                      rule.prefix === 'none' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
-                      rule.prefix === 'any' ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400' :
-                      'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                      rule.prefix === 'none' ? 'badge-rose-gradient' :
+                      rule.prefix === 'any' ? 'badge-gradient' :
+                      'badge-purple-gradient'
                     }`}>
                       Prefix: {rule.prefix === 'any' ? 'Bebas' : rule.prefix === 'none' ? 'Tanpa Prefix' : `"${rule.prefix}"`}
                     </span>

@@ -177,21 +177,21 @@ export default function Dashboard() {
 
   // Render dummy analytic data if backend returns empty arrays
   const finalBcAnalytic = broadcastsAnalytic.length > 0 ? broadcastsAnalytic : [
-    { date: 'Mon', total: 4, sent: 4 },
-    { date: 'Tue', total: 8, sent: 7 },
-    { date: 'Wed', total: 5, sent: 5 },
-    { date: 'Thu', total: 12, sent: 11 },
-    { date: 'Fri', total: 9, sent: 8 },
-    { date: 'Sat', total: 15, sent: 14 },
-    { date: 'Sun', total: 20, sent: 19 },
+    { date: 'Mon', total: 0, sent: 0 },
+    { date: 'Tue', total: 0, sent: 0 },
+    { date: 'Wed', total: 0, sent: 0 },
+    { date: 'Thu', total: 0, sent: 0 },
+    { date: 'Fri', total: 0, sent: 0 },
+    { date: 'Sat', total: 0, sent: 0 },
+    { date: 'Sun', total: 0, sent: 0 },
   ];
 
   // Render dummy channel analytics if empty
   const finalChAnalytic = channelsAnalytic.length > 0 ? channelsAnalytic : channels.map(c => ({
     channel: { id: c.id, name: c.name, platform: c.platform },
-    total: 15,
-    success: 14,
-    success_rate: 93.3
+    total: 0,
+    success: 0,
+    success_rate: 0
   }));
 
   // Max value for y-axis calculation on chart
@@ -493,7 +493,7 @@ export default function Dashboard() {
                   <div className="flex-1 flex flex-col items-center justify-center py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-950/20">
                     <Globe className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mb-3" />
                     <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-4">Belum ada channel terhubung</p>
-                    <a href="/channels" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    <a href="/channels" className="bg-gradient-brand hover:opacity-95 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
                       + Tambah Channel
                     </a>
                   </div>
@@ -540,7 +540,7 @@ export default function Dashboard() {
                   <div className="flex-1 flex flex-col items-center justify-center py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/50 dark:bg-zinc-950/20">
                     <Layers className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mb-3" />
                     <p className="text-zinc-500 dark:text-zinc-400 text-sm mb-4">Belum ada broadcast terkirim</p>
-                    <a href="/broadcast" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                    <a href="/broadcast" className="bg-gradient-brand hover:opacity-95 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-all">
                       Kirim Broadcast Pertama
                     </a>
                   </div>
@@ -761,19 +761,19 @@ function platformIcon(platform: string): string {
 }
 
 function statusBadgeStyle(status: string): string {
-  if (status === 'active') return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/25';
-  if (status === 'error')  return 'bg-red-500/10 text-red-400 border-red-500/25';
-  return 'bg-white/5 text-white/40 border-white/10';
+  if (status === 'active') return 'badge-emerald-gradient';
+  if (status === 'error')  return 'badge-rose-gradient';
+  return 'badge-gradient';
 }
 
 function broadcastStatusBadge(status: string): string {
   const m: Record<string, string> = {
-    sent:      'bg-emerald-500/10 text-emerald-400 border-emerald-500/25',
-    failed:    'bg-red-500/10 text-red-400 border-red-500/25',
-    scheduled: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/25',
-    queued:    'bg-blue-500/10 text-blue-400 border-blue-500/25',
-    sending:   'bg-blue-500/10 text-blue-400 border-blue-500/25 animate-pulse',
-    draft:     'bg-white/5 text-white/40 border-white/10',
+    sent:      'badge-emerald-gradient',
+    failed:    'badge-rose-gradient',
+    scheduled: 'badge-amber-gradient',
+    queued:    'badge-gradient',
+    sending:   'badge-gradient animate-pulse',
+    draft:     'badge-gradient',
   };
-  return m[status] ?? 'bg-white/5 text-white/40 border-white/10';
+  return m[status] ?? 'badge-gradient';
 }
