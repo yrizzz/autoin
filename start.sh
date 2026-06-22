@@ -32,6 +32,11 @@ echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # ── Bersihkan proses lama ─────────────────────────────────
+# Kill any stale WA service instances first to avoid WA session conflicts
+pkill -f "node.*whatsapp-service.*index.js" 2>/dev/null || true
+pkill -f "node --watch" 2>/dev/null || true
+sleep 1
+
 for PORT in 8000 4321 3001; do
   OLD_PID=$(lsof -ti tcp:$PORT 2>/dev/null)
   if [ -n "$OLD_PID" ]; then
