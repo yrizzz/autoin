@@ -81,4 +81,15 @@ class BillingController extends Controller
 
         return response()->json($sub, 201);
     }
+
+    public function subscribers(Request $request)
+    {
+        abort_if($request->user()->email !== 'Arisedyhandoko@gmail.com', 403, 'Unauthorized. Admin access only.');
+
+        $users = \App\Models\User::with(['subscription'])
+            ->withCount(['channels', 'chatbotRules', 'webhooks'])
+            ->get();
+
+        return response()->json($users);
+    }
 }

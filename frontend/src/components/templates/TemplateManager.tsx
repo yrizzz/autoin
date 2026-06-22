@@ -6,7 +6,7 @@ interface Template {
   id: string;
   title: string;
   content: string;
-  platform: 'all' | 'whatsapp' | 'telegram' | 'discord' | 'email';
+  platform: 'all' | 'whatsapp';
   createdAt: string;
 }
 
@@ -17,13 +17,6 @@ const DEFAULT_TEMPLATES: Template[] = [
     content: 'Halo {{nama}},\n\nIni adalah pengingat bahwa tagihan Anda sebesar {{tagihan}} akan jatuh tempo pada {{tanggal}}.\n\nSilakan lakukan pembayaran segera melalui link berikut: {{link}}.\n\nTerima kasih!',
     platform: 'whatsapp',
     createdAt: '2026-06-20T10:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'Welcome Message Telegram',
-    content: 'Selamat bergabung di channel kami, {{username}}!\n\nDapatkan informasi terupdate seputar promo dan diskon menarik setiap harinya.\n\nKetik /help untuk melihat daftar perintah.',
-    platform: 'telegram',
-    createdAt: '2026-06-19T15:30:00Z',
   },
   {
     id: '3',
@@ -40,11 +33,15 @@ export default function TemplateManager() {
   const [activePlatform, setActivePlatform] = useState<string>('all');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+
+  // Custom delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [templateToDelete, setTemplateToDelete] = useState<Template | null>(null);
   
   // Form states
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [platform, setPlatform] = useState<'all' | 'whatsapp' | 'telegram' | 'discord' | 'email'>('all');
+  const [platform, setPlatform] = useState<'all' | 'whatsapp'>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -103,10 +100,19 @@ export default function TemplateManager() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus template ini?')) {
-      const updated = templates.filter(t => t.id !== id);
-      saveToStorage(updated);
+    const t = templates.find(item => item.id === id);
+    if (t) {
+      setTemplateToDelete(t);
+      setDeleteConfirmOpen(true);
     }
+  };
+
+  const confirmDeleteTemplate = () => {
+    if (!templateToDelete) return;
+    const updated = templates.filter(t => t.id !== templateToDelete.id);
+    saveToStorage(updated);
+    setDeleteConfirmOpen(false);
+    setTemplateToDelete(null);
   };
 
   const insertVariable = (variable: string) => {
@@ -139,7 +145,7 @@ export default function TemplateManager() {
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer shrink-0"
+          className="btn-primary flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer shrink-0"
         >
           <Plus className="w-4 h-4" />
           Template Baru
@@ -149,7 +155,7 @@ export default function TemplateManager() {
       {/* Tabs and Search */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-1.5 p-1 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800/80 rounded-xl w-full md:w-auto overflow-x-auto">
-          {['all', 'whatsapp', 'telegram', 'discord', 'email'].map((p) => (
+          {['all', 'whatsapp'].map((p) => (
             <button
               key={p}
               onClick={() => setActivePlatform(p)}
@@ -197,14 +203,8 @@ export default function TemplateManager() {
               <div>
                 <div className="flex items-center justify-between gap-2 mb-3">
                   <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">{t.title}</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                    t.platform === 'whatsapp' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                    t.platform === 'telegram' ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' :
-                    t.platform === 'discord' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' :
-                    t.platform === 'email' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                    'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400'
-                  }`}>
-                    {t.platform}
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase bg-emerald-500/10 text-emerald-600 dark:text-emerald-400`}>
+                    WhatsApp
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-4 whitespace-pre-wrap font-sans bg-zinc-50 dark:bg-zinc-900/40 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800/30">
@@ -288,9 +288,6 @@ export default function TemplateManager() {
                   >
                     <option value="all">Semua Platform</option>
                     <option value="whatsapp">WhatsApp</option>
-                    <option value="telegram">Telegram</option>
-                    <option value="discord">Discord</option>
-                    <option value="email">Email</option>
                   </select>
                 </div>
               </div>
@@ -341,12 +338,43 @@ export default function TemplateManager() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer"
+                  className="btn-primary px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer"
                 >
                   Simpan Template
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Hapus Template</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus template <strong>{templateToDelete?.title}</strong>? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmOpen(false); setTemplateToDelete(null); }}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTemplate}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 transition-all cursor-pointer"
+              >
+                Hapus
+              </button>
+            </div>
           </div>
         </div>
       )}

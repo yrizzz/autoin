@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { api } from '../../lib/api';
 import type { Channel } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
@@ -6,15 +6,9 @@ import {
   Send, Sparkles, Check, AlertCircle, MessageSquare, Globe,
   Loader2, Bookmark, Image as ImageIcon, Video, FileText, Plus,
   Trash2, Paperclip, Upload, X, Calendar, Clock, Users, Search,
-  Phone, Hash, UserCheck,
+  Phone, Hash, UserCheck, Wand2, Lightbulb, Copy, CheckCircle2,
+  HelpCircle, ArrowRight,
 } from 'lucide-react';
-
-const AI_TEMPLATES = {
-  formal:       { label: 'Formal',          emoji: '💼', rewrite: (t: string) => `Yth. Pelanggan,\n\nDengan hormat, kami ingin menyampaikan bahwa: ${t}\n\nTerima kasih atas perhatian dan kerja sama Anda.\n\nHormat kami,\nTim Layanan Autoin` },
-  santai:       { label: 'Santai',          emoji: '🥤', rewrite: (t: string) => `Halo guys! 👋\n\nAda info seru nih buat kalian: ${t}\n\nJangan lupa kepoin terus ya! Have a great day! ✨` },
-  marketing:    { label: 'Marketing / Promo', emoji: '🔥', rewrite: (t: string) => `🔥 PROMO KHUSUS HARI INI! 🔥\n\nKabar gembira! ${t}\n\n⚡ Slot Terbatas! Klik link di bio sekarang juga sebelum kehabisan! ⚡` },
-  professional: { label: 'Professional',    emoji: '📈', rewrite: (t: string) => `Rekan Bisnis,\n\nKami menginformasikan perkembangan terbaru mengenai: ${t}\n\nSilakan tinjau detail lengkap pada tautan yang tersedia.\n\nSalam,\nAutoin Operations` },
-};
 
 interface Recipient { id: string; name: string; phone?: string; type: 'contact' | 'group'; }
 
@@ -38,20 +32,25 @@ function avatarColor(id: string) {
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
+function parseWhatsAppFormatting(text: string): string {
+  if (!text) return '';
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  html = html.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+  html = html.replace(/_(.*?)_/g, '<em>$1</em>');
+  html = html.replace(/~(.*?)~/g, '<del>$1</del>');
+  html = html.replace(/```(.*?)```/gs, '<code class="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-[11px]">$1</code>');
+  html = html.replace(/\n/g, '<br />');
+  return html;
+}
+
 function PlatformIcon({ platform, className = 'w-5 h-5' }: { platform: string; className?: string }) {
   if (platform === 'whatsapp') return (
     <svg className={`${className} text-emerald-500`} viewBox="0 0 24 24" fill="currentColor">
       <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.465 5.215L2 22l4.928-1.412A9.97 9.97 0 0012.004 22c5.524 0 10.004-4.48 10.004-10.004C22.008 6.48 17.528 2 12.004 2zm0 18.008c-1.67 0-3.238-.456-4.6-1.25L4.4 19.6l.858-2.928a8.004 8.004 0 116.746 3.336zM15.908 13.4c-.22-.11-1.3-.642-1.503-.715-.2-.074-.347-.11-.495.11-.147.22-.57.715-.7.863-.128.147-.257.165-.477.055a6.002 6.002 0 01-1.77-1.093c-.633-.564-1.062-1.26-1.186-1.48-.124-.22-.013-.34.097-.45.1-.1.22-.257.33-.385.11-.128.147-.22.22-.367.073-.147.037-.275-.018-.385-.055-.11-.495-1.193-.68-1.637-.18-.433-.36-.374-.495-.38l-.42-.008c-.147 0-.386.055-.588.275-.2.22-.77.752-.77 1.834 0 1.082.788 2.128.9 2.275.11.147 1.55 2.365 3.755 3.318.524.226.934.362 1.254.464.526.167 1.004.143 1.382.087.42-.062 1.3-.532 1.485-1.046.183-.513.183-.953.128-1.046-.055-.093-.202-.147-.422-.257z" />
-    </svg>
-  );
-  if (platform === 'telegram') return (
-    <svg className={`${className} text-sky-500`} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.16 1.56-.86 5.72-1.22 7.64-.15.81-.45 1.08-.74 1.1-.63.06-1.11-.41-1.72-.8-1-.62-1.55-1-2.52-1.64-1.12-.74-.39-1.14.24-1.8.17-.17 3.08-2.83 3.14-3.09.01-.03.01-.16-.07-.22-.08-.07-.2-.05-.28-.03-.12.02-2.03 1.28-5.73 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.4-.27-2.08-.5-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 4-1.74 6.67-2.88 8.01-3.43 3.81-1.56 4.6-1.83 5.12-1.84.11 0 .37.03.54.17.14.12.18.28.2.44-.02.07-.02.14-.03.22z" />
-    </svg>
-  );
-  if (platform === 'discord') return (
-    <svg className={`${className} text-indigo-500`} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19.27 4.73a16.1 16.1 0 00-3.97-1.23.08.08 0 00-.08.04 11.23 11.23 0 00-.5 1.02.08.08 0 00.07.12 14.88 14.88 0 014.58 0 .08.08 0 00.07-.12 11.24 11.24 0 00-.5-1.02.08.08 0 00-.08-.04 16.09 16.09 0 00-3.97 1.23.07.07 0 00-.03.03 15.22 15.22 0 00-.32 1.34.07.07 0 00.07.08 14.3 14.3 0 004.9-.44.07.07 0 00.04-.06 18.06 18.06 0 00-1.89-6.3.07.07 0 00-.06-.04 16.22 16.22 0 00-4.8 1.48.08.08 0 00-.03.05c-.32.55-.66 1.13-.93 1.73a.08.08 0 01-.14 0c-.27-.6-.6-1.18-.93-1.73a.08.08 0 00-.03-.05 16.22 16.22 0 00-4.8-1.48.07.07 0 00-.06.04 18.06 18.06 0 00-1.89 6.3.07.07 0 00.04.06 14.3 14.3 0 004.9.44.07.07 0 00.07-.08 15.22 15.22 0 00-.32-1.34.07.07 0 00-.03-.03zM8.52 14.85c-.9 0-1.63-.82-1.63-1.83 0-1.02.72-1.83 1.63-1.83.91 0 1.64.82 1.64 1.83 0 1.01-.72 1.83-1.64 1.83zm6.96 0c-.9 0-1.63-.82-1.63-1.83 0-1.02.72-1.83 1.63-1.83.91 0 1.64.82 1.64 1.83 0 1.01-.72 1.83-1.64 1.83z" />
     </svg>
   );
   return <Globe className={`${className} text-zinc-500`} />;
@@ -96,10 +95,8 @@ function RecipientModal({
     }
   }
 
-  const platformLabel = channel.platform === 'whatsapp' ? 'WhatsApp' : 'Telegram';
-  const platformColor = channel.platform === 'whatsapp'
-    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
-    : 'bg-sky-50 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-200 dark:border-sky-500/20';
+  const platformLabel = 'WhatsApp';
+  const platformColor = 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm">
@@ -158,7 +155,7 @@ function RecipientModal({
               <button key={t.id} type="button" onClick={() => { setTab(t.id); setSearch(''); }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   tab === t.id
-                    ? 'bg-blue-600 text-white shadow-sm'
+                    ? 'tab-active'
                     : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-800 dark:hover:text-zinc-200'
                 }`}>
                 <t.icon className="w-3.5 h-3.5" />
@@ -304,6 +301,38 @@ function RecipientModal({
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function BroadcastCreate() {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  function applyFormat(type: 'bold' | 'italic' | 'strike' | 'code') {
+    const el = textareaRef.current;
+    if (!el) return;
+
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    const text = el.value;
+
+    let prefix = '';
+    let suffix = '';
+
+    if (type === 'bold') { prefix = '*'; suffix = '*'; }
+    else if (type === 'italic') { prefix = '_'; suffix = '_'; }
+    else if (type === 'strike') { prefix = '~'; suffix = '~'; }
+    else if (type === 'code') { prefix = '```'; suffix = '```'; }
+
+    const selectedText = text.substring(start, end);
+    const before = text.substring(0, start);
+    const after = text.substring(end);
+
+    const newContent = before + prefix + selectedText + suffix + after;
+    setContent(newContent);
+
+    // Refocus and select the newly formatted text
+    setTimeout(() => {
+      el.focus();
+      el.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
+    }, 0);
+  }
+
   const [channels, setChannels]           = useState<Channel[]>([]);
   const [selectedChannels, setSelectedChannels] = useState<number[]>([]);
   const [recipientState, setRecipientState] = useState<Record<number, ChannelRecipientState>>({});
@@ -321,15 +350,29 @@ export default function BroadcastCreate() {
   const [inputUrl, setInputUrl]           = useState('');
   const [uploading, setUploading]         = useState(false);
 
-  const [aiTone, setAiTone]               = useState<keyof typeof AI_TEMPLATES | null>(null);
+  const [aiTone, setAiTone]               = useState<string | null>(null);
   const [aiGenerating, setAiGenerating]   = useState(false);
+  const [aiTab, setAiTab]                 = useState<'rewrite' | 'generate' | 'optimize'>('rewrite');
+  const [isSimulatedInfo, setIsSimulatedInfo] = useState<boolean | null>(null);
+
+  // AI Generator States
+  const [aiGenType, setAiGenType]         = useState<'promo' | 'announcement' | 'reminder' | 'caption'>('promo');
+  const [aiGenContext, setAiGenContext]   = useState('');
+  const [aiGenResult, setAiGenResult]     = useState('');
+  const [aiGenLoading, setAiGenLoading]   = useState(false);
+
+  // AI Optimizer States
+  const [aiOptSuggestions, setAiOptSuggestions] = useState<string[]>([]);
+  const [aiOptResult, setAiOptResult]     = useState('');
+  const [aiOptLoading, setAiOptLoading]   = useState(false);
+  const [showOptResult, setShowOptResult] = useState(false);
 
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templates, setTemplates]         = useState<Array<{ id: string; title: string; content: string; platform: string }>>([]);
 
   useEffect(() => {
     api.get<Channel[]>('/api/channels').then(chs =>
-      setChannels(chs.filter(c => c.status === 'active'))
+      setChannels(chs.filter(c => c.status === 'active' && c.platform === 'whatsapp'))
     );
   }, []);
 
@@ -365,27 +408,10 @@ export default function BroadcastCreate() {
             api.get<{ groups: any[] }>(`/api/whatsapp/${id}/groups`).catch(() => ({ groups: [] })),
           ]);
           const contacts: Recipient[] = (cRes.contacts || [])
-            .filter((c: any) => c.id?.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+            .filter((c: any) => c.id && (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@'))
             .map((c: any) => ({ id: c.id, name: c.name || c.id.split('@')[0], phone: `+${c.id.split('@')[0]}`, type: 'contact' as const }));
           const groups: Recipient[] = (gRes.groups || [])
             .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
-          items = [...contacts, ...groups];
-        } else if (ch.platform === 'telegram') {
-          const [cRes, gRes] = await Promise.all([
-            api.get<{ contacts: any[] }>(`/api/telegram/${id}/contacts`).catch(() => ({ contacts: [] })),
-            api.get<{ groups: any[] }>(`/api/telegram/${id}/groups`).catch(() => ({ groups: [] })),
-          ]);
-          const contacts: Recipient[] = (cRes.contacts || []).map((c: any) => ({
-            id: String(c.id),
-            name: [c.firstName, c.lastName].filter(Boolean).join(' ') || c.username || String(c.id),
-            phone: c.phone ? `+${c.phone}` : undefined,
-            type: 'contact' as const,
-          }));
-          const groups: Recipient[] = (gRes.groups || []).map((g: any) => ({
-            id: String(g.id),
-            name: g.title || g.name || String(g.id),
-            type: 'group' as const,
-          }));
           items = [...contacts, ...groups];
         }
 
@@ -504,10 +530,58 @@ export default function BroadcastCreate() {
     }
   }
 
-  const handleAiRewrite = (tone: keyof typeof AI_TEMPLATES) => {
-    if (!content.trim()) { alert('Tulis pesan terlebih dahulu!'); return; }
-    setAiTone(tone); setAiGenerating(true);
-    setTimeout(() => { setContent(AI_TEMPLATES[tone].rewrite(content)); setAiGenerating(false); setAiTone(null); }, 900);
+  const handleAiRewrite = async (tone: string) => {
+    if (!content.trim()) { alert('Tulis draf pesan di editor utama terlebih dahulu!'); return; }
+    setAiTone(tone);
+    setAiGenerating(true);
+    try {
+      const res = await api.post<{ rewritten: string; is_simulated: boolean }>('/api/ai/rewrite', {
+        content,
+        tone,
+      });
+      setContent(res.rewritten);
+      setIsSimulatedInfo(res.is_simulated);
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal memproses gaya bahasa.');
+    } finally {
+      setAiGenerating(false);
+      setAiTone(null);
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!aiGenContext.trim()) { alert('Masukkan konsep / konteks pesan terlebih dahulu!'); return; }
+    setAiGenLoading(true);
+    try {
+      const res = await api.post<{ generated: string; is_simulated: boolean }>('/api/ai/generate', {
+        type: aiGenType,
+        context: aiGenContext,
+      });
+      setAiGenResult(res.generated);
+      setIsSimulatedInfo(res.is_simulated);
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal membuat pesan.');
+    } finally {
+      setAiGenLoading(false);
+    }
+  };
+
+  const handleAiOptimize = async () => {
+    if (!content.trim()) { alert('Tulis draf pesan di editor utama terlebih dahulu!'); return; }
+    setAiOptLoading(true);
+    try {
+      const res = await api.post<{ suggestions: string[]; optimized: string; is_simulated: boolean }>('/api/ai/optimize', {
+        content,
+      });
+      setAiOptSuggestions(res.suggestions);
+      setAiOptResult(res.optimized);
+      setIsSimulatedInfo(res.is_simulated);
+      setShowOptResult(true);
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal mengoptimalkan pesan.');
+    } finally {
+      setAiOptLoading(false);
+    }
   };
 
   const minDateTime = new Date(Date.now() + 60_000).toISOString().slice(0, 16);
@@ -596,8 +670,27 @@ export default function BroadcastCreate() {
                   </div>
                 </div>
               </div>
+              
+              {/* Formatting Toolbar */}
+              <div className="flex items-center gap-1.5 pb-2 mb-2 border-b border-zinc-100 dark:border-zinc-800/80">
+                <button type="button" onClick={() => applyFormat('bold')} className="w-8 h-8 flex items-center justify-center text-xs font-bold text-zinc-600 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer" title="Tebal (Bold)">
+                  B
+                </button>
+                <button type="button" onClick={() => applyFormat('italic')} className="w-8 h-8 flex items-center justify-center text-xs italic text-zinc-650 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer" title="Miring (Italic)">
+                  I
+                </button>
+                <button type="button" onClick={() => applyFormat('strike')} className="w-8 h-8 flex items-center justify-center text-xs line-through text-zinc-650 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer" title="Coret (Strikethrough)">
+                  S
+                </button>
+                <button type="button" onClick={() => applyFormat('code')} className="px-2 h-8 flex items-center justify-center text-[10px] font-mono text-zinc-650 dark:text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-all cursor-pointer" title="Monospace">
+                  &lt;/&gt;
+                </button>
+                <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500 select-none">Tips: Blok/sorot kata lalu klik tombol format</span>
+              </div>
+
               <div className="relative">
-                <textarea value={content} onChange={e => setContent(e.target.value)}
+                <textarea ref={textareaRef} value={content} onChange={e => setContent(e.target.value)}
                   placeholder="Tulis detail promosi, pengumuman, atau notifikasi kamu di sini..."
                   rows={8}
                   className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-3.5 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed" />
@@ -727,24 +820,280 @@ export default function BroadcastCreate() {
             )}
           </div>
 
-          {/* AI */}
-          <div className="bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100">AI Assistant Rewrite v1</h3>
+          {/* ASISTEN AI PENULISAN */}
+          <div className="bg-gradient-to-br from-white to-zinc-50/50 dark:from-zinc-900 dark:to-zinc-950/50 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 shadow-sm space-y-6 relative overflow-hidden">
+            
+            {/* Decorative background glow */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center border border-blue-100 dark:border-blue-500/20">
+                  <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100">Asisten Penulisan AI</h3>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5">Tulis pesan lebih menarik, profesional, & berkonversi tinggi</p>
+                </div>
+              </div>
+
+              {isSimulatedInfo !== null && (
+                <div className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 shrink-0 ${
+                  isSimulatedInfo 
+                    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20' 
+                    : 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSimulatedInfo ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                  {isSimulatedInfo ? 'AI Demo Simulator' : 'OpenAI Live'}
+                </div>
+              )}
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4 leading-relaxed">
-              Tulis draf kasar pesanmu di atas, lalu pilih tone gaya bahasa di bawah untuk format otomatis.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {(Object.keys(AI_TEMPLATES) as Array<keyof typeof AI_TEMPLATES>).map(key => (
-                <button key={key} type="button" onClick={() => handleAiRewrite(key)}
-                  disabled={aiGenerating || !content.trim()}
-                  className="flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-white dark:bg-zinc-950 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 font-medium transition-all disabled:opacity-40 cursor-pointer">
-                  <span>{AI_TEMPLATES[key].emoji}</span><span>{AI_TEMPLATES[key].label}</span>
+
+            {/* Tabs Selector */}
+            <div className="flex p-1 bg-zinc-100 dark:bg-zinc-950 rounded-xl border border-zinc-200/50 dark:border-zinc-800/80">
+              <button 
+                type="button" 
+                onClick={() => setAiTab('rewrite')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  aiTab === 'rewrite' 
+                    ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm' 
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Wand2 className="w-3.5 h-3.5" />
+                Ubah Gaya Bahasa
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setAiTab('generate')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  aiTab === 'generate' 
+                    ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm' 
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Buat dari Konsep
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setAiTab('optimize')}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  aiTab === 'optimize' 
+                    ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm' 
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Lightbulb className="w-3.5 h-3.5" />
+                Audit & Optimalkan
+              </button>
+            </div>
+
+            {/* TAB CONTENT: REWRITE */}
+            {aiTab === 'rewrite' && (
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Tulis draf kasar pesanmu di editor utama di atas, lalu pilih gaya bahasa di bawah untuk memformat ulang secara otomatis dengan bantuan AI.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {[
+                    { id: 'marketing',    label: 'Marketing',    emoji: '🔥' },
+                    { id: 'formal',       label: 'Formal',       emoji: '💼' },
+                    { id: 'santai',       label: 'Santai',       emoji: '🥤' },
+                    { id: 'professional', label: 'Profesional',  emoji: '📈' },
+                    { id: 'urgent',       label: 'Mendesak',     emoji: '🚨' },
+                    { id: 'friendly',     label: 'Ramah',        emoji: '🤗' },
+                  ].map(tone => (
+                    <button 
+                      key={tone.id} 
+                      type="button" 
+                      onClick={() => handleAiRewrite(tone.id)}
+                      disabled={aiGenerating || !content.trim()}
+                      className="flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-white dark:bg-zinc-950 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-zinc-200 dark:border-zinc-800/80 text-xs text-zinc-700 dark:text-zinc-300 font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer group shadow-sm hover:border-blue-300 dark:hover:border-blue-500/30"
+                    >
+                      <span className="text-sm group-hover:scale-110 transition-transform">{tone.emoji}</span>
+                      <span>{tone.label}</span>
+                    </button>
+                  ))}
+                </div>
+                {aiGenerating && (
+                  <div className="flex items-center justify-center gap-2 p-3 bg-blue-500/5 dark:bg-blue-500/10 border border-blue-200/20 rounded-xl animate-pulse">
+                    <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+                    <span className="text-xs text-blue-600 dark:text-blue-400 font-semibold">AI sedang memoles pesan dengan gaya {aiTone}...</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: GENERATE */}
+            {aiTab === 'generate' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Pilih Tipe Pesan</label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'promo',        label: 'Promo 🔥' },
+                      { id: 'announcement', label: 'Pengumuman 📢' },
+                      { id: 'reminder',     label: 'Reminder ⏰' },
+                      { id: 'caption',      label: 'Caption ✨' },
+                    ].map(t => (
+                      <button 
+                        key={t.id} 
+                        type="button" 
+                        onClick={() => setAiGenType(t.id as any)}
+                        className={`py-2 px-2.5 rounded-lg border text-xs font-semibold text-center transition-all cursor-pointer ${
+                          aiGenType === t.id 
+                            ? 'bg-blue-500 text-white border-blue-500 shadow-sm' 
+                            : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Jelaskan Konsep / Isi Pesan</label>
+                  <textarea 
+                    value={aiGenContext} 
+                    onChange={e => setAiGenContext(e.target.value)}
+                    placeholder="Contoh: diskon baju muslim 30% menyambut ramadhan, gratis ongkir, kode kupon RAMADHAN30, khusus hari ini..."
+                    rows={3}
+                    className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed" 
+                  />
+                </div>
+
+                <button 
+                  type="button"
+                  onClick={handleAiGenerate}
+                  disabled={aiGenLoading || !aiGenContext.trim()}
+                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/10"
+                >
+                  {aiGenLoading ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Sedang Membuat Draft...</span></>
+                  ) : (
+                    <><Sparkles className="w-3.5 h-3.5" /><span>Tulis Pesan dengan AI</span></>
+                  )}
                 </button>
-              ))}
-            </div>
+
+                {aiGenResult && (
+                  <div className="space-y-3 p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-xl relative">
+                    <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
+                      <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Hasil Generate AI
+                      </span>
+                      <div className="flex gap-1">
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(aiGenResult);
+                            alert('Salin sukses!');
+                          }}
+                          className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded cursor-pointer transition-all"
+                          title="Salin ke Clipboard"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                      {aiGenResult}
+                    </p>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setContent(aiGenResult);
+                        alert('Pesan telah diterapkan ke editor utama!');
+                      }}
+                      className="w-full py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                    >
+                      <span>Terapkan ke Editor Pesan</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB CONTENT: OPTIMIZE */}
+            {aiTab === 'optimize' && (
+              <div className="space-y-4">
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  Kirim pesan yang sudah kamu tulis ke AI untuk di-audit dan dianalisis. AI akan memberikan tips perbaikan dan teks yang dioptimalkan.
+                </p>
+
+                <button 
+                  type="button"
+                  onClick={handleAiOptimize}
+                  disabled={aiOptLoading || !content.trim()}
+                  className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-zinc-300 dark:disabled:bg-zinc-800 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm shadow-blue-500/10"
+                >
+                  {aiOptLoading ? (
+                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span>Sedang Menganalisis...</span></>
+                  ) : (
+                    <><Lightbulb className="w-3.5 h-3.5" /><span>Audit & Optimalkan Sekarang</span></>
+                  )}
+                </button>
+
+                {showOptResult && (
+                  <div className="space-y-4">
+                    {/* Suggestions list */}
+                    {aiOptSuggestions.length > 0 && (
+                      <div className="p-4 bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800 rounded-xl space-y-2">
+                        <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider block mb-1">
+                          💡 Saran Perbaikan Dari AI:
+                        </span>
+                        <ul className="space-y-1.5">
+                          {aiOptSuggestions.map((suggestion, idx) => (
+                            <li key={idx} className="text-xs text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                              <span className="text-amber-500 shrink-0 mt-0.5">•</span>
+                              <span>{suggestion}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Optimized message preview */}
+                    {aiOptResult && (
+                      <div className="p-4 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between pb-2 border-b border-zinc-100 dark:border-zinc-800/60">
+                          <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Hasil Optimasi AI
+                          </span>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(aiOptResult);
+                              alert('Salin sukses!');
+                            }}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded cursor-pointer transition-all"
+                            title="Salin ke Clipboard"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
+                          {aiOptResult}
+                        </p>
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            setContent(aiOptResult);
+                            alert('Pesan utama telah diperbarui dengan versi optimasi!');
+                          }}
+                          className="w-full py-2 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1"
+                        >
+                          <span>Ganti dengan Versi Optimasi</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -778,7 +1127,7 @@ export default function BroadcastCreate() {
                   const isChecked = selectedChannels.includes(ch.id);
                   const state = recipientState[ch.id];
                   const totalSelected = state?.selected.size ?? 0;
-                  const supportsRecipients = ch.platform === 'whatsapp' || ch.platform === 'telegram';
+                  const supportsRecipients = ch.platform === 'whatsapp';
 
                   return (
                     <div key={ch.id} className={`rounded-2xl border transition-all overflow-hidden ${
@@ -830,6 +1179,62 @@ export default function BroadcastCreate() {
             )}
           </div>
 
+          {/* WhatsApp Live Preview */}
+          <div className="bg-[#e5ddd5] dark:bg-[#0b141a] border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden shadow-md flex flex-col h-[350px] relative">
+            {/* WA Header */}
+            <div className="bg-[#075e54] dark:bg-[#1f2c34] px-4 py-3.5 flex items-center gap-3 text-white shrink-0 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-xs font-extrabold text-zinc-650 shrink-0">
+                💬
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold truncate">Pratinjau Pesan WA</div>
+                <div className="text-[9px] opacity-80 mt-0.5">Online</div>
+              </div>
+              <span className="text-[9px] bg-emerald-500 text-white font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Live</span>
+            </div>
+
+            {/* WA Chat Wallpaper and Bubble */}
+            <div className="flex-1 p-4 overflow-y-auto flex flex-col justify-end bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')] bg-repeat">
+              {/* Sent Bubble */}
+              <div className="max-w-[85%] self-end bg-[#dcf8c6] dark:bg-[#005c4b] border border-[#d2f3b7]/30 dark:border-[#00705a]/20 rounded-xl rounded-tr-none p-3 shadow-sm text-zinc-800 dark:text-zinc-100 flex flex-col gap-1.5 relative">
+                {/* Media Preview if urls exist */}
+                {mediaUrls.length > 0 && (
+                  <div className="rounded-lg overflow-hidden border border-black/5 bg-black/10 dark:bg-black/20 shrink-0 mb-1 max-h-[140px] flex items-center justify-center">
+                    {mediaType === 'image' ? (
+                      <img src={mediaUrls[0]} alt="Media Preview" className="w-full h-full object-cover max-h-[140px]" onError={e => { (e.target as HTMLElement).style.display = 'none'; }} />
+                    ) : mediaType === 'video' ? (
+                      <div className="flex flex-col items-center justify-center py-4 px-6 text-center text-xs gap-1">
+                        <Video className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-semibold truncate max-w-[130px]">{mediaUrls[0].split('/').pop()}</span>
+                        <span className="text-[8px] opacity-70">Video</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-4 px-6 text-center text-xs gap-1">
+                        <FileText className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                        <span className="font-semibold truncate max-w-[130px]">{mediaUrls[0].split('/').pop()}</span>
+                        <span className="text-[8px] opacity-70">File Dokumen</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Formatted Text */}
+                <div 
+                  className="text-xs whitespace-pre-wrap leading-relaxed break-words pr-12 pb-1"
+                  dangerouslySetInnerHTML={{ __html: parseWhatsAppFormatting(content || 'Tulis draf pesan di sebelah kiri untuk melihat preview...') }}
+                />
+
+                {/* Bubble Timestamp Status */}
+                <div className="absolute bottom-1 right-2 flex items-center gap-1 text-[8px] text-zinc-500 dark:text-zinc-300">
+                  <span>{new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <svg className="w-3 h-3 text-blue-500" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Send button */}
           <button onClick={handleSend}
             disabled={sending || !content.trim() || selectedChannels.length === 0}
@@ -838,7 +1243,7 @@ export default function BroadcastCreate() {
               ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Memproses...</span></>
               : isScheduled
                 ? <><Calendar className="w-4 h-4" /><span>Jadwalkan Broadcast</span></>
-                : <><Send className="w-4 h-4" /><span>Kirim ke {selectedChannels.length} Platform</span></>
+                : <><Send className="w-4 h-4" /><span>Kirim ke {selectedChannels.length} Channel WA</span></>
             }
           </button>
 

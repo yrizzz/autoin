@@ -51,4 +51,12 @@ return [
         'secret' => env('TELEGRAM_SERVICE_SECRET', 'autoin-tg-secret'),
     ],
 
+    'internal' => [
+        'secret' => env('INTERNAL_SECRET', 'autoin-internal-secret'),
+    ],
+
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+    ],
+
 ];

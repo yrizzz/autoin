@@ -216,7 +216,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab('overview')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === 'overview' 
-                ? 'bg-blue-600 text-white border border-blue-500 shadow-sm shadow-blue-500/10' 
+                ? 'tab-active' 
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
           >
@@ -226,7 +226,7 @@ export default function Dashboard() {
             onClick={() => setActiveTab('analytics')}
             className={`px-4 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
               activeTab === 'analytics' 
-                ? 'bg-blue-600 text-white border border-blue-500 shadow-sm shadow-blue-500/10' 
+                ? 'tab-active' 
                 : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
             }`}
           >
@@ -450,7 +450,7 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 {[
                   { href: '/broadcast', label: 'Buat Broadcast Baru', icon: PlusCircle, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20', desc: 'Kirim pesan instan ke banyak platform' },
-                  { href: '/channels', label: 'Tambah & Hubungkan Channel', icon: Globe, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20', desc: 'WhatsApp, Telegram, Discord, Email' },
+                  { href: '/channels', label: 'Tambah & Hubungkan Channel', icon: Globe, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20', desc: 'WhatsApp' },
                   { href: '/broadcast/history', label: 'Riwayat Broadcast Lengkap', icon: History, color: 'text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/10 border-cyan-100 dark:border-cyan-500/20', desc: 'Log detail pengiriman dan response' },
                 ].map((item, idx) => {
                   const Icon = item.icon;
@@ -755,10 +755,9 @@ export default function Dashboard() {
 
 function platformIcon(platform: string): string {
   const m: Record<string, string> = {
-    telegram: '✈️', discord: '🎮', whatsapp: '💬',
-    slack: '💼', smtp: '📧', resend: '📨', mailgun: '📬', webhook: '🔗',
+    whatsapp: '💬',
   };
-  return m[platform] ?? '📡';
+  return m[platform] ?? '💬';
 }
 
 function statusBadgeStyle(status: string): string {

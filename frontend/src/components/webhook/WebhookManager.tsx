@@ -11,7 +11,7 @@ interface Webhook {
   name: string;
   uuid: string;
   url: string;
-  platform: 'whatsapp' | 'telegram' | 'all';
+  platform: 'whatsapp' | 'all';
   secret_token: string;
   is_active: boolean;
   last_triggered_at: string | null;
@@ -20,7 +20,6 @@ interface Webhook {
 
 const PLATFORM_COLORS: Record<string, string> = {
   whatsapp: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  telegram: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
   all:      'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400',
 };
 
@@ -38,8 +37,12 @@ export default function WebhookManager() {
   const [editingWebhook, setEditingWebhook] = useState<Webhook | null>(null);
   const [saving, setSaving]       = useState(false);
 
+  // Custom delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [webhookToDelete, setWebhookToDelete] = useState<Webhook | null>(null);
+
   const [name, setName]         = useState('');
-  const [platform, setPlatform] = useState<'all' | 'whatsapp' | 'telegram'>('all');
+  const [platform, setPlatform] = useState<'all' | 'whatsapp'>('all');
 
   useEffect(() => { load(); }, []);
 
@@ -73,8 +76,16 @@ export default function WebhookManager() {
     setModalOpen(true);
   }
 
-  async function handleDelete(w: Webhook) {
-    if (!confirm(`Hapus webhook "${w.name}"?`)) return;
+  function handleDelete(w: Webhook) {
+    setWebhookToDelete(w);
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDeleteWebhook() {
+    if (!webhookToDelete) return;
+    const w = webhookToDelete;
+    setDeleteConfirmOpen(false);
+    setWebhookToDelete(null);
     try {
       await api.delete(`/api/webhooks/${w.id}`);
       setWebhooks(prev => prev.filter(x => x.id !== w.id));
@@ -130,7 +141,7 @@ export default function WebhookManager() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={handleOpenCreate}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer">
+            className="btn-primary flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer">
             <Plus className="w-4 h-4" />
             Webhook Baru
           </button>
@@ -295,9 +306,8 @@ X-Webhook-Secret: whsec_xxx`}
                 <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Platform Default</label>
                 <select value={platform} onChange={e => setPlatform(e.target.value as any)}
                   className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 cursor-pointer">
-                  <option value="all">Semua Platform (WA + TG)</option>
+                  <option value="all">Semua (WhatsApp)</option>
                   <option value="whatsapp">WhatsApp saja</option>
-                  <option value="telegram">Telegram saja</option>
                 </select>
               </div>
               {!editingWebhook && (
@@ -317,6 +327,37 @@ X-Webhook-Secret: whsec_xxx`}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Hapus Webhook</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus webhook <strong>{webhookToDelete?.name}</strong>? URL webhook ini akan dinonaktifkan.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmOpen(false); setWebhookToDelete(null); }}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteWebhook}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 transition-all cursor-pointer"
+              >
+                Hapus
+              </button>
+            </div>
           </div>
         </div>
       )}

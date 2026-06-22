@@ -26,9 +26,11 @@ class AuthController extends Controller
             ]
         );
 
+        $token = auth('api')->login($user);
+
         $frontendUrl = config('app.frontend_url', 'http://localhost:4321');
 
-        return redirect("{$frontendUrl}/dashboard");
+        return redirect("{$frontendUrl}/dashboard?token={$token}");
     }
 
     public function me(Request $request)

@@ -7,9 +7,9 @@ use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotRuleController;
 use App\Http\Controllers\WhatsAppController;
-use App\Http\Controllers\TelegramUserController;
 use App\Http\Controllers\UploadController;
 use App\Http\Controllers\WebhookController;
+use App\Http\Controllers\AIController;
 use Illuminate\Support\Facades\Route;
 
 // Internal endpoint — called by Node.js services, no user auth required
@@ -38,16 +38,7 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::post('whatsapp/{channel}/send', [WhatsAppController::class, 'sendMessage']);
     Route::post('whatsapp/{channel}/sync', [WhatsAppController::class, 'syncChats']);
 
-    Route::post('telegram/connect', [TelegramUserController::class, 'connect']);
-    Route::post('telegram/{channel}/verify', [TelegramUserController::class, 'verifyCode']);
-    Route::post('telegram/{channel}/verify-2fa', [TelegramUserController::class, 'verify2FA']);
-    Route::get('telegram/{channel}/status', [TelegramUserController::class, 'status']);
-    Route::delete('telegram/{channel}/disconnect', [TelegramUserController::class, 'disconnect']);
-    Route::get('telegram/{channel}/contacts', [TelegramUserController::class, 'getContacts']);
-    Route::get('telegram/{channel}/chats', [TelegramUserController::class, 'getChats']);
-    Route::get('telegram/{channel}/groups', [TelegramUserController::class, 'getGroups']);
-    Route::get('telegram/{channel}/messages/{chatId}', [TelegramUserController::class, 'getMessages']);
-    Route::post('telegram/{channel}/send', [TelegramUserController::class, 'sendMessage']);
+
 
     Route::apiResource('broadcasts', BroadcastController::class);
     Route::post('broadcasts/{broadcast}/send', [BroadcastController::class, 'send']);
@@ -59,6 +50,10 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
 
     Route::post('upload', [UploadController::class, 'upload']);
 
+    Route::post('ai/rewrite', [AIController::class, 'rewrite']);
+    Route::post('ai/generate', [AIController::class, 'generate']);
+    Route::post('ai/optimize', [AIController::class, 'optimize']);
+
     Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
     Route::get('analytics/broadcasts', [AnalyticsController::class, 'broadcasts']);
     Route::get('analytics/channels', [AnalyticsController::class, 'channels']);
@@ -67,4 +62,5 @@ Route::middleware(\App\Http\Middleware\GuestUser::class)->group(function () {
     Route::post('billing/purchase', [BillingController::class, 'purchase']);
     Route::get('billing/history', [BillingController::class, 'history']);
     Route::get('billing/active', [BillingController::class, 'active']);
+    Route::get('admin/subscribers', [BillingController::class, 'subscribers']);
 });

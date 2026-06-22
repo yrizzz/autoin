@@ -8,8 +8,10 @@ interface ChatbotRule {
   trigger: string;
   match_type: 'exact' | 'contains' | 'starts_with';
   reply: string;
-  platform: 'all' | 'whatsapp' | 'telegram';
+  platform: 'all' | 'whatsapp';
   is_active: boolean;
+  reply_type?: 'normal' | 'quote';
+  prefix?: 'any' | 'none' | '.' | '/' | '!' | '#';
   created_at: string;
 }
 
@@ -32,6 +34,12 @@ export default function ChatbotRules() {
   const [matchType, setMatchType] = useState<ChatbotRule['match_type']>('contains');
   const [reply, setReply]         = useState('');
   const [platform, setPlatform]   = useState<ChatbotRule['platform']>('all');
+  const [replyType, setReplyType] = useState<'normal' | 'quote'>('normal');
+  const [prefix, setPrefix]       = useState<string>('any');
+
+  // Custom delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [ruleToDelete, setRuleToDelete] = useState<ChatbotRule | null>(null);
 
   useEffect(() => { loadRules(); }, []);
 
@@ -63,6 +71,8 @@ export default function ChatbotRules() {
     setMatchType('contains');
     setReply('');
     setPlatform('all');
+    setReplyType('normal');
+    setPrefix('any');
     setModalOpen(true);
   }
 
@@ -72,11 +82,21 @@ export default function ChatbotRules() {
     setMatchType(rule.match_type);
     setReply(rule.reply);
     setPlatform(rule.platform);
+    setReplyType(rule.reply_type || 'normal');
+    setPrefix(rule.prefix || 'any');
     setModalOpen(true);
   }
 
-  async function handleDelete(rule: ChatbotRule) {
-    if (!confirm(`Hapus aturan "${rule.trigger}"?`)) return;
+  function handleDelete(rule: ChatbotRule) {
+    setRuleToDelete(rule);
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDeleteRule() {
+    if (!ruleToDelete) return;
+    const rule = ruleToDelete;
+    setDeleteConfirmOpen(false);
+    setRuleToDelete(null);
     try {
       await api.delete(`/api/chatbot-rules/${rule.id}`);
       setRules(prev => prev.filter(r => r.id !== rule.id));
@@ -92,12 +112,12 @@ export default function ChatbotRules() {
     try {
       if (editingRule) {
         const updated = await api.put<ChatbotRule>(`/api/chatbot-rules/${editingRule.id}`, {
-          trigger, match_type: matchType, reply, platform,
+          trigger, match_type: matchType, reply, platform, reply_type: replyType, prefix,
         });
         setRules(prev => prev.map(r => r.id === editingRule.id ? updated : r));
       } else {
         const created = await api.post<ChatbotRule>('/api/chatbot-rules', {
-          trigger, match_type: matchType, reply, platform,
+          trigger, match_type: matchType, reply, platform, reply_type: replyType, prefix,
         });
         setRules(prev => [created, ...prev]);
       }
@@ -121,11 +141,11 @@ export default function ChatbotRules() {
             Chatbot (Auto Reply)
           </h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Balas pesan otomatis berdasarkan kata kunci — aktif untuk WhatsApp &amp; Telegram.
+            Balas pesan otomatis berdasarkan kata kunci — aktif untuk WhatsApp.
           </p>
         </div>
         <button onClick={handleOpenCreate}
-          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer shrink-0">
+          className="btn-primary flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer shrink-0">
           <Plus className="w-4 h-4" />
           Aturan Baru
         </button>
@@ -194,10 +214,21 @@ export default function ChatbotRules() {
                     </span>
                     <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
                       rule.platform === 'whatsapp' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                      rule.platform === 'telegram' ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400' :
                       'bg-zinc-500/10 text-zinc-500 dark:text-zinc-400'
                     }`}>
-                      {rule.platform === 'all' ? 'Semua Platform' : rule.platform}
+                      {rule.platform === 'all' ? 'Semua' : rule.platform}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                      rule.reply_type === 'quote' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                    }`}>
+                      {rule.reply_type === 'quote' ? 'Reply / Quote' : 'Balas Biasa'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                      rule.prefix === 'none' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400' :
+                      rule.prefix === 'any' ? 'bg-teal-500/10 text-teal-600 dark:text-teal-400' :
+                      'bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                    }`}>
+                      Prefix: {rule.prefix === 'any' ? 'Bebas' : rule.prefix === 'none' ? 'Tanpa Prefix' : `"${rule.prefix}"`}
                     </span>
                   </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 max-w-xl whitespace-pre-wrap">
@@ -268,13 +299,37 @@ export default function ChatbotRules() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Platform</label>
+                  <select value={platform} onChange={e => setPlatform(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 cursor-pointer">
+                    <option value="all">Semua (WhatsApp)</option>
+                    <option value="whatsapp">WhatsApp saja</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Tipe Balasan</label>
+                  <select value={replyType} onChange={e => setReplyType(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 cursor-pointer">
+                    <option value="normal">Balas Biasa (Normal)</option>
+                    <option value="quote">Reply / Quote</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Platform</label>
-                <select value={platform} onChange={e => setPlatform(e.target.value as any)}
+                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                  Prefix Command
+                </label>
+                <select value={prefix} onChange={e => setPrefix(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 cursor-pointer">
-                  <option value="all">Semua Platform (WA + Telegram)</option>
-                  <option value="whatsapp">WhatsApp saja</option>
-                  <option value="telegram">Telegram saja</option>
+                  <option value="any">Bebas Prefix (Bisa pakai prefix apa saja atau tanpa prefix)</option>
+                  <option value="none">Tanpa Prefix (Hanya merespon teks polos tanpa prefix)</option>
+                  <option value=".">Hanya Prefix Titik ( . )</option>
+                  <option value="/">Hanya Prefix Slash ( / )</option>
+                  <option value="!">Hanya Prefix Tanda Seru ( ! )</option>
+                  <option value="#">Hanya Prefix Pagar ( # )</option>
                 </select>
               </div>
 
@@ -295,12 +350,43 @@ export default function ChatbotRules() {
                   Batal
                 </button>
                 <button type="submit" disabled={saving}
-                  className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer disabled:opacity-60">
+                  className="btn-primary flex items-center gap-1.5 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-60">
                   {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Simpan Aturan
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Hapus Aturan</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menghapus aturan chatbot untuk trigger <strong>"{ruleToDelete?.trigger}"</strong>? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmOpen(false); setRuleToDelete(null); }}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteRule}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 transition-all cursor-pointer"
+              >
+                Hapus
+              </button>
+            </div>
           </div>
         </div>
       )}

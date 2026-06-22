@@ -6,7 +6,7 @@ interface TutorialVideo {
   id: string;
   title: string;
   duration: string;
-  category: 'whatsapp' | 'telegram' | 'discord' | 'general';
+  category: 'whatsapp' | 'general';
   description: string;
 }
 
@@ -19,25 +19,25 @@ const TUTORIALS: TutorialVideo[] = [
     description: 'Panduan lengkap scan QR Code dari menu integrasi perangkat untuk mengaktifkan sesi pengirim WhatsApp menggunakan library Baileys.'
   },
   {
-    id: 't2',
-    title: 'Setup Telegram Bot & Chat ID (GramJS)',
-    duration: '4:20',
-    category: 'telegram',
-    description: 'Langkah demi langkah membuat bot Telegram via BotFather, mendapatkan token HTTP API, serta mendeteksi Chat ID target.'
-  },
-  {
-    id: 't3',
-    title: 'Konfigurasi Discord Webhook Integration',
-    duration: '2:15',
-    category: 'discord',
-    description: 'Panduan instan membuat Webhook di channel Discord Anda dan menggunakannya sebagai endpoint target broadcast.'
-  },
-  {
     id: 't4',
-    title: 'Membuat Campaign Multi-Channel Pertama Anda',
+    title: 'Membuat Broadcast WhatsApp Pertama Anda',
     duration: '5:10',
     category: 'general',
-    description: 'Cara menggunakan menu Broadcast untuk mengirimkan satu pesan promosi ke WhatsApp, Telegram, dan Discord secara bersamaan.'
+    description: 'Cara menggunakan menu Broadcast untuk mengirimkan satu pesan promosi ke banyak nomor WhatsApp sekaligus dengan cepat.'
+  },
+  {
+    id: 't5',
+    title: 'Menggunakan Chatbot Auto-Reply',
+    duration: '4:00',
+    category: 'whatsapp',
+    description: 'Konfigurasi aturan auto-reply berbasis kata kunci agar chatbot menjawab pesan WhatsApp masuk secara otomatis 24/7.'
+  },
+  {
+    id: 't6',
+    title: 'Setup Webhook untuk Notifikasi Otomatis',
+    duration: '3:30',
+    category: 'general',
+    description: 'Hubungkan sistem back-office (WooCommerce, Laravel, Zapier) ke AUTOIN untuk mengirim pesan WhatsApp secara programatik.'
   }
 ];
 
@@ -45,8 +45,6 @@ export default function TutorialPage() {
   const getCategoryColor = (cat: string) => {
     switch (cat) {
       case 'whatsapp': return 'bg-emerald-500/10 text-emerald-500';
-      case 'telegram': return 'bg-sky-500/10 text-sky-500';
-      case 'discord': return 'bg-indigo-500/10 text-indigo-500';
       default: return 'bg-zinc-500/10 text-zinc-500';
     }
   };

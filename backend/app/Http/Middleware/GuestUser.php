@@ -12,14 +12,26 @@ class GuestUser
 {
     public function handle(Request $request, Closure $next): Response
     {
-        $user = User::firstOrCreate(
-            ['email' => 'demo@autoin.dev'],
-            [
-                'name'      => 'Demo User',
-                'google_id' => 'demo',
-                'avatar'    => null,
-            ]
-        );
+        $user = null;
+
+        if ($request->bearerToken()) {
+            try {
+                $user = \Tymon\JWTAuth\Facades\JWTAuth::parseToken()->authenticate();
+            } catch (\Exception $e) {
+                // Ignore token error and fall back to guest
+            }
+        }
+
+        if (!$user) {
+            $user = User::firstOrCreate(
+                ['email' => 'demo@autoin.dev'],
+                [
+                    'name'      => 'Demo User',
+                    'google_id' => 'demo',
+                    'avatar'    => null,
+                ]
+            );
+        }
 
         Auth::login($user);
 

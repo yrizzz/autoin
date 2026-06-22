@@ -47,6 +47,24 @@ function PlatformBadge({ platform }: { platform: string }) {
   return <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-sky-500/10 text-sky-600 dark:text-sky-400">TG</span>;
 }
 
+function formatMessageText(text: string) {
+  if (!text) return '';
+  // Clean / escape HTML first to prevent XSS
+  let clean = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+
+  // Apply WhatsApp formatting markdown
+  let formatted = clean
+    .replace(/```([^`]+)```/g, '<code class="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded font-mono text-[11px]">$1</code>')
+    .replace(/\*([^*]+)\*/g, '<strong class="font-bold">$1</strong>')
+    .replace(/_([^_]+)_/g, '<em class="italic">$1</em>')
+    .replace(/~([^~]+)~/g, '<del class="line-through">$1</del>');
+
+  return <span dangerouslySetInnerHTML={{ __html: formatted }} />;
+}
+
 function MediaBubble({ url, type }: { url: string; type: string }) {
   if (type === 'image') return <img src={url} className="max-w-[200px] rounded-lg mb-1" alt="" />;
   if (type === 'video') return <video src={url} controls className="max-w-[200px] rounded-lg mb-1" />;
@@ -93,9 +111,7 @@ export default function ChatManager() {
   }, []);
 
   const fetchChats = useCallback(async (channel: Channel) => {
-    const endpoint = channel.platform === 'telegram'
-      ? `/api/telegram/${channel.id}/chats`
-      : `/api/whatsapp/${channel.id}/chats`;
+    const endpoint = `/api/whatsapp/${channel.id}/chats`;
     try {
       const r = await api.get<{ chats: Chat[] }>(endpoint);
       const list = (r.chats || []).map(c => ({
@@ -147,9 +163,7 @@ export default function ChatManager() {
 
   const loadMsgs = useCallback(async (channel: Channel, chat: Chat) => {
     try {
-      const endpoint = channel.platform === 'telegram'
-        ? `/api/telegram/${channel.id}/messages/${encodeURIComponent(chat.id)}`
-        : `/api/whatsapp/${channel.id}/messages/${encodeURIComponent(chat.id)}`;
+      const endpoint = `/api/whatsapp/${channel.id}/messages/${encodeURIComponent(chat.id)}`;
       const r = await api.get<{ messages: Msg[] }>(endpoint);
       const incoming = r.messages || [];
       setMsgs(prev => {
@@ -173,14 +187,12 @@ export default function ChatManager() {
     setMsgsL(true);
     loadMsgs(ch, active).finally(() => setMsgsL(false));
 
-    // Only poll messages for WhatsApp (TG is load-once)
-    if (ch.platform === 'whatsapp') {
-      pollMsgRef.current = setInterval(() => {
+    // Poll messages every 5s while a chat is active
+    pollMsgRef.current = setInterval(() => {
         const curCh   = chRef.current;
         const curChat = activeRef.current;
-        if (curCh && curChat) loadMsgs(curCh, curChat);
-      }, 5000);
-    }
+      if (curCh && curChat) loadMsgs(curCh, curChat);
+    }, 5000);
 
     return () => {
       if (pollMsgRef.current) { clearInterval(pollMsgRef.current); pollMsgRef.current = null; }
@@ -235,11 +247,7 @@ export default function ChatManager() {
     setInput(''); setAtt(null); inRef.current?.focus();
     try {
       setSending(true);
-      if (ch.platform === 'telegram') {
-        await api.post(`/api/telegram/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null });
-      } else {
         await api.post(`/api/whatsapp/${ch.id}/send`, { to: active.id, message: text || '', mediaUrl: a?.url ?? null, mediaType: a?.mediaType ?? null });
-      }
       setMsgs(p => p.map(m => m.id === tmp.id ? { ...m, status: 'delivered' } : m));
       setChats(p => p.map(c => c.id === active.id ? { ...c, lastMessage: text || `[${a?.mediaType}]`, time: t } : c));
     } catch {
@@ -256,7 +264,7 @@ export default function ChatManager() {
 
   const TabBtn = ({ value, label }: { value: Tab; label: string }) => (
     <button onClick={() => setTab(value)}
-      className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${tab === value ? 'bg-blue-600 text-white' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
+      className={`flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${tab === value ? 'tab-active' : 'text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'}`}>
       {label}
     </button>
   );
@@ -268,7 +276,7 @@ export default function ChatManager() {
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">Obrolan Aktif</h1>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
-            WhatsApp &amp; Telegram · polling otomatis setiap 5–30 detik
+            WhatsApp · polling otomatis setiap 5–30 detik
           </p>
         </div>
         {channels.length > 0 && (
@@ -277,8 +285,8 @@ export default function ChatManager() {
               <button key={c.id} onClick={() => setCh(c)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${ch?.id === c.id ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${c.status === 'active' ? 'bg-emerald-400' : 'bg-zinc-400'}`} />
-                <span className={`text-[9px] font-extrabold uppercase mr-0.5 ${c.platform === 'whatsapp' ? 'text-emerald-500' : 'text-sky-500'} ${ch?.id === c.id ? '!text-white/80' : ''}`}>
-                  {c.platform === 'whatsapp' ? 'WA' : 'TG'}
+                <span className={`text-[9px] font-extrabold uppercase mr-0.5 text-emerald-500 ${ch?.id === c.id ? '!text-white/80' : ''}`}>
+                  WA
                 </span>
                 {c.name}
               </button>
@@ -298,7 +306,7 @@ export default function ChatManager() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm flex flex-col items-center py-24 gap-3 text-center">
           <div className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center"><Users className="w-7 h-7 text-zinc-400" /></div>
           <p className="font-bold text-sm text-zinc-700 dark:text-zinc-300">Tidak ada channel aktif</p>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">Hubungkan akun WhatsApp atau Telegram terlebih dahulu.</p>
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">Hubungkan akun WhatsApp terlebih dahulu.</p>
         </div>
       )}
 
@@ -432,7 +440,7 @@ export default function ChatManager() {
                         <div key={m.id} className={`flex ${me ? 'justify-end' : 'justify-start'}`}>
                           <div className={`relative max-w-[65%] px-3.5 py-2 rounded-2xl text-sm shadow-sm ${me ? 'bg-blue-600 text-white rounded-br-sm' : 'bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-zinc-100 rounded-bl-sm'}`}>
                             {m.mediaUrl && <MediaBubble url={m.mediaUrl} type={m.mediaType || 'document'} />}
-                            {m.text && <div className={m.mediaUrl ? 'text-xs mt-1' : 'pr-12 leading-relaxed'}>{m.text}</div>}
+                            {m.text && <div className={`${m.mediaUrl ? 'text-xs mt-1' : 'pr-12 leading-relaxed'} whitespace-pre-wrap break-words`}>{formatMessageText(m.text)}</div>}
                             <div className={`flex items-center justify-end gap-1 text-[9px] mt-1 ${me ? 'text-blue-200' : 'text-zinc-400 dark:text-zinc-500'}`}>
                               <span>{m.time}</span>
                               {me && (<>{m.status==='sending'&&<Loader2 className="w-2.5 h-2.5 animate-spin"/>}{m.status==='sent'&&<Check className="w-3 h-3"/>}{m.status==='delivered'&&<CheckCheck className="w-3 h-3 text-sky-300"/>}</>)}

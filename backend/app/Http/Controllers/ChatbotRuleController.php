@@ -23,7 +23,9 @@ class ChatbotRuleController extends Controller
             'trigger'    => 'required|string|max:255',
             'match_type' => 'required|in:exact,contains,starts_with',
             'reply'      => 'required|string',
-            'platform'   => 'required|in:all,whatsapp,telegram',
+            'platform'   => 'required|in:all,whatsapp',
+            'reply_type' => 'sometimes|in:normal,quote',
+            'prefix'     => 'sometimes|in:any,none,.,/,!,#',
         ]);
 
         $rule = $request->user()->chatbotRules()->create($data);
@@ -39,8 +41,10 @@ class ChatbotRuleController extends Controller
             'trigger'    => 'sometimes|string|max:255',
             'match_type' => 'sometimes|in:exact,contains,starts_with',
             'reply'      => 'sometimes|string',
-            'platform'   => 'sometimes|in:all,whatsapp,telegram',
+            'platform'   => 'sometimes|in:all,whatsapp',
             'is_active'  => 'sometimes|boolean',
+            'reply_type' => 'sometimes|in:normal,quote',
+            'prefix'     => 'sometimes|in:any,none,.,/,!,#',
         ]);
 
         $chatbotRule->update($data);
@@ -68,11 +72,12 @@ class ChatbotRuleController extends Controller
         $text      = (string) $request->input('text', '');
         $platform  = $request->input('platform', 'whatsapp');
 
-        // Find channel by session_id stored in credentials JSON
-        $channel = Channel::whereRaw(
-            "json_extract(credentials, '$.session_id') = ?",
-            [$sessionId]
-        )->first();
+        // Find channel by session_id stored in credentials (which is encrypted in DB)
+        $channel = Channel::whereIn('platform', ['whatsapp'])
+            ->get()
+            ->first(function ($c) use ($sessionId) {
+                return ($c->credentials['session_id'] ?? null) === $sessionId;
+            });
 
         if (!$channel) {
             return response()->json(['reply' => null]);
@@ -88,7 +93,10 @@ class ChatbotRuleController extends Controller
 
         foreach ($rules as $rule) {
             if ($rule->matches($text)) {
-                return response()->json(['reply' => $rule->reply]);
+                return response()->json([
+                    'reply' => $rule->reply,
+                    'reply_type' => $rule->reply_type ?? 'normal'
+                ]);
             }
         }
 

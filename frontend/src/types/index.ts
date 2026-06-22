@@ -11,7 +11,7 @@ export interface Channel {
   id: number;
   user_id: number;
   name: string;
-  platform: 'whatsapp' | 'telegram' | 'discord' | 'slack' | 'smtp' | 'resend' | 'mailgun' | 'webhook';
+  platform: 'whatsapp';
   target_id: string | null;
   status: 'active' | 'inactive' | 'error';
   last_used_at: string | null;

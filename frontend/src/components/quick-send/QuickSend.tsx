@@ -6,7 +6,7 @@ import { api } from '../../lib/api';
 interface Channel {
   id: string;
   name: string;
-  platform: 'whatsapp' | 'telegram' | 'discord' | 'slack' | 'smtp' | 'resend' | 'mailgun' | 'webhook';
+  platform: 'whatsapp';
   status: 'active' | 'inactive' | 'error';
 }
 
@@ -30,16 +30,14 @@ export default function QuickSend() {
     // Load active channels
     api.get<Channel[]>('/api/channels')
       .then(res => {
-        const active = res.filter(c => c.status === 'active');
+        const active = res.filter(c => c.status === 'active' && c.platform === 'whatsapp');
         setChannels(active);
         if (active.length > 0) setSelectedChannel(active[0].id);
       })
       .catch(() => {
         // Fallback mock active channels
         const mockChannels: Channel[] = [
-          { id: 'c1', name: 'WhatsApp CS Utama', platform: 'whatsapp', status: 'active' },
-          { id: 'c2', name: 'Telegram Bot Alert', platform: 'telegram', status: 'active' },
-          { id: 'c3', name: 'Discord Webhook #general', platform: 'discord', status: 'active' }
+          { id: 'c1', name: 'WhatsApp CS Utama', platform: 'whatsapp', status: 'active' }
         ];
         setChannels(mockChannels);
         setSelectedChannel(mockChannels[0].id);
@@ -75,15 +73,10 @@ export default function QuickSend() {
 
       try {
         // Simple mock API call or real send if backend endpoints exist
-        if (channelObj?.platform === 'whatsapp') {
           await api.post(`/api/whatsapp/${selectedChannel}/send`, {
             jid: target.includes('@') ? target : `${target}@s.whatsapp.net`,
             message: { text: message }
           });
-        } else {
-          // General broadcast or simulation
-          await new Promise(resolve => setTimeout(resolve, 800));
-        }
 
         // Update log as success
         setLogs(prev => prev.map(log => log.id === logId ? { ...log, status: 'success' } : log));
@@ -101,9 +94,7 @@ export default function QuickSend() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'whatsapp': return <Smartphone className="w-4 h-4 text-emerald-500" />;
-      case 'telegram': return <Globe className="w-4 h-4 text-sky-500" />;
-      case 'discord': return <Globe className="w-4 h-4 text-indigo-500" />;
-      default: return <Mail className="w-4 h-4 text-zinc-400" />;
+      default: return <Globe className="w-4 h-4 text-zinc-400" />;
     }
   };
 
@@ -190,7 +181,7 @@ export default function QuickSend() {
             <button
               type="submit"
               disabled={sending || channels.length === 0}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-blue-600 to-blue-700 disabled:from-zinc-300 disabled:to-zinc-400 dark:disabled:from-zinc-800 dark:disabled:to-zinc-900 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer"
+              className="w-full btn-primary flex items-center justify-center gap-2 py-3 font-bold text-xs rounded-xl shadow-md cursor-pointer"
             >
               {sending ? (
                 <>

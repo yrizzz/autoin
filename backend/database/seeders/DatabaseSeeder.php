@@ -17,9 +17,25 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $demo = User::factory()->create([
+            'name' => 'Demo User',
+            'email' => 'demo@autoin.dev',
+            'google_id' => 'demo',
+        ]);
+        $demo->subscription()->create([
+            'plan' => 'free',
+            'started_at' => now(),
+        ]);
+
+        $admin = User::factory()->create([
+            'name' => 'Aris Edy Handoko',
+            'email' => 'Arisedyhandoko@gmail.com',
+            'google_id' => 'admin_google_sso_id_123',
+        ]);
+        $admin->subscription()->create([
+            'plan' => 'yearly',
+            'started_at' => now(),
+            'expires_at' => now()->addYear(),
         ]);
     }
 }

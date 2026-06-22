@@ -3,9 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Channel;
-use App\Services\DiscordService;
-use App\Services\TelegramUserService;
-use App\Services\WebhookService;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 
@@ -18,9 +15,13 @@ class ChannelController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->user()->email === 'demo@autoin.dev') {
+            return response()->json(['message' => 'Anda harus login dengan Google terlebih dahulu untuk menghubungkan device.'], 403);
+        }
+
         $data = $request->validate([
             'name'        => 'required|string|max:255',
-            'platform'    => 'required|in:whatsapp,telegram,discord,slack,smtp,resend,mailgun,webhook',
+            'platform'    => 'required|in:whatsapp',
             'credentials' => 'required|array',
             'target_id'   => 'nullable|string',
         ]);
@@ -64,9 +65,6 @@ class ChannelController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
 
         $ok = match($channel->platform) {
-            'telegram'  => app(TelegramUserService::class)->test($channel),
-            'discord'   => app(DiscordService::class)->test($channel),
-            'webhook'   => app(WebhookService::class)->test($channel),
             'whatsapp'  => app(WhatsAppService::class)->test($channel),
             default     => false,
         };

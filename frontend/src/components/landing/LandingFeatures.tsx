@@ -4,8 +4,8 @@ const features = [
   {
     icon: Share2,
     iconColor: 'text-blue-400',
-    title: 'Multi Channel Broadcast',
-    desc: 'Kirim satu pesan ke WhatsApp, Telegram, Discord, Email sekaligus dalam satu klik. Cepat & sinkron.',
+    title: 'Instant Broadcast',
+    desc: 'Kirim satu pesan ke banyak nomor WhatsApp sekaligus dalam satu klik. Cepat & sinkron.',
   },
   {
     icon: Calendar,
@@ -48,12 +48,12 @@ export default function LandingFeatures() {
 
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 font-display">
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 font-display text-white">
             Semua Fitur Dalam Satu Genggaman
           </h2>
           <div className="h-1.5 w-20 bg-gradient-brand mx-auto rounded-full mb-6" />
           <p className="text-white/60 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            Satu dashboard terpusat untuk menghubungkan channel komunikasi terbaik, tanpa perlu setup server yang rumit.
+            Satu dashboard terpusat untuk mengelola pengiriman pesan WhatsApp secara optimal tanpa perlu setup server yang rumit.
           </p>
         </div>
 

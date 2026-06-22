@@ -15,20 +15,20 @@ export default function LandingHero() {
         {/* Badge */}
         <div className="inline-flex items-center gap-2 bg-white/5 border border-white/8 backdrop-blur-md rounded-full px-4.5 py-1.5 text-xs sm:text-sm text-white/70 mb-8 hover:border-white/15 transition-all duration-300">
           <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-          <span className="font-medium">Platform Broadcasting Multi-Channel Modern</span>
+          <span className="font-medium">Platform Broadcasting WhatsApp Modern</span>
         </div>
 
         {/* Title */}
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight max-w-4xl mb-6 font-display leading-[1.1]">
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight max-w-4xl mb-6 font-display leading-[1.1] text-white">
           Broadcast Sekali, <br />
           <span className="text-gradient-brand">
-            Terkirim ke Semua Platform.
+            Terkirim Secara Instan & Otomatis.
           </span>
         </h1>
 
         {/* Description */}
         <p className="text-white/60 text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed">
-          Hubungkan WhatsApp, Telegram, Discord, Email, dan Webhook dalam hitungan detik. 
+          Hubungkan WhatsApp dan mulai kirim pesan otomatis dalam hitungan detik.
           Kirim kampanye pesan secara serentak dari satu dashboard tanpa setup VPS yang rumit.
         </p>
 
@@ -78,7 +78,7 @@ export default function LandingHero() {
                 <span className="text-[11px] text-white/30 ml-2 font-mono">dashboard.autoin.id</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
                 <span className="text-[10px] text-white/50 font-medium">Auto-Sync Active</span>
               </div>
             </div>
@@ -108,7 +108,7 @@ export default function LandingHero() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-bold text-sm text-white">Broadcast Overview</h3>
-                    <p className="text-[10px] text-white/40">Real-time status of multi-channel logs</p>
+                    <p className="text-[10px] text-white/40">Real-time status of WhatsApp logs</p>
                   </div>
                   <span className="bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">
                     v1.2 Active

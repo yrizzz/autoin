@@ -1,8 +1,13 @@
+import 'dotenv/config';
 import express from 'express';
 import { sessionManager } from './sessions.js';
 
 const app = express();
 app.use(express.json());
+app.use('/media', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  next();
+}, express.static('./media-temp'));
 
 const PORT = process.env.PORT || 3001;
 const API_SECRET = process.env.API_SECRET || 'autoin-wa-secret';

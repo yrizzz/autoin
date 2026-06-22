@@ -13,6 +13,10 @@ class WhatsAppController extends Controller
 
     public function connect(Request $request)
     {
+        if ($request->user()->email === 'demo@autoin.dev') {
+            return response()->json(['message' => 'Anda harus login dengan Google terlebih dahulu untuk menghubungkan device.'], 403);
+        }
+
         $data = $request->validate([
             'name'             => 'required|string|max:255',
             'target_id'        => 'nullable|string',
@@ -218,15 +222,15 @@ class WhatsAppController extends Controller
         $encodedChatId = urlencode($chatId);
 
         return response()->stream(function () use ($baseUrl, $secret, $sessionId, $encodedChatId) {
-            while (ob_get_level() > 0) {
-                ob_end_flush();
-            }
             $url = "{$baseUrl}/sessions/{$sessionId}/events/messages/{$encodedChatId}";
             $ch  = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_HTTPHEADER     => ["x-api-secret: {$secret}", 'Accept: text/event-stream'],
                 CURLOPT_WRITEFUNCTION  => function ($curl, $data) {
                     echo $data;
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
                     flush();
                     return strlen($data);
                 },
@@ -257,15 +261,15 @@ class WhatsAppController extends Controller
         $sessionId = $credentials['session_id'];
 
         return response()->stream(function () use ($baseUrl, $secret, $sessionId) {
-            while (ob_get_level() > 0) {
-                ob_end_flush();
-            }
             $url = "{$baseUrl}/sessions/{$sessionId}/events/chats";
             $ch  = curl_init($url);
             curl_setopt_array($ch, [
                 CURLOPT_HTTPHEADER     => ["x-api-secret: {$secret}", 'Accept: text/event-stream'],
                 CURLOPT_WRITEFUNCTION  => function ($curl, $data) {
                     echo $data;
+                    if (ob_get_level() > 0) {
+                        ob_flush();
+                    }
                     flush();
                     return strlen($data);
                 },

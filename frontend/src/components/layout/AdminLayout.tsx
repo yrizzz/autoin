@@ -48,7 +48,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState([
     { id: 1, title: 'Broadcast Sukses', message: 'Campaign #1024 terkirim ke 150 kontak.', time: '5m lalu', read: false },
-    { id: 2, title: 'Telegram Terputus', message: 'Sesi Telegram Bot Anda memerlukan autentikasi ulang.', time: '1j lalu', read: true },
+
     { id: 3, title: 'Kontak Tersinkron', message: '54 kontak baru berhasil diimpor dari WhatsApp.', time: '3j lalu', read: true },
   ]);
 
@@ -131,12 +131,24 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
     }
   };
 
+  const settingsItems = [
+    { id: 'pricing', label: 'Daftar Harga', icon: Tag, href: '/#pricing' },
+    { id: 'invoice', label: 'Invoice', icon: Receipt, href: '/invoice' },
+    { id: 'tutorial', label: 'Video Tutorial', icon: PlayCircle, href: '/tutorial' },
+    { id: 'api_key', label: 'API Key', icon: Key, href: '/api-key' },
+    { id: 'api_docs', label: 'Dokumentasi API', icon: BookOpen, href: '/docs' },
+  ];
+
+  if (user?.email === 'Arisedyhandoko@gmail.com') {
+    settingsItems.unshift({ id: 'subscribers', label: 'Daftar Pelanggan', icon: Users, href: '/subscribers' });
+  }
+
   const navGroups = [
     {
       title: null,
       items: [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, href: '/dashboard' },
-        { id: 'channels', label: 'Device Broadcast', icon: Smartphone, href: '/channels' },
+        { id: 'channels', label: 'Device Connected', icon: Smartphone, href: '/channels' },
         { id: 'contacts', label: 'Grup Kontak', icon: Users, href: '/contacts' },
         { id: 'templates', label: 'Daftar template', icon: FileText, href: '/templates' },
         { id: 'broadcast', label: 'Broadcast Pesan', icon: Rocket, href: '/broadcast' },
@@ -155,13 +167,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
     },
     {
       title: 'SETTINGS',
-      items: [
-        { id: 'pricing', label: 'Daftar Harga', icon: Tag, href: '/#pricing' },
-        { id: 'invoice', label: 'Invoice', icon: Receipt, href: '/invoice' },
-        { id: 'tutorial', label: 'Video Tutorial', icon: PlayCircle, href: '/tutorial' },
-        { id: 'api_key', label: 'API Key', icon: Key, href: '/api-key' },
-        { id: 'api_docs', label: 'Dokumentasi API', icon: BookOpen, href: '/docs' },
-      ]
+      items: settingsItems
     }
   ];
 
@@ -174,7 +180,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
       <aside className="hidden md:flex flex-col w-64 bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 shrink-0">
         {/* Sidebar Header */}
         <div className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center gap-2.5 bg-zinc-50/50 dark:bg-[#09090b]">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-md shadow-blue-500/20">
+          <div className="w-8 h-8 rounded-lg logo-gradient flex items-center justify-center shadow-md shadow-blue-500/20">
             <Radio className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
@@ -202,7 +208,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                       href={item.href}
                       className={`flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                         isActive 
-                          ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-600/10' 
+                          ? 'nav-active-item' 
                           : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
                       }`}
                     >
@@ -247,7 +253,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
           <aside className="w-64 bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 flex flex-col animate-slideIn">
             <div className="h-16 px-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/50 dark:bg-[#09090b]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg logo-gradient flex items-center justify-center">
                   <Radio className="w-4.5 h-4.5 text-white" />
                 </div>
                 <div>
@@ -279,7 +285,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                           onClick={() => setSidebarOpen(false)}
                           className={`flex items-center gap-3 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition-all ${
                             isActive 
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-600/10' 
+                              ? 'nav-active-item' 
                               : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
                           }`}
                         >

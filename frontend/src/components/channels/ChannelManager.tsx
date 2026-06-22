@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import type { Channel } from '../../types';
+import type { Channel, User } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
 import {
   Loader2,
@@ -20,20 +20,6 @@ type Platform = Channel['platform'];
 
 const PLATFORMS: { id: Platform; label: string; icon: string; fields: { key: string; label: string; placeholder: string; type?: string }[] }[] = [
   {
-    id: 'telegram',
-    label: 'Telegram User',
-    icon: '✈️',
-    fields: [],
-  },
-  {
-    id: 'discord',
-    label: 'Discord Webhook',
-    icon: '🎮',
-    fields: [
-      { key: 'webhook_url', label: 'Webhook URL', placeholder: 'https://discord.com/api/webhooks/...' },
-    ],
-  },
-  {
     id: 'whatsapp',
     label: 'WhatsApp Client',
     icon: '💬',
@@ -49,20 +35,6 @@ function PlatformIcon({ platform, className = "w-5 h-5" }: { platform: string; c
       </svg>
     );
   }
-  if (platform === 'telegram') {
-    return (
-      <svg className={`${className} text-sky-500`} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.16 1.56-.86 5.72-1.22 7.64-.15.81-.45 1.08-.74 1.1-.63.06-1.11-.41-1.72-.8-1-.62-1.55-1-2.52-1.64-1.12-.74-.39-1.14.24-1.8.17-.17 3.08-2.83 3.14-3.09.01-.03.01-.16-.07-.22-.08-.07-.2-.05-.28-.03-.12.02-2.03 1.28-5.73 3.77-.54.37-1.03.55-1.47.54-.48-.01-1.4-.27-2.08-.5-.83-.27-1.49-.42-1.43-.88.03-.24.37-.49 1.02-.75 4-1.74 6.67-2.88 8.01-3.43 3.81-1.56 4.6-1.83 5.12-1.84.11 0 .37.03.54.17.14.12.18.28.2.44-.02.07-.02.14-.03.22z" />
-      </svg>
-    );
-  }
-  if (platform === 'discord') {
-    return (
-      <svg className={`${className} text-indigo-500`} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.27 4.73a16.1 16.1 0 00-3.97-1.23.08.08 0 00-.08.04 11.23 11.23 0 00-.5 1.02.08.08 0 00.07.12 14.88 14.88 0 014.58 0 .08.08 0 00.07-.12 11.24 11.24 0 00-.5-1.02.08.08 0 00-.08-.04 16.09 16.09 0 00-3.97 1.23.07.07 0 00-.03.03 15.22 15.22 0 00-.32 1.34.07.07 0 00.07.08 14.3 14.3 0 004.9-.44.07.07 0 00.04-.06 18.06 18.06 0 00-1.89-6.3.07.07 0 00-.06-.04 16.22 16.22 0 00-4.8 1.48.08.08 0 00-.03.05c-.32.55-.66 1.13-.93 1.73a.08.08 0 01-.14 0c-.27-.6-.6-1.18-.93-1.73a.08.08 0 00-.03-.05 16.22 16.22 0 00-4.8-1.48.07.07 0 00-.06.04 18.06 18.06 0 00-1.89 6.3.07.07 0 00.04.06 14.3 14.3 0 004.9.44.07.07 0 00.07-.08 15.22 15.22 0 00-.32-1.34.07.07 0 00-.03-.03zM8.52 14.85c-.9 0-1.63-.82-1.63-1.83 0-1.02.72-1.83 1.63-1.83.91 0 1.64.82 1.64 1.83 0 1.01-.72 1.83-1.64 1.83zm6.96 0c-.9 0-1.63-.82-1.63-1.83 0-1.02.72-1.83 1.63-1.83.91 0 1.64.82 1.64 1.83 0 1.01-.72 1.83-1.64 1.83z" />
-      </svg>
-    );
-  }
   return (
     <svg className={`${className} text-zinc-500`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -72,6 +44,7 @@ function PlatformIcon({ platform, className = "w-5 h-5" }: { platform: string; c
 }
 
 export default function ChannelManager() {
+  const [user, setUser] = useState<User | null>(null);
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState<Platform | null>(null);
@@ -80,18 +53,15 @@ export default function ChannelManager() {
   const [testing, setTesting] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Custom delete confirmation
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
+
   // WhatsApp states
   const [waMethod, setWaMethod] = useState<'qr' | 'code'>('qr');
   const [waPhoneNumber, setWaPhoneNumber] = useState('');
   const [waSession, setWaSession] = useState<{ channelId: number; qr: string | null; code: string | null; status: string } | null>(null);
   const [qrProgress, setQrProgress] = useState(100);
-
-  // Telegram User states
-  const [tgSession, setTgSession] = useState<{ channelId: number; step: string } | null>(null);
-  const [tgCode, setTgCode] = useState('');
-  const [tgPassword, setTgPassword] = useState('');
-  const [tgError, setTgError] = useState<string | null>(null);
-  const [tgVerifying, setTgVerifying] = useState(false);
 
   // WhatsApp Sync Modal states
   const [syncChannel, setSyncChannel] = useState<Channel | null>(null);
@@ -139,37 +109,6 @@ export default function ChannelManager() {
     return () => clearInterval(interval);
   }, [waSession]);
 
-  // Polling status Telegram saat proses signing_in / 2fa
-  useEffect(() => {
-    if (!tgSession || tgSession.step === 'code_sent' || tgSession.step === 'connected') return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await api.get<{ status: string; channel_status: string }>(
-          `/api/telegram/${tgSession.channelId}/status`
-        );
-        if (res.status === 'connected' || res.channel_status === 'active') {
-          clearInterval(interval);
-          setTgSession(prev => prev ? { ...prev, step: 'connected' } : null);
-          setMsg({ ok: true, text: '🎉 Telegram berhasil terhubung!' });
-          fetchChannels();
-        } else if (res.status === '2fa_required') {
-          clearInterval(interval);
-          setTgSession(prev => prev ? { ...prev, step: '2fa_required' } : null);
-          setTgVerifying(false);
-        } else if (res.status === 'error') {
-          clearInterval(interval);
-          setTgError('Terjadi kesalahan saat login. Coba ulangi dari awal.');
-          setTgVerifying(false);
-        }
-      } catch (e) {
-        console.error('Gagal poll Telegram status:', e);
-      }
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, [tgSession?.step]);
-
   useEffect(() => {
     if (!waSession || waSession.status !== 'qr_pending') return;
 
@@ -208,43 +147,16 @@ export default function ChannelManager() {
     api.get<Channel[]>('/api/channels')
       .then(setChannels)
       .finally(() => setLoading(false));
+
+    api.get<User>('/api/me')
+      .then(setUser)
+      .catch((err) => console.error('Gagal mengambil data user:', err));
   }
 
   async function handleAdd() {
     if (!adding || !form.name) return;
     setSaving(true);
     setMsg(null);
-
-    if (adding === 'telegram') {
-      if (!form.phone_number) {
-        setMsg({ ok: false, text: 'Nomor HP Telegram wajib diisi.' });
-        setSaving(false);
-        return;
-      }
-      try {
-        const res = await api.post<{ channel: Channel; status: string }>('/api/telegram/connect', {
-          name: form.name,
-          phone_number: form.phone_number,
-          target_id: form.target_id || undefined,
-        });
-
-        setTgSession({ channelId: res.channel.id, step: res.status });
-        setTgCode('');
-        setTgPassword('');
-        setTgError(null);
-
-        if (res.status === 'code_sent') {
-          setMsg({ ok: true, text: 'Kode OTP dikirim ke Telegram Anda. Masukkan kode di bawah.' });
-        } else if (res.status === 'error') {
-          setMsg({ ok: false, text: 'Gagal menginisialisasi sesi Telegram. Pastikan nomor HP benar.' });
-        }
-      } catch (e: any) {
-        setMsg({ ok: false, text: e.message ?? 'Gagal menghubungi Telegram service. Pastikan port 3002 aktif.' });
-      } finally {
-        setSaving(false);
-      }
-      return;
-    }
 
     if (adding === 'whatsapp') {
       try {
@@ -309,51 +221,6 @@ export default function ChannelManager() {
     }
   }
 
-  async function handleTgVerify() {
-    if (!tgSession || !tgCode.trim()) return;
-    setTgVerifying(true);
-    setTgError(null);
-    try {
-      await api.post(`/api/telegram/${tgSession.channelId}/verify`, { code: tgCode.trim() });
-      setTgSession(prev => prev ? { ...prev, step: 'signing_in' } : null);
-    } catch (e: any) {
-      setTgError(e.message ?? 'Kode salah atau kadaluarsa. Coba lagi.');
-      setTgVerifying(false);
-    }
-  }
-
-  async function handleTg2FA() {
-    if (!tgSession || !tgPassword.trim()) return;
-    setTgVerifying(true);
-    setTgError(null);
-    try {
-      await api.post(`/api/telegram/${tgSession.channelId}/verify-2fa`, { password: tgPassword.trim() });
-      setTgSession(prev => prev ? { ...prev, step: 'signing_in' } : null);
-    } catch (e: any) {
-      setTgError(e.message ?? 'Password salah. Coba lagi.');
-      setTgVerifying(false);
-    }
-  }
-
-  async function handleCancelTg() {
-    if (!tgSession) return;
-    try {
-      await api.delete(`/api/telegram/${tgSession.channelId}/disconnect`);
-      await api.delete(`/api/channels/${tgSession.channelId}`);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setTgSession(null);
-      setTgCode('');
-      setTgPassword('');
-      setTgError(null);
-      setAdding(null);
-      setForm({ name: '' });
-      setMsg(null);
-      fetchChannels();
-    }
-  }
-
   async function handleTest(ch: Channel) {
     setTesting(ch.id);
     setMsg(null);
@@ -373,14 +240,22 @@ export default function ChannelManager() {
     }
   }
 
-  async function handleDelete(ch: Channel) {
-    if (!confirm(`Apakah Anda yakin ingin menghapus integrasi channel "${ch.name}"?`)) return;
+  function handleDelete(ch: Channel) {
+    setChannelToDelete(ch);
+    setDeleteConfirmOpen(true);
+  }
+
+  async function confirmDeleteChannel() {
+    if (!channelToDelete) return;
+    const ch = channelToDelete;
+    setDeleteConfirmOpen(false);
+    setChannelToDelete(null);
     try {
       await api.delete(`/api/channels/${ch.id}`);
-      setMsg({ ok: true, text: `Channel "${ch.name}" berhasil dihapus.` });
+      setMsg({ ok: true, text: `Koneksi device "${ch.name}" berhasil diputus dan dihapus.` });
       fetchChannels();
     } catch (e: any) {
-      setMsg({ ok: false, text: 'Gagal menghapus channel.' });
+      setMsg({ ok: false, text: 'Gagal memutuskan koneksi device.' });
     }
   }
 
@@ -388,7 +263,7 @@ export default function ChannelManager() {
     setSyncChannel(ch);
     setSyncLoading(true);
     setSyncTab('chats');
-    const prefix = ch.platform === 'telegram' ? 'telegram' : 'whatsapp';
+    const prefix = 'whatsapp';
     try {
       const [chatsRes, groupsRes, contactsRes] = await Promise.all([
         api.get<{ chats: any[] }>(`/api/${prefix}/${ch.id}/chats`).catch(() => ({ chats: [] })),
@@ -410,7 +285,7 @@ export default function ChannelManager() {
   async function handleRefreshSync() {
     if (!syncChannel) return;
     setSyncLoading(true);
-    const prefix = syncChannel.platform === 'telegram' ? 'telegram' : 'whatsapp';
+    const prefix = 'whatsapp';
     try {
       const [chatsRes, groupsRes, contactsRes] = await Promise.all([
         api.get<{ chats: any[] }>(`/api/${prefix}/${syncChannel.id}/chats`).catch(() => ({ chats: [] })),
@@ -432,7 +307,7 @@ export default function ChannelManager() {
   const platformDef = PLATFORMS.find((p) => p.id === adding);
 
   return (
-    <AdminLayout activePage="channels" title="Kelola Channel">
+    <AdminLayout activePage="channels" title="Device Connected">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Status Messages */}
@@ -453,248 +328,223 @@ export default function ChannelManager() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <PlusCircle className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
-            <h2 className="font-bold text-sm text-zinc-800 dark:text-zinc-200 uppercase tracking-wider font-sans">Hubungkan Platform Baru</h2>
+            <h2 className="font-bold text-sm text-zinc-800 dark:text-zinc-200 uppercase tracking-wider font-sans">Hubungkan Device Baru</h2>
           </div>
 
-          {adding === null ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {PLATFORMS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => { setAdding(p.id); setForm({ name: '' }); setMsg(null); setWaSession(null); }}
-                  className="flex flex-col items-center gap-3 bg-zinc-50/50 dark:bg-zinc-950/40 hover:bg-blue-50 dark:hover:bg-blue-950/10 border border-zinc-200 dark:border-zinc-800 hover:border-blue-300 dark:hover:border-blue-500/30 rounded-xl py-6 transition-all duration-300 hover:scale-[1.02] cursor-pointer hover:shadow-md group"
-                >
-                  <PlatformIcon platform={p.id} className="w-8 h-8 group-hover:scale-110 transition-transform duration-300" />
-                  <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{p.label}</span>
-                </button>
-              ))}
-            </div>
-          ) : tgSession ? (
-            /* Telegram User Login Wizard */
-            <div className="space-y-6 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <PlatformIcon platform="telegram" className="w-6 h-6" />
-                  <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200">Hubungkan Telegram</span>
-                </div>
-                <button
-                  onClick={handleCancelTg}
-                  className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/5 hover:bg-red-100/10 dark:hover:bg-red-500/10 px-3.5 py-1.5 rounded-lg border border-red-100 dark:border-red-500/10 transition-all cursor-pointer font-bold"
-                >
-                  Batal & Hapus
-                </button>
+          {user?.email === 'demo@autoin.dev' ? (
+            <div className="flex flex-col items-center justify-center text-center py-10 px-4 bg-zinc-50/30 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800/80 rounded-2xl">
+              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-4">
+                <svg className="w-6 h-6 text-blue-500 fill-current" viewBox="0 0 24 24">
+                  <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z"/>
+                </svg>
               </div>
-
-              <div className="bg-zinc-50/20 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 space-y-5">
-
-                {/* Step: OTP code_sent */}
-                {tgSession.step === 'code_sent' && (
-                  <div className="space-y-4 animate-fadeIn">
-                    <div className="text-center space-y-2">
-                      <div className="w-14 h-14 rounded-2xl bg-sky-50 dark:bg-sky-500/10 flex items-center justify-center mx-auto">
-                        <PlatformIcon platform="telegram" className="w-7 h-7" />
-                      </div>
-                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Masukkan Kode OTP</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Telegram mengirim kode verifikasi ke akun Anda (via chat dari Telegram atau SMS).
-                      </p>
-                    </div>
-                    {tgError && (
-                      <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl p-3 text-xs font-semibold">
-                        {tgError}
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Kode OTP *</label>
-                      <input
-                        type="text"
-                        value={tgCode}
-                        onChange={e => setTgCode(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleTgVerify(); }}
-                        placeholder="Contoh: 12345"
-                        maxLength={6}
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-center text-2xl font-mono font-bold text-zinc-800 dark:text-zinc-100 tracking-widest placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-sky-500 transition-all"
-                      />
-                    </div>
-                    <button
-                      onClick={handleTgVerify}
-                      disabled={tgVerifying || !tgCode.trim()}
-                      className="w-full btn-primary font-bold py-3 rounded-xl text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {tgVerifying && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Verifikasi Kode
-                    </button>
-                  </div>
-                )}
-
-                {/* Step: signing_in (waiting) */}
-                {tgSession.step === 'signing_in' && (
-                  <div className="flex flex-col items-center py-10 gap-4 animate-fadeIn">
-                    <Loader2 className="w-10 h-10 text-sky-500 animate-spin" />
-                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Memverifikasi...</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Menunggu konfirmasi dari Telegram</p>
-                  </div>
-                )}
-
-                {/* Step: 2FA password */}
-                {tgSession.step === '2fa_required' && (
-                  <div className="space-y-4 animate-fadeIn">
-                    <div className="text-center space-y-2">
-                      <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center mx-auto text-2xl">🔐</div>
-                      <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Verifikasi 2FA</p>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        Akun Anda mengaktifkan Two-Factor Authentication. Masukkan cloud password Telegram Anda.
-                      </p>
-                    </div>
-                    {tgError && (
-                      <div className="bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl p-3 text-xs font-semibold">
-                        {tgError}
-                      </div>
-                    )}
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Cloud Password *</label>
-                      <input
-                        type="password"
-                        value={tgPassword}
-                        onChange={e => setTgPassword(e.target.value)}
-                        onKeyDown={e => { if (e.key === 'Enter') handleTg2FA(); }}
-                        placeholder="Masukkan cloud password Telegram"
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-600 focus:outline-none focus:border-amber-500 transition-all"
-                      />
-                    </div>
-                    <button
-                      onClick={handleTg2FA}
-                      disabled={tgVerifying || !tgPassword.trim()}
-                      className="w-full btn-primary font-bold py-3 rounded-xl text-sm disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-                    >
-                      {tgVerifying && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Konfirmasi Password
-                    </button>
-                  </div>
-                )}
-
-                {/* Step: connected */}
-                {tgSession.step === 'connected' && (
-                  <div className="flex flex-col items-center py-10 gap-4 animate-fadeIn">
-                    <CheckCircle className="w-12 h-12 text-emerald-500" />
-                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Telegram Terhubung!</p>
-                    <button
-                      onClick={() => { setTgSession(null); setAdding(null); setForm({ name: '' }); }}
-                      className="btn-primary font-bold px-6 py-2.5 rounded-xl text-sm cursor-pointer"
-                    >
-                      Selesai
-                    </button>
-                  </div>
-                )}
-              </div>
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 mb-1">Koneksi Device Memerlukan Google SSO</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-6 leading-relaxed">
+                Untuk menghubungkan device WhatsApp ke platform Autoin, Anda wajib masuk menggunakan akun Google Anda terlebih dahulu.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8000';
+                  window.location.href = `${apiUrl}/auth/google`;
+                }}
+                className="btn-primary font-bold px-6 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                Masuk dengan Google SSO
+              </button>
             </div>
-
+          ) : adding === null ? (
+            <div className="flex flex-col items-center justify-center text-center py-10 px-4 bg-zinc-50/30 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800/80 rounded-2xl">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center mb-4">
+                <PlatformIcon platform="whatsapp" className="w-6 h-6 text-emerald-500" />
+              </div>
+              <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 mb-1">Hubungkan Akun WhatsApp Baru</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-6 leading-relaxed">
+                Tautkan akun WhatsApp Anda untuk mulai mengirim pesan broadcast, membuat auto-reply, dan sinkronisasi obrolan secara instan.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setAdding('whatsapp'); setForm({ name: '' }); setMsg(null); setWaSession(null); }}
+                className="btn-primary font-bold px-6 py-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-center gap-2"
+              >
+                <PlusCircle className="w-4.5 h-4.5" />
+                Hubungkan Device WhatsApp
+              </button>
+            </div>
           ) : waSession ? (
-            /* WhatsApp Pairing/QR Session Wizard */
-            <div className="space-y-6 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <PlatformIcon platform="whatsapp" className="w-6 h-6" />
-                  <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200">Hubungkan WhatsApp</span>
+            /* ── WhatsApp Device Connector ── */
+            <div className="animate-fadeIn">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <PlatformIcon platform="whatsapp" className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-sm text-zinc-800 dark:text-zinc-200">Hubungkan WhatsApp</p>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Scan QR atau masukkan kode pairing</p>
+                  </div>
                 </div>
-                <button 
-                  onClick={handleCancelWa} 
+                <button
+                  onClick={handleCancelWa}
                   className="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/5 hover:bg-red-100/10 dark:hover:bg-red-500/10 px-3.5 py-1.5 rounded-lg border border-red-100 dark:border-red-500/10 transition-all cursor-pointer font-bold"
                 >
                   Batal & Hapus
                 </button>
               </div>
 
-              <div className="bg-zinc-50/20 dark:bg-zinc-950/20 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col items-center">
-                {waSession.status === 'connecting' && (
-                  <div className="flex flex-col items-center py-6 gap-4 animate-pulse">
-                    <div className="w-64 h-64 bg-zinc-200 dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
-                      <PlatformIcon platform="whatsapp" className="w-12 h-12 text-zinc-400 dark:text-zinc-600" />
+              {/* Connecting State */}
+              {waSession.status === 'connecting' && (
+                <div className="flex flex-col items-center py-12 gap-5">
+                  <div className="relative w-24 h-24">
+                    <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping" />
+                    <div className="relative w-24 h-24 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                      <PlatformIcon platform="whatsapp" className="w-12 h-12" />
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold">Menginisialisasi sesi WhatsApp...</p>
                   </div>
-                )}
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-1">Menginisialisasi Sesi...</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Menghubungi server WhatsApp</p>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {[0,1,2].map(i => (
+                      <div key={i} className="w-2 h-2 rounded-full bg-emerald-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                  </div>
+                </div>
+              )}
 
-                {waSession.status === 'qr_pending' && waSession.qr && (
-                  <div className="text-center space-y-5">
-                    <div className="bg-white p-3 rounded-2xl inline-block shadow-lg relative overflow-hidden">
-                      <img src={waSession.qr} alt="WhatsApp QR Code" className="w-64 h-64" />
-                      <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-zinc-100 overflow-hidden">
-                        <div 
-                          className="h-full bg-emerald-500 transition-all duration-1000 ease-linear"
+              {/* QR Code State */}
+              {waSession.status === 'qr_pending' && waSession.qr && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  {/* QR Card */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative">
+                      {/* Glow effect */}
+                      <div className="absolute -inset-3 bg-emerald-500/10 rounded-3xl blur-xl" />
+                      <div className="relative bg-white p-4 rounded-2xl shadow-xl border border-emerald-100 dark:border-emerald-500/20">
+                        {/* Corner marks */}
+                        <div className="absolute top-2 left-2 w-5 h-5 border-t-3 border-l-3 border-emerald-500 rounded-tl-lg" style={{borderWidth:'3px 0 0 3px'}} />
+                        <div className="absolute top-2 right-2 w-5 h-5 border-t-3 border-r-3 border-emerald-500 rounded-tr-lg" style={{borderWidth:'3px 3px 0 0'}} />
+                        <div className="absolute bottom-2 left-2 w-5 h-5 border-b-3 border-l-3 border-emerald-500 rounded-bl-lg" style={{borderWidth:'0 0 3px 3px'}} />
+                        <div className="absolute bottom-2 right-2 w-5 h-5 border-b-3 border-r-3 border-emerald-500 rounded-br-lg" style={{borderWidth:'0 3px 3px 0'}} />
+                        <img src={waSession.qr} alt="WhatsApp QR Code" className="w-56 h-56 rounded-xl" />
+                      </div>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="w-full max-w-[240px] space-y-1">
+                      <div className="h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all duration-1000 ease-linear"
                           style={{ width: `${qrProgress}%` }}
                         />
                       </div>
-                    </div>
-                    <div className="flex items-center justify-center gap-1.5 text-[10px] text-zinc-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-500 dark:text-emerald-400" />
-                      <span>QR Code diperbarui otomatis...</span>
-                    </div>
-                    <div className="space-y-2 max-w-sm mx-auto text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed text-left bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                      <p className="font-bold text-zinc-800 dark:text-zinc-200 mb-1">📱 Petunjuk Scan QR:</p>
-                      <ol className="list-decimal list-inside space-y-1">
-                        <li>Buka WhatsApp di HP Anda.</li>
-                        <li>Buka Menu/Pengaturan {"->"} Perangkat Tertaut.</li>
-                        <li>Pilih Tautkan Perangkat.</li>
-                        <li>Arahkan kamera ke kode QR di atas.</li>
-                      </ol>
-                    </div>
-                  </div>
-                )}
-
-                {waSession.status === 'pairing_pending' && waSession.code && (
-                  <div className="text-center space-y-6">
-                    <div className="py-4">
-                      <div className="text-[10px] text-blue-600 dark:text-blue-400 uppercase tracking-widest font-extrabold mb-3 font-sans">AUTOIN PAIRING GATEWAY</div>
-                      <div className="inline-flex items-center gap-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 px-8 py-5 rounded-3xl tracking-widest shadow-xl animate-pulse font-mono text-3xl font-extrabold text-zinc-800 dark:text-zinc-100">
-                        <span>{waSession.code.includes('-') ? waSession.code.split('-')[0] : waSession.code.slice(0, 4)}</span>
-                        <span className="text-zinc-400 dark:text-zinc-600">-</span>
-                        <span>{waSession.code.includes('-') ? waSession.code.split('-')[1] : waSession.code.slice(4)}</span>
+                      <div className="flex items-center gap-1.5 justify-center">
+                        <RefreshCw className="w-3 h-3 text-emerald-500 animate-spin" />
+                        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">QR diperbarui otomatis</span>
                       </div>
                     </div>
-                    <div className="space-y-2 max-w-sm mx-auto text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed text-left bg-zinc-50 dark:bg-zinc-950 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800">
-                      <p className="font-bold text-zinc-800 dark:text-zinc-200 mb-1">🔑 Petunjuk Memasukkan Kode:</p>
-                      <ol className="list-decimal list-inside space-y-1">
-                        <li>Buka WhatsApp di HP Anda.</li>
-                        <li>Buka Menu/Pengaturan {"->"} Perangkat Tertaut.</li>
-                        <li>Ketuk Tautkan Perangkat {"->"} Tautkan dengan No. HP.</li>
-                        <li>Masukkan 8 karakter kode di atas.</li>
-                      </ol>
+                  </div>
+
+                  {/* Instructions */}
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Scan QR dengan WhatsApp di HP Anda</p>
+                    <ol className="space-y-3">
+                      {[
+                        { step: 1, text: 'Buka WhatsApp di HP Anda' },
+                        { step: 2, text: 'Ketuk Menu ⋮ atau Pengaturan' },
+                        { step: 3, text: 'Pilih Perangkat Tertaut → Tautkan Perangkat' },
+                        { step: 4, text: 'Arahkan kamera ke QR Code di kiri' },
+                      ].map(({ step, text }) => (
+                        <li key={step} className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{step}</span>
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{text}</span>
+                        </li>
+                      ))}
+                    </ol>
+                    <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+                      <span className="text-amber-500 shrink-0">⚡</span>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium">Pastikan HP terhubung internet. QR berlaku 60 detik.</p>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {waSession.status !== 'connecting' && waSession.status !== 'qr_pending' && waSession.status !== 'pairing_pending' && (
-                  <div className="flex flex-col items-center py-10 gap-3">
-                    <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin" />
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Status: <span className="text-zinc-800 dark:text-zinc-200 font-bold uppercase">{waSession.status}</span></p>
-                    <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Menunggu respons koneksi dari HP Anda...</p>
+              {/* Pairing Code State */}
+              {waSession.status === 'pairing_pending' && waSession.code && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  {/* Code Display */}
+                  <div className="flex flex-col items-center gap-5">
+                    <div className="relative">
+                      <div className="absolute -inset-4 bg-blue-500/10 rounded-3xl blur-xl" />
+                      <div className="relative bg-white dark:bg-zinc-950 border-2 border-blue-200 dark:border-blue-500/30 rounded-2xl px-10 py-8 shadow-xl text-center">
+                        <p className="text-[9px] font-extrabold text-blue-400 uppercase tracking-[0.3em] mb-4">Kode Pairing</p>
+                        <div className="flex items-center gap-3 font-mono text-4xl font-extrabold text-zinc-800 dark:text-zinc-100 tracking-widest">
+                          <span className="text-blue-600 dark:text-blue-400">
+                            {waSession.code.includes('-') ? waSession.code.split('-')[0] : waSession.code.slice(0, 4)}
+                          </span>
+                          <span className="text-zinc-300 dark:text-zinc-600 text-3xl">—</span>
+                          <span className="text-blue-600 dark:text-blue-400">
+                            {waSession.code.includes('-') ? waSession.code.split('-')[1] : waSession.code.slice(4)}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex items-center justify-center gap-1.5">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                          <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-semibold">Menunggu verifikasi...</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Instructions */}
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Masukkan kode pairing di WhatsApp</p>
+                    <ol className="space-y-3">
+                      {[
+                        { step: 1, text: 'Buka WhatsApp di HP Anda' },
+                        { step: 2, text: 'Masuk ke Perangkat Tertaut' },
+                        { step: 3, text: 'Pilih Tautkan dengan Nomor HP' },
+                        { step: 4, text: 'Masukkan 8 karakter kode di kiri' },
+                      ].map(({ step, text }) => (
+                        <li key={step} className="flex items-start gap-3">
+                          <span className="w-6 h-6 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">{step}</span>
+                          <span className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed">{text}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                </div>
+              )}
+
+              {/* Other Status */}
+              {waSession.status !== 'connecting' && waSession.status !== 'qr_pending' && waSession.status !== 'pairing_pending' && (
+                <div className="flex flex-col items-center py-12 gap-4">
+                  <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center">
+                    <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-bold text-zinc-800 dark:text-zinc-100 mb-1">
+                      Status: <span className="text-purple-600 dark:text-purple-400 uppercase">{waSession.status}</span>
+                    </p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Menunggu respons koneksi dari HP Anda...</p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); handleAdd(); }} className="space-y-5 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <span className="w-5 h-5 flex items-center justify-center">
-                    <PlatformIcon platform={adding || ''} className="w-5 h-5" />
-                  </span>
-                  <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200">{platformDef?.label} Setup</span>
+              <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-3.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <PlatformIcon platform="whatsapp" className="w-4.5 h-4.5 text-emerald-500" />
+                  </div>
+                  <span className="font-bold text-sm text-zinc-800 dark:text-zinc-200">Pengaturan Device WhatsApp Baru</span>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setAdding(null)} 
-                  className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 bg-zinc-50 dark:bg-zinc-950 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 transition-all cursor-pointer"
-                >
-                  Batal
-                </button>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Nama Channel *</label>
+                  <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Nama Device / WhatsApp *</label>
                   <input
                     type="text"
                     value={form.name}
@@ -717,33 +567,6 @@ export default function ChannelManager() {
                   </div>
                 ))}
 
-                {adding === 'telegram' && (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Nomor HP Telegram *</label>
-                      <input
-                        type="text"
-                        value={form.phone_number ?? ''}
-                        onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
-                        placeholder="+6281234567890 (format internasional)"
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-sky-500 transition-all"
-                      />
-                      <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1.5">
-                        Nomor HP yang terdaftar di akun Telegram Anda. OTP akan dikirim ke sana.
-                      </p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">Target Default (Opsional)</label>
-                      <input
-                        type="text"
-                        value={form.target_id ?? ''}
-                        onChange={(e) => setForm({ ...form, target_id: e.target.value })}
-                        placeholder="@username atau ID chat"
-                        className="w-full bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 focus:outline-none focus:border-sky-500 transition-all"
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {adding === 'whatsapp' && (
                   <div className="space-y-4">
@@ -827,7 +650,7 @@ export default function ChannelManager() {
         <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-6">
             <Globe className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
-            <h2 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 uppercase tracking-wider font-sans">Channel Terkoneksi</h2>
+            <h2 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 uppercase tracking-wider font-sans">Device Terkoneksi</h2>
           </div>
 
           {loading ? (
@@ -848,30 +671,30 @@ export default function ChannelManager() {
                 </div>
               ))}
             </div>
-          ) : channels.length === 0 ? (
+          ) : channels.filter(ch => ch.platform === 'whatsapp').length === 0 ? (
             <div className="text-center py-12 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl bg-zinc-50/20 dark:bg-zinc-950/20">
               <Layers className="w-10 h-10 text-zinc-300 dark:text-zinc-700 mx-auto mb-3" />
-              <p className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">Belum ada channel yang terhubung. Hubungkan salah satu di atas.</p>
+              <p className="text-zinc-500 dark:text-zinc-400 text-xs font-medium">Belum ada device WhatsApp yang terhubung. Hubungkan di atas.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-3.5">
-              {channels.map((ch) => (
+              {channels.filter(ch => ch.platform === 'whatsapp').map((ch) => (
                 <div 
                   key={ch.id} 
                   className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 gap-4"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center shrink-0">
-                      <PlatformIcon platform={ch.platform} className="w-6 h-6" />
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10">
+                      <PlatformIcon platform={ch.platform} className="w-5.5 h-5.5" />
                     </div>
                     <div className="min-w-0">
                       <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
                       <div className="flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
-                        <span>{ch.platform}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">WhatsApp Account</span>
                         {ch.target_id && (
                           <>
                             <span>•</span>
-                            <span className="font-mono text-zinc-500 dark:text-zinc-400 truncate max-w-[150px]">Target: {ch.target_id}</span>
+                            <span className="font-mono text-zinc-500 dark:text-zinc-400 truncate max-w-[150px]">Default Target: {ch.target_id}</span>
                           </>
                         )}
                       </div>
@@ -879,34 +702,27 @@ export default function ChannelManager() {
                   </div>
 
                   <div className="flex items-center gap-3 justify-end border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0">
-                    <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full border ${statusBadgeStyle(ch.status)}`}>
-                      {ch.status.toUpperCase()}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {ch.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
+                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border tracking-wide ${statusBadgeStyle(ch.status)}`}>
+                        {ch.status === 'active' ? 'TERHUBUNG' : ch.status === 'error' ? 'ERROR' : ch.status.toUpperCase()}
+                      </span>
+                    </div>
 
                     {ch.platform === 'whatsapp' && ch.status === 'active' && (
                       <button
                         onClick={() => handleOpenSyncModal(ch)}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
                       >
                         <MessageSquare className="w-3.5 h-3.5" />
                         <span>Chats & Grup</span>
                       </button>
                     )}
 
-                    {ch.platform === 'telegram' && ch.status === 'active' && (
-                      <button
-                        onClick={() => handleOpenSyncModal(ch)}
-                        className="text-xs font-bold text-sky-600 dark:text-sky-400 hover:text-sky-500 bg-sky-50 dark:bg-sky-500/5 hover:bg-sky-100/10 dark:hover:bg-sky-500/10 border border-sky-100 dark:border-sky-500/10 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
-                      >
-                        <Users className="w-3.5 h-3.5" />
-                        <span>Chats & Contacts</span>
-                      </button>
-                    )}
-
                     <button
                       onClick={() => handleTest(ch)}
                       disabled={testing === ch.id}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-3.5 py-1.5 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
+                      className="text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-3.5 py-1.5 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
                     >
                       {testing === ch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
                       <span>Test Koneksi</span>
@@ -934,12 +750,12 @@ export default function ChannelManager() {
             {/* Modal Header */}
             <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100/80 dark:bg-zinc-950/40">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${syncChannel?.platform === 'telegram' ? 'bg-sky-50 dark:bg-sky-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'}`}>
-                  <PlatformIcon platform={syncChannel?.platform || 'whatsapp'} className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center bg-emerald-50 dark:bg-emerald-500/10">
+                  <PlatformIcon platform="whatsapp" className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-zinc-800 dark:text-zinc-100 uppercase tracking-wide">
-                    {syncChannel?.platform === 'telegram' ? 'Sync Data Telegram' : 'Sync Data WhatsApp'}
+                    Sync Data WhatsApp
                   </h3>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium font-mono truncate max-w-[250px] mt-0.5">{syncChannel.name}</p>
                 </div>
@@ -972,7 +788,7 @@ export default function ChannelManager() {
                   onClick={() => setSyncTab(tab)}
                   className={`py-2 px-3 text-xs font-bold rounded-xl transition-all cursor-pointer text-center capitalize ${
                     syncTab === tab
-                      ? 'bg-blue-600 text-white shadow-sm'
+                      ? 'tab-active'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/70 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200'
                   }`}
                 >
@@ -1087,6 +903,37 @@ export default function ChannelManager() {
                 className="bg-zinc-800 hover:bg-zinc-700 dark:bg-zinc-200 dark:hover:bg-zinc-100 text-white dark:text-zinc-900 font-bold px-5 py-2.5 rounded-2xl text-xs transition-all cursor-pointer"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Putuskan Device</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin memutuskan koneksi device <strong>{channelToDelete?.name}</strong>? Kontak dan riwayat pesan akan terhapus dari sistem.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setDeleteConfirmOpen(false); setChannelToDelete(null); }}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteChannel}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 transition-all cursor-pointer"
+              >
+                Hapus &amp; Putus
               </button>
             </div>
           </div>

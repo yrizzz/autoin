@@ -90,17 +90,21 @@ body {
   background: radial-gradient(circle at 50% 50%, rgba(37, 99, 235, 0.15) 0%, transparent 60%);
 }
 
-/* Primary button */
-.btn-primary {
+/* Primary button, active navigation, active tabs, and logo */
+.btn-primary, .nav-active-item, .logo-gradient, .tab-active {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
   color: #ffffff !important;
+}
+.btn-primary, .nav-active-item, .tab-active {
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 4px 14px rgba(29, 78, 216, 0.2) !important;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
-.btn-primary:hover {
+.btn-primary:hover, .nav-active-item:hover, .tab-active:hover {
   background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
   box-shadow: 0 6px 20px rgba(29, 78, 216, 0.35) !important;
+}
+.btn-primary:hover {
   transform: translateY(-1px);
 }
 .btn-primary:active {

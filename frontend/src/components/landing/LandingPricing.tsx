@@ -39,7 +39,7 @@ export default function LandingPricing() {
 
       <div className="max-w-5xl mx-auto relative z-10">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-5xl font-bold mb-4 font-display">Harga yang Sangat Hemat</h2>
+          <h2 className="text-3xl md:text-5xl font-bold mb-4 font-display text-white">Harga yang Sangat Hemat</h2>
           <div className="h-1.5 w-16 bg-gradient-brand mx-auto rounded-full mb-6" />
           <p className="text-white/60 text-base sm:text-lg">Pay-as-you-go. Tanpa kontrak panjang, batalkan kapan saja.</p>
         </div>

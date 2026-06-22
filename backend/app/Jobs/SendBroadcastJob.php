@@ -5,9 +5,6 @@ namespace App\Jobs;
 use App\Events\BroadcastStatusUpdated;
 use App\Models\Broadcast;
 use App\Models\BroadcastLog;
-use App\Services\DiscordService;
-use App\Services\TelegramUserService;
-use App\Services\WebhookService;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -67,9 +64,6 @@ class SendBroadcastJob implements ShouldQueue
         $mediaType = $this->broadcast->media_type;
 
         return match($channel->platform) {
-            'telegram'  => app(TelegramUserService::class)->send($channel, $content, $mediaUrl, $recipientId),
-            'discord'   => app(DiscordService::class)->send($channel, $content, $mediaUrl),
-            'webhook'   => app(WebhookService::class)->send($channel, $content, $mediaUrl),
             'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId),
             default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };

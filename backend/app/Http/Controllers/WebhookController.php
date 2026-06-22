@@ -21,7 +21,7 @@ class WebhookController extends Controller
     {
         $data = $request->validate([
             'name'     => 'required|string|max:255',
-            'platform' => 'required|in:all,whatsapp,telegram',
+            'platform' => 'required|in:all,whatsapp',
         ]);
 
         $webhook = $request->user()->webhooks()->create($data);
@@ -35,7 +35,7 @@ class WebhookController extends Controller
 
         $data = $request->validate([
             'name'      => 'sometimes|string|max:255',
-            'platform'  => 'sometimes|in:all,whatsapp,telegram',
+            'platform'  => 'sometimes|in:all,whatsapp',
             'is_active' => 'sometimes|boolean',
         ]);
 
@@ -68,7 +68,7 @@ class WebhookController extends Controller
             'message'  => 'required|string',
             'targets'  => 'required|array|min:1',
             'targets.*'=> 'required|string',
-            'platform' => 'nullable|in:whatsapp,telegram',
+            'platform' => 'nullable|in:whatsapp',
         ]);
 
         $platform = $data['platform'] ?? ($webhook->platform === 'all' ? 'whatsapp' : $webhook->platform);
@@ -94,14 +94,6 @@ class WebhookController extends Controller
                     $waKey = config('services.whatsapp.secret', 'autoin-wa-secret');
                     Http::withHeader('x-api-secret', $waKey)
                         ->post("{$waUrl}/sessions/{$sessId}/send", [
-                            'to'      => $to,
-                            'message' => $data['message'],
-                        ]);
-                } else {
-                    $tgUrl = config('services.telegram.url', 'http://localhost:3002');
-                    $tgKey = config('services.telegram.secret', 'autoin-tg-secret');
-                    Http::withHeader('x-api-secret', $tgKey)
-                        ->post("{$tgUrl}/sessions/{$sessId}/send", [
                             'to'      => $to,
                             'message' => $data['message'],
                         ]);

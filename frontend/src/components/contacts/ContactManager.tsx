@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 
 interface WaContact { id: string; name: string; }
-interface TgContact { id: number; firstName?: string; lastName?: string; username?: string; phone?: string; }
+
 type NormalContact = { id: string; name: string; phone?: string };
 
 const PALETTE = [
@@ -108,10 +108,8 @@ function ContactCard({ c, platform, onCopy, copied }: {
 }
 
 export default function ContactManager() {
-  const [platform, setPlatform]           = useState<'whatsapp' | 'telegram'>('whatsapp');
   const [contacts, setContacts]           = useState<NormalContact[]>([]);
   const [waChannels, setWaChannels]       = useState<Channel[]>([]);
-  const [tgChannels, setTgChannels]       = useState<Channel[]>([]);
   const [activeChannel, setActiveChannel] = useState<Channel | null>(null);
   const [loading, setLoading]             = useState(true);
   const [syncing, setSyncing]             = useState(false);
@@ -124,24 +122,14 @@ export default function ContactManager() {
   const fetchWaContacts = async (ch: Channel) => {
     const res = await api.get<{ contacts: WaContact[] }>(`/api/whatsapp/${ch.id}/contacts`);
     const real = (res.contacts || []).filter(c =>
-      c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@') && !c.id.startsWith('0@')
+      (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@') && !c.id.startsWith('0@')
     );
     setContacts(real.map(c => ({ id: c.id, name: c.name || '', phone: formatWaPhone(c.id) })));
   };
 
-  const fetchTgContacts = async (ch: Channel) => {
-    const res = await api.get<{ contacts: TgContact[] }>(`/api/telegram/${ch.id}/contacts`);
-    setContacts((res.contacts || []).map(c => ({
-      id: String(c.id),
-      name: [c.firstName, c.lastName].filter(Boolean).join(' ') || c.username || String(c.id),
-      phone: c.phone ? `+${c.phone}` : undefined,
-    })));
-  };
-
-  const fetchContacts = async (ch: Channel, pt: 'whatsapp' | 'telegram') => {
+  const fetchContacts = async (ch: Channel) => {
     try {
-      if (pt === 'whatsapp') await fetchWaContacts(ch);
-      else await fetchTgContacts(ch);
+      await fetchWaContacts(ch);
     } catch { setContacts([]); }
   };
 
@@ -151,31 +139,28 @@ export default function ContactManager() {
     try {
       const chs = await api.get<Channel[]>('/api/channels');
       const wa  = chs.filter(c => c.platform === 'whatsapp' && c.status === 'active');
-      const tg  = chs.filter(c => c.platform === 'telegram'  && c.status === 'active');
       setWaChannels(wa);
-      setTgChannels(tg);
-      const candidates = platform === 'whatsapp' ? wa : tg;
-      if (candidates.length > 0) {
-        setActiveChannel(candidates[0]);
-        await fetchContacts(candidates[0], platform);
+      if (wa.length > 0) {
+        setActiveChannel(wa[0]);
+        await fetchContacts(wa[0]);
       } else { setActiveChannel(null); }
     } catch {}
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [platform]);
+  useEffect(() => { load(); }, []);
 
   const handleChannelSwitch = async (ch: Channel) => {
     setActiveChannel(ch);
     setLoading(true);
-    await fetchContacts(ch, platform);
+    await fetchContacts(ch);
     setLoading(false);
   };
 
   const handleSync = async () => {
     if (!activeChannel) return;
     setSyncing(true);
-    await fetchContacts(activeChannel, platform);
+    await fetchContacts(activeChannel);
     setSyncing(false);
   };
 
@@ -204,8 +189,8 @@ export default function ContactManager() {
     return Object.entries(map).sort(([a], [b]) => a === '#' ? 1 : b === '#' ? -1 : a.localeCompare(b));
   }, [filteredContacts]);
 
-  const channels   = platform === 'whatsapp' ? waChannels : tgChannels;
-  const emptyLabel = platform === 'whatsapp' ? 'WhatsApp' : 'Telegram';
+  const channels   = waChannels;
+  const emptyLabel = 'WhatsApp';
 
   return (
     <AdminLayout activePage="contacts" title="Daftar Kontak">
@@ -246,21 +231,19 @@ export default function ContactManager() {
               }} />
           </label>
           <button onClick={handleSync} disabled={syncing || loading || !activeChannel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-sm hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer disabled:opacity-50">
+            className="btn-primary flex items-center gap-1.5 px-3 py-2 font-bold text-xs rounded-xl shadow-sm cursor-pointer disabled:opacity-50">
             <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />Sinkronisasi
           </button>
         </div>
       </div>
 
-      {/* Platform + channel tabs + search */}
+      {/* Channel tabs + search */}
       <div className="flex items-center gap-2 mb-4 flex-wrap">
-        <PlatformTab active={platform === 'whatsapp'} onClick={() => { setPlatform('whatsapp'); setSearch(''); }} label="WhatsApp" color="bg-emerald-500" />
-        <PlatformTab active={platform === 'telegram'} onClick={() => { setPlatform('telegram'); setSearch(''); }} label="Telegram" color="bg-sky-500" />
         {channels.length > 1 && channels.map(ch => (
           <button key={ch.id} onClick={() => handleChannelSwitch(ch)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
               activeChannel?.id === ch.id
-                ? 'bg-blue-600 text-white border-blue-600'
+                ? 'tab-active'
                 : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800'
             }`}>{ch.name}
           </button>
@@ -269,7 +252,7 @@ export default function ContactManager() {
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
             <input type="text"
-              placeholder={`Cari nama, ${platform === 'whatsapp' ? 'nomor' : 'username'}...`}
+              placeholder="Cari nama, nomor..."
               value={search} onChange={e => setSearch(e.target.value)}
               className="pl-9 pr-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-blue-500 transition-all shadow-sm w-52" />
           </div>
@@ -433,7 +416,7 @@ export default function ContactManager() {
             </div>
             <div className="px-6 py-3 bg-amber-50 dark:bg-amber-500/5 border-t border-amber-100 dark:border-amber-500/20">
               <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                <strong>Catatan:</strong> Import CSV hanya preview. Kontak diambil langsung dari WA/Telegram. Untuk menambah kontak, lakukan di aplikasinya langsung.
+                <strong>Catatan:</strong> Import CSV hanya preview. Kontak diambil langsung dari WhatsApp. Untuk menambah kontak, lakukan di aplikasinya langsung.
               </p>
             </div>
             <div className="px-6 py-4 flex justify-end">

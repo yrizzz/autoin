@@ -7,6 +7,7 @@ export default function ApiKeyManager() {
   const [showKey, setShowKey] = useState<boolean>(false);
   const [copied, setCopied] = useState<boolean>(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('autoin_api_key');
@@ -24,10 +25,7 @@ export default function ApiKeyManager() {
   };
 
   const handleRevoke = () => {
-    if (confirm('Apakah Anda yakin ingin membatalkan (revoke) API Key ini? Integrasi yang berjalan akan terputus.')) {
-      setApiKey('');
-      localStorage.removeItem('autoin_api_key');
-    }
+    setDeleteConfirmOpen(true);
   };
 
   const handleCopyKey = () => {
@@ -42,12 +40,12 @@ export default function ApiKeyManager() {
   -H "Authorization: Bearer ${apiKey || 'YOUR_API_KEY'}" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "channel": ["wa", "telegram", "discord"],
+    "channel": ["wa"],
     "text": "Promo hari ini..."
   }'`,
-    js: `// Mengirim broadcast multi-platform menggunakan broadcast engine AUTOIN
+    js: `// Mengirim broadcast menggunakan broadcast engine AUTOIN
 await broadcast.send({
-  channel: ["wa", "telegram", "discord"],
+  channel: ["wa"],
   text: "Promo hari ini..."
 });`
   };
@@ -136,7 +134,7 @@ await broadcast.send({
                 </div>
                 <button
                   onClick={handleGenerate}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/10 hover:from-blue-700 hover:to-blue-800 transition-all cursor-pointer"
+                  className="btn-primary inline-flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Buat API Key
@@ -188,6 +186,43 @@ await broadcast.send({
           </div>
         </div>
       </div>
+
+      {/* Custom delete confirmation modal */}
+      {deleteConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200 relative">
+            <div className="w-12 h-12 rounded-full bg-red-500/10 text-red-600 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-2">Revoke API Key?</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin membatalkan (revoke) API Key ini? Semua integrasi eksternal yang berjalan menggunakan key ini akan terputus seketika.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl transition-all cursor-pointer border border-zinc-200 dark:border-zinc-700/60"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setApiKey('');
+                  localStorage.removeItem('autoin_api_key');
+                  setDeleteConfirmOpen(false);
+                }}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Ya, Revoke
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 }
