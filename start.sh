@@ -37,7 +37,7 @@ pkill -f "node.*whatsapp-service.*index.js" 2>/dev/null || true
 pkill -f "node --watch" 2>/dev/null || true
 sleep 1
 
-for PORT in 8000 4321 3001; do
+for PORT in 8000 4322 3001; do
   OLD_PID=$(lsof -ti tcp:$PORT 2>/dev/null)
   if [ -n "$OLD_PID" ]; then
     kill "$OLD_PID" 2>/dev/null
@@ -86,7 +86,7 @@ PID_FRONTEND=$!
 
 sleep 3
 if kill -0 "$PID_FRONTEND" 2>/dev/null; then
-  ok "Frontend berjalan → http://localhost:4321"
+  ok "Frontend berjalan → http://localhost:4322"
 else
   err "Frontend gagal start. Cek /tmp/autoin-frontend.log"
   cat /tmp/autoin-frontend.log | tail -5
@@ -118,8 +118,8 @@ echo ""
 echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo -e "  ${GREEN}Semua service siap!${RESET}"
 echo ""
-echo -e "  🌐 App       → ${CYAN}http://localhost:4321${RESET}"
-echo -e "  📡 Dashboard → ${CYAN}http://localhost:4321/dashboard${RESET}"
+echo -e "  🌐 App       → ${CYAN}http://localhost:4322${RESET}"
+echo -e "  📡 Dashboard → ${CYAN}http://localhost:4322/dashboard${RESET}"
 echo -e "  🔧 API       → ${CYAN}http://localhost:8000/api${RESET}"
 [ -n "$PID_WA" ] && \
 echo -e "  💬 WhatsApp  → ${CYAN}http://localhost:3001${RESET}"
