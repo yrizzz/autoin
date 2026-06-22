@@ -132,16 +132,23 @@ cd "$ROOT/whatsapp-service"
 npm ci --silent
 ok "WA service ready"
 
-# 5. Restart via PM2
+# 5. Pastikan vendor ada sebelum PM2 start
+if [ ! -f "$ROOT/backend/vendor/bin/phpunit" ]; then
+  log "vendor/ belum ada, jalankan composer install dulu..."
+  cd "$ROOT/backend"
+  composer install --no-dev --optimize-autoloader --no-interaction
+  ok "composer install selesai"
+fi
+
+# 6. Restart via PM2
 log "Restart semua service via PM2..."
 cd "$ROOT"
-if pm2 list 2>/dev/null | grep -q "autoin"; then
-  pm2 restart ecosystem.config.cjs --update-env
-else
-  pm2 start ecosystem.config.cjs
-fi
+
+# Delete stale PM2 processes, then start fresh from ecosystem config
+pm2 delete ecosystem.config.cjs 2>/dev/null || true
+pm2 start ecosystem.config.cjs
 pm2 save --force >/dev/null
-ok "Services restarted"
+ok "Services started"
 
 # ─────────────────────────────────────────────────────────
 #  Summary

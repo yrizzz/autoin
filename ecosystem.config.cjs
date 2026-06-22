@@ -11,7 +11,7 @@ module.exports = {
     {
       name: 'autoin-backend',
       cwd: path.join(ROOT, 'backend'),
-      script: 'vendor/bin/artisan',
+      script: 'artisan',          // artisan file at backend root (not vendor symlink)
       args: 'serve --host=0.0.0.0 --port=8001',
       interpreter: 'php',
       watch: false,
@@ -19,7 +19,6 @@ module.exports = {
       max_restarts: 10,
       restart_delay: 3000,
       env: {
-        NODE_ENV: 'production',
         APP_ENV: 'production',
       },
       out_file: '/var/log/autoin/backend.log',
