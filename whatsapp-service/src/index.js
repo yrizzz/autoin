@@ -41,8 +41,11 @@ app.post('/sessions/:sessionId', auth, async (req, res) => {
   }
 
   try {
-    const result = await sessionManager.create(sessionId, usePairingCode, phoneNumber);
-    res.json(result);
+    sessionManager.create(sessionId, usePairingCode, phoneNumber).catch(err => {
+      console.error(`[Session Error] Failed to create session ${sessionId}:`, err);
+    });
+
+    res.json({ status: 'connecting' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -4,6 +4,7 @@ import makeWASocket, {
   downloadMediaMessage,
   BufferJSON,
   initAuthCreds,
+  proto,
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
@@ -12,13 +13,13 @@ import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
 
-const MEDIA_DIR       = './media-temp';
-const BACKEND_URL     = process.env.BACKEND_URL     || 'http://localhost:8000';
+const MEDIA_DIR = './media-temp';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'autoin-internal-secret';
 
 if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
-const logger = pino({ level: 'silent' });
+const logger = pino({ level: 'info' });
 
 // ── Persisted via Laravel MySQL database API ─────────────────────────────────
 const KEY_MAP = {
@@ -48,11 +49,7 @@ async function useMySQLAuthState(sessionId) {
   for (const [key, value] of Object.entries(dbData)) {
     try {
       authCache[key] = JSON.parse(JSON.stringify(value), BufferJSON.reviver);
-    } catch {}
-  }
-
-  if (!authCache['creds']) {
-    authCache['creds'] = initAuthCreds();
+    } catch { }
   }
 
   let pendingUpdates = {};
@@ -65,6 +62,8 @@ async function useMySQLAuthState(sessionId) {
     const payload = { ...pendingUpdates };
     pendingUpdates = {};
 
+    console.log(`[useMySQLAuthState] Flushing ${Object.keys(payload).length} updates to MySQL:`, Object.keys(payload));
+
     const saveUrl = `${BACKEND_URL}/api/internal/whatsapp/auth`;
     fetch(saveUrl, {
       method: 'POST',
@@ -76,10 +75,13 @@ async function useMySQLAuthState(sessionId) {
         session_id: sessionId,
         data: payload
       })
-    }).catch(err => console.error('Failed to save auth state to database:', err));
+    })
+    .then(r => r.json().then(d => console.log(`[useMySQLAuthState] Save response:`, d)))
+    .catch(err => console.error('[useMySQLAuthState] Failed to save auth state to database:', err));
   };
 
   const queueUpdate = (key, value) => {
+    console.log(`[useMySQLAuthState] Queued update for key: ${key}`);
     if (value) {
       pendingUpdates[key] = JSON.parse(JSON.stringify(value, BufferJSON.replacer));
     } else {
@@ -91,25 +93,34 @@ async function useMySQLAuthState(sessionId) {
     }
   };
 
+  if (!authCache['creds']) {
+    console.log(`[useMySQLAuthState] Credentials missing, initializing and saving creds to database...`);
+    authCache['creds'] = initAuthCreds();
+    queueUpdate('creds', authCache['creds']);
+  }
+
   const creds = authCache['creds'];
-  
+
   return {
     state: {
       creds,
       keys: {
-        get: (type, ids) => {
+        get: async (type, ids) => {
           const dict = {};
           const keyPrefix = KEY_MAP[type] || `${type}-`;
           for (const id of ids) {
             const cacheKey = `${keyPrefix}${id}`;
             let value = authCache[cacheKey];
             if (value) {
+              if (type === 'app-state-sync-key') {
+                value = proto.Message.AppStateSyncKeyData.fromObject(value);
+              }
               dict[id] = value;
             }
           }
           return dict;
         },
-        set: (data) => {
+        set: async (data) => {
           for (const type of Object.keys(data)) {
             const keyPrefix = KEY_MAP[type] || `${type}-`;
             for (const id of Object.keys(data[type])) {
@@ -146,13 +157,13 @@ class SessionManager extends EventEmitter {
   constructor() {
     super();
     this.setMaxListeners(100);
-    this._sessions  = new Map();
-    this._qrs       = new Map();
-    this._status    = new Map();
+    this._sessions = new Map();
+    this._qrs = new Map();
+    this._status = new Map();
     this._pairingCodes = new Map();
-    this._contacts  = new Map();
-    this._chats     = new Map();
-    this._messages  = new Map(); // `${sessionId}:${chatId}` → Msg[]
+    this._contacts = new Map();
+    this._chats = new Map();
+    this._messages = new Map(); // `${sessionId}:${chatId}` → Msg[]
     this._saveTimers = new Map();
     this._lidToPhone = new Map(); // `${sessionId}:${lid}` → phone JID
   }
@@ -173,8 +184,8 @@ class SessionManager extends EventEmitter {
     const t = setTimeout(() => {
       this._saveTimers.delete(sessionId);
       const contacts = this._contacts.get(sessionId) || [];
-      const chats    = this.getChats(sessionId) || [];
-      
+      const chats = this.getChats(sessionId) || [];
+
       this.getGroups(sessionId).then(groups => {
         const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
         fetch(url, {
@@ -209,12 +220,12 @@ class SessionManager extends EventEmitter {
         if (store.contacts?.length) this._contacts.set(sessionId, store.contacts);
         if (store.chats?.length) {
           const mappedChats = store.chats.map(c => ({
-            id:                    c.id,
-            name:                  c.name,
-            unreadCount:           c.unread || 0,
-            lastMessage:           c.lastMessage || '',
+            id: c.id,
+            name: c.name,
+            unreadCount: c.unread || 0,
+            lastMessage: c.lastMessage || '',
             conversationTimestamp: c.ts || 0,
-            time:                  c.time || '',
+            time: c.time || '',
           }));
           this._chats.set(sessionId, mappedChats);
         }
@@ -286,9 +297,9 @@ class SessionManager extends EventEmitter {
     return null;
   }
 
-  has(id)         { return this._sessions.has(id); }
+  has(id) { return this._sessions.has(id); }
   isConnected(id) { return this._status.get(id) === 'connected'; }
-  getQr(id)       { return this._qrs.get(id) ?? null; }
+  getQr(id) { return this._qrs.get(id) ?? null; }
   getPairingCode(id) { return this._pairingCodes.get(id) ?? null; }
 
   getStatus(id) {
@@ -309,18 +320,18 @@ class SessionManager extends EventEmitter {
   getContacts(id) { return this._contacts.get(id) || []; }
 
   getChats(id) {
-    const chats    = this._chats.get(id) || [];
+    const chats = this._chats.get(id) || [];
     const contacts = this._contacts.get(id) || [];
     return chats
       .map(c => {
         const contact = contacts.find(con => con.id === c.id);
         return {
-          id:          c.id,
-          name:        contact?.name || c.name || c.id.split('@')[0],
+          id: c.id,
+          name: contact?.name || c.name || c.id.split('@')[0],
           lastMessage: c.lastMessage || '',
-          time:        c.time || '',
-          unread:      c.unreadCount || 0,
-          ts:          c.conversationTimestamp || 0,
+          time: c.time || '',
+          unread: c.unreadCount || 0,
+          ts: c.conversationTimestamp || 0,
         };
       })
       .sort((a, b) => b.ts - a.ts);
@@ -336,10 +347,10 @@ class SessionManager extends EventEmitter {
     try {
       const groups = await sock.groupFetchAllParticipating();
       return Object.values(groups).map(g => ({
-        id:                g.id,
-        name:              g.subject,
+        id: g.id,
+        name: g.subject,
         participantsCount: g.participants?.length || 0,
-        unreadCount:       0,
+        unreadCount: 0,
       }));
     } catch { return []; }
   }
@@ -359,7 +370,7 @@ class SessionManager extends EventEmitter {
 
       // Ensure maps exist
       if (!this._contacts.has(sessionId)) this._contacts.set(sessionId, []);
-      if (!this._chats.has(sessionId))    this._chats.set(sessionId, []);
+      if (!this._chats.has(sessionId)) this._chats.set(sessionId, []);
 
       // ── Contact helpers ────────────────────────────────────────────────────
       const upsertContact = (c) => {
@@ -369,8 +380,8 @@ class SessionManager extends EventEmitter {
         }
         const jid = this.translateJid(sessionId, c.id);
         const current = this._contacts.get(sessionId);
-        const idx     = current.findIndex(e => e.id === jid);
-        const entry   = { id: jid, name: c.name || c.verifiedName || c.notify || jid.split('@')[0] };
+        const idx = current.findIndex(e => e.id === jid);
+        const entry = { id: jid, name: c.name || c.verifiedName || c.notify || jid.split('@')[0] };
         if (idx === -1) current.push(entry); else current[idx] = entry;
         this._scheduleSave(sessionId);
       };
@@ -391,19 +402,19 @@ class SessionManager extends EventEmitter {
       const upsertChat = (c) => {
         const jid = this.translateJid(sessionId, c.id);
         const current = this._chats.get(sessionId) || [];
-        const idx     = current.findIndex(e => e.id === jid);
+        const idx = current.findIndex(e => e.id === jid);
         const existing = idx !== -1 ? current[idx] : null;
-        const ts      = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
-        const entry   = {
-          id:                    jid,
-          name:                  c.name || c.subject || (existing ? existing.name : ''),
-          unreadCount:           c.unreadCount !== undefined ? c.unreadCount : (existing ? existing.unreadCount : 0),
-          lastMessage:           (c.lastMessage?.conversation
-                              || c.lastMessage?.extendedTextMessage?.text
-                              || (typeof c.lastMessage === 'string' ? c.lastMessage : '')
-                              || (existing ? existing.lastMessage : '')),
+        const ts = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
+        const entry = {
+          id: jid,
+          name: c.name || c.subject || (existing ? existing.name : ''),
+          unreadCount: c.unreadCount !== undefined ? c.unreadCount : (existing ? existing.unreadCount : 0),
+          lastMessage: (c.lastMessage?.conversation
+            || c.lastMessage?.extendedTextMessage?.text
+            || (typeof c.lastMessage === 'string' ? c.lastMessage : '')
+            || (existing ? existing.lastMessage : '')),
           conversationTimestamp: ts || (existing ? existing.conversationTimestamp : 0),
-          time:                  ts
+          time: ts
             ? new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
             : (existing ? existing.time : ''),
         };
@@ -422,7 +433,7 @@ class SessionManager extends EventEmitter {
 
       // ── Message helpers ───────────────────────────────────────────────────
       const storeMsg = (m, chatId) => {
-        const key     = `${sessionId}:${chatId}`;
+        const key = `${sessionId}:${chatId}`;
         const history = this._messages.get(key) || [];
         if (history.find(e => e.id === m.id)) return; // dedup
         history.push(m);
@@ -437,21 +448,21 @@ class SessionManager extends EventEmitter {
           const realMsg = getRealMessage(m.message);
           if (!realMsg) continue;
           const chatId = this.translateJid(sessionId, m.key.remoteJid);
-          const text   = realMsg.conversation
-                      || realMsg.extendedTextMessage?.text
-                      || realMsg.imageMessage?.caption
-                      || realMsg.videoMessage?.caption
-                      || realMsg.documentMessage?.caption
-                      || '[Media]';
-          const ts     = m.messageTimestamp
+          const text = realMsg.conversation
+            || realMsg.extendedTextMessage?.text
+            || realMsg.imageMessage?.caption
+            || realMsg.videoMessage?.caption
+            || realMsg.documentMessage?.caption
+            || '[Media]';
+          const ts = m.messageTimestamp
             ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
 
           let mediaUrl = null;
           let mediaType = null;
-          const isMedia = realMsg.imageMessage 
-                       || realMsg.videoMessage 
-                       || realMsg.audioMessage 
-                       || realMsg.documentMessage;
+          const isMedia = realMsg.imageMessage
+            || realMsg.videoMessage
+            || realMsg.audioMessage
+            || realMsg.documentMessage;
 
           if (isMedia) {
             const media = await this._downloadAndGetUrl(m, sock);
@@ -462,11 +473,11 @@ class SessionManager extends EventEmitter {
           }
 
           const bubble = {
-            id:        m.key.id,
-            sender:    m.key.fromMe ? 'me' : 'them',
+            id: m.key.id,
+            sender: m.key.fromMe ? 'me' : 'them',
             text,
-            time:      ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            status:    'delivered',
+            time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+            status: 'delivered',
             mediaUrl,
             mediaType,
           };
@@ -477,9 +488,9 @@ class SessionManager extends EventEmitter {
           const currentUnread = existingChat ? existingChat.unreadCount : 0;
 
           upsertChat({
-            id:                    chatId,
-            unreadCount:           m.key.fromMe ? 0 : (currentUnread + 1),
-            lastMessage:           text,
+            id: chatId,
+            unreadCount: m.key.fromMe ? 0 : (currentUnread + 1),
+            lastMessage: text,
             conversationTimestamp: m.messageTimestamp,
           });
 
@@ -502,7 +513,7 @@ class SessionManager extends EventEmitter {
               this._lidToPhone.set(`${sessionId}:${lidJid}`, c.id);
             }
             const jid = this.translateJid(sessionId, c.id);
-            const idx   = current.findIndex(e => e.id === jid);
+            const idx = current.findIndex(e => e.id === jid);
             const entry = { id: jid, name: c.name || c.verifiedName || c.notify || jid.split('@')[0] };
             if (idx === -1) current.push(entry); else current[idx] = entry;
           });
@@ -511,17 +522,17 @@ class SessionManager extends EventEmitter {
         if (hChats?.length) {
           const current = this._chats.get(sessionId);
           hChats.forEach(c => {
-            const jid   = this.translateJid(sessionId, c.id);
-            const idx   = current.findIndex(e => e.id === jid);
-            const ts    = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
+            const jid = this.translateJid(sessionId, c.id);
+            const idx = current.findIndex(e => e.id === jid);
+            const ts = c.conversationTimestamp ? Number(c.conversationTimestamp) : 0;
             const entry = {
-              id:                    jid,
-              name:                  c.name || c.subject || '',
-              unreadCount:           c.unreadCount || 0,
-              lastMessage:           c.lastMessage?.conversation
-                                  || c.lastMessage?.extendedTextMessage?.text || '',
+              id: jid,
+              name: c.name || c.subject || '',
+              unreadCount: c.unreadCount || 0,
+              lastMessage: c.lastMessage?.conversation
+                || c.lastMessage?.extendedTextMessage?.text || '',
               conversationTimestamp: ts,
-              time:                  ts
+              time: ts
                 ? new Date(ts * 1000).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
                 : '',
             };
@@ -535,19 +546,19 @@ class SessionManager extends EventEmitter {
             const realMsg = getRealMessage(m.message);
             if (!realMsg) return;
             const chatId = this.translateJid(sessionId, m.key.remoteJid);
-            const text   = realMsg.conversation
-                        || realMsg.extendedTextMessage?.text
-                        || realMsg.imageMessage?.caption
-                        || realMsg.videoMessage?.caption
-                        || realMsg.documentMessage?.caption
-                        || '[Media]';
-            const ts     = m.messageTimestamp
+            const text = realMsg.conversation
+              || realMsg.extendedTextMessage?.text
+              || realMsg.imageMessage?.caption
+              || realMsg.videoMessage?.caption
+              || realMsg.documentMessage?.caption
+              || '[Media]';
+            const ts = m.messageTimestamp
               ? new Date(Number(m.messageTimestamp) * 1000) : new Date();
             storeMsg({
-              id:     m.key.id,
+              id: m.key.id,
               sender: m.key.fromMe ? 'me' : 'them',
               text,
-              time:   ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+              time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
               status: 'delivered',
             }, chatId);
           });
@@ -558,6 +569,7 @@ class SessionManager extends EventEmitter {
       sock.ev.on('creds.update', saveCreds);
 
       sock.ev.on('connection.update', async (update) => {
+        console.log(`[connection.update] Session ${sessionId}:`, update);
         const { connection, lastDisconnect, qr } = update;
 
         if (qr && !usePairingCode) {
@@ -611,17 +623,17 @@ class SessionManager extends EventEmitter {
 
   async _syncGroups(sessionId, sock) {
     try {
-      const groups  = await sock.groupFetchAllParticipating();
+      const groups = await sock.groupFetchAllParticipating();
       const current = this._chats.get(sessionId) || [];
       for (const g of Object.values(groups)) {
-        const idx   = current.findIndex(e => e.id === g.id);
+        const idx = current.findIndex(e => e.id === g.id);
         const entry = {
-          id:                    g.id,
-          name:                  g.subject || g.id,
-          unreadCount:           0,
-          lastMessage:           '',
+          id: g.id,
+          name: g.subject || g.id,
+          unreadCount: 0,
+          lastMessage: '',
           conversationTimestamp: g.creation || 0,
-          time:                  '',
+          time: '',
         };
         if (idx === -1) current.push(entry);
         else current[idx] = { ...current[idx], name: g.subject || current[idx].name };
@@ -638,9 +650,9 @@ class SessionManager extends EventEmitter {
       const url = `${BACKEND_URL}/api/internal/chatbot/match`;
       console.log(`[Chatbot] Calling match API: ${url}`);
       const res = await fetch(url, {
-        method:  'POST',
+        method: 'POST',
         headers: {
-          'Content-Type':    'application/json',
+          'Content-Type': 'application/json',
           'X-Internal-Secret': INTERNAL_SECRET,
         },
         body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
@@ -708,14 +720,14 @@ class SessionManager extends EventEmitter {
       const text = message || (mediaUrl ? '[Media]' : '');
       const ts = new Date();
       const bubble = {
-        id:        result.key.id,
-        sender:    'me',
+        id: result.key.id,
+        sender: 'me',
         text,
-        time:      ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-        status:    'delivered',
+        time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        status: 'delivered',
       };
-      
-      const key     = `${sessionId}:${jid}`;
+
+      const key = `${sessionId}:${jid}`;
       const history = this._messages.get(key) || [];
       if (!history.find(e => e.id === bubble.id)) {
         history.push(bubble);
@@ -725,14 +737,14 @@ class SessionManager extends EventEmitter {
       }
 
       const current = this._chats.get(sessionId) || [];
-      const idx     = current.findIndex(e => e.id === jid);
-      const entry   = {
-        id:                    jid,
-        name:                  current[idx]?.name || jid.split('@')[0],
-        unreadCount:           0,
-        lastMessage:           text,
+      const idx = current.findIndex(e => e.id === jid);
+      const entry = {
+        id: jid,
+        name: current[idx]?.name || jid.split('@')[0],
+        unreadCount: 0,
+        lastMessage: text,
         conversationTimestamp: Math.floor(Date.now() / 1000),
-        time:                  ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+        time: ts.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
       };
       if (idx === -1) current.push(entry); else current[idx] = { ...current[idx], ...entry };
       this._chats.set(sessionId, current);
@@ -747,7 +759,7 @@ class SessionManager extends EventEmitter {
 
   async delete(sessionId) {
     const sock = this._sessions.get(sessionId);
-    if (sock) { try { await sock.logout(); } catch {} sock.end(); }
+    if (sock) { try { await sock.logout(); } catch { } sock.end(); }
     this._sessions.delete(sessionId);
     this._qrs.delete(sessionId);
     this._status.delete(sessionId);

@@ -34,6 +34,7 @@ class AuthController extends Controller
             ]);
         }
 
+        auth('web')->login($user);
         $token       = auth('api')->login($user);
         $frontendUrl = config('app.frontend_url', 'http://localhost:4321');
         $isProd      = config('app.env') === 'production';

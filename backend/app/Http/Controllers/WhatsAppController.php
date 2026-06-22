@@ -27,12 +27,6 @@ class WhatsAppController extends Controller
 
         $sessionId = 'wa_' . $request->user()->id . '_' . Str::random(8);
 
-        $result = $this->wa->createSession(
-            $sessionId, 
-            $data['use_pairing_code'] ?? false, 
-            $data['phone_number'] ?? ''
-        );
-
         $channel = $request->user()->channels()->create([
             'name'        => $data['name'],
             'platform'    => 'whatsapp',
@@ -40,6 +34,12 @@ class WhatsAppController extends Controller
             'target_id'   => $data['target_id'] ?? null,
             'status'      => 'inactive',
         ]);
+
+        $result = $this->wa->createSession(
+            $sessionId, 
+            $data['use_pairing_code'] ?? false, 
+            $data['phone_number'] ?? ''
+        );
 
         return response()->json([
             'channel' => $channel,
