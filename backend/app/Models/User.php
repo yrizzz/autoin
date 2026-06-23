@@ -72,7 +72,12 @@ class User extends Authenticatable implements JWTSubject
                 'expires_at' => null,
             ]);
         }
-        if ($sub->plan === 'free') return $this->trial_count > 0;
+        if ($sub->plan === 'free') {
+            if ($sub->expires_at && \Illuminate\Support\Carbon::parse($sub->expires_at)->isFuture()) {
+                return true;
+            }
+            return $this->trial_count > 0;
+        }
         return $sub->expires_at === null || $sub->expires_at->isFuture();
     }
 }

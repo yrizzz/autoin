@@ -373,10 +373,30 @@ export default function InvoiceHistory() {
                 <h3 className="font-extrabold text-sm text-zinc-900 dark:text-white">{plan.name}</h3>
                 <p className="text-zinc-500 dark:text-zinc-400 text-[10px] mt-1 leading-relaxed">{plan.desc}</p>
                 
-                <div className="flex items-baseline gap-1 mt-4 mb-5">
-                  <span className="text-2xl font-extrabold text-zinc-950 dark:text-white tracking-tight">{plan.priceLabel}</span>
-                  <span className="text-zinc-400 dark:text-zinc-500 text-[11px] font-semibold">{plan.period}</span>
-                </div>
+                {/* Price Display */}
+                {appliedPromoDetails && 
+                 appliedPromoDetails.type === 'discount' && 
+                 (!appliedPromoDetails.plan_id || appliedPromoDetails.plan_id === plan.id) ? (
+                  <div className="flex flex-col mt-4 mb-5">
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-extrabold text-emerald-500 tracking-tight">
+                        {formatRupiah(plan.price - Math.round(plan.price * (appliedPromoDetails.value / 100)))}
+                      </span>
+                      <span className="text-zinc-400 dark:text-zinc-500 text-[11px] font-semibold">{plan.period}</span>
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1 mt-0.5">
+                      <span className="line-through">{plan.priceLabel}</span>
+                      <span className="text-emerald-500 font-bold bg-emerald-500/10 px-1 py-0.2 rounded text-[9px] uppercase tracking-wider">
+                        Diskon {appliedPromoDetails.value}%
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-baseline gap-1 mt-4 mb-5">
+                    <span className="text-2xl font-extrabold text-zinc-950 dark:text-white tracking-tight">{plan.priceLabel}</span>
+                    <span className="text-zinc-400 dark:text-zinc-500 text-[11px] font-semibold">{plan.period}</span>
+                  </div>
+                )}
 
                 <div className="h-px bg-zinc-100 dark:bg-zinc-800/80 w-full mb-5" />
 

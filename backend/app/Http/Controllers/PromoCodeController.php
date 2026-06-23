@@ -167,7 +167,7 @@ class PromoCodeController extends Controller
         }
 
         // Apply/extend subscription
-        $plan = $promo->plan_id ?? 'monthly'; // default to monthly pass if no plan specified
+        $plan = $promo->plan_id ?? 'free'; // default to free if no plan specified
         
         $sub = Subscription::where('user_id', $request->user()->id)->first();
         $daysToAdd = $promo->value; // e.g. 30 days for 1 month
@@ -179,11 +179,13 @@ class PromoCodeController extends Controller
             $sub->started_at = now();
             $sub->expires_at = now()->addDays($daysToAdd);
         } else {
-            $sub->plan = $plan;
             $currentExpire = $sub->expires_at ? Carbon::parse($sub->expires_at) : now();
-            if ($currentExpire->isPast()) {
+            if ($currentExpire->isPast() || $sub->plan === 'free') {
+                $sub->plan = $plan;
+                $sub->started_at = now();
                 $sub->expires_at = now()->addDays($daysToAdd);
             } else {
+                // Keep the current premium plan and extend expiration
                 $sub->expires_at = $currentExpire->addDays($daysToAdd);
             }
         }
@@ -193,7 +195,7 @@ class PromoCodeController extends Controller
             'monthly' => 25000,
             'yearly' => 199000,
         ];
-        $originalPrice = $planPrices[$plan] ?? 25000;
+        $originalPrice = $planPrices[$plan] ?? 0;
 
         $sub->payment_id = 'PROMO-' . $promo->code;
         $sub->promo_code = $promo->code;
