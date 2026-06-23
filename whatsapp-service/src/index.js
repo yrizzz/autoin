@@ -236,6 +236,32 @@ app.get('/sessions/:sessionId/events/chats', auth, (req, res) => {
 // Health check
 app.get('/health', (_, res) => res.json({ status: 'ok' }));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`WhatsApp service running on :${PORT}`);
 });
+
+// Graceful shutdown handling
+let shuttingDown = false;
+async function gracefulShutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}. Gracefully shutting down...`);
+  
+  // Stop accepting new requests
+  server.close(() => {
+    console.log('HTTP server closed.');
+  });
+
+  try {
+    // Flush all WhatsApp sessions and credentials to database
+    await sessionManager.flushAll();
+    console.log('Graceful shutdown completed successfully.');
+    process.exit(0);
+  } catch (err) {
+    console.error('Error during graceful shutdown:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));

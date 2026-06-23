@@ -169,6 +169,7 @@ class SessionManager extends EventEmitter {
     this._messages = new Map(); // `${sessionId}:${chatId}` → Msg[]
     this._saveTimers = new Map();
     this._lidToPhone = new Map(); // `${sessionId}:${lid}` → phone JID
+    this._flushes = new Map();
   }
 
   // ── JID Translation ────────────────────────────────────────────────────────
@@ -181,50 +182,57 @@ class SessionManager extends EventEmitter {
     return jid;
   }
 
+  async syncToDb(sessionId) {
+    const contacts = this._contacts.get(sessionId) || [];
+    const chats = this.getChats(sessionId) || [];
+
+    // Collect last 100 messages per chat for persistence
+    const messages = {};
+    for (const [key, msgs] of this._messages.entries()) {
+      if (key.startsWith(`${sessionId}:`)) {
+        const chatId = key.slice(sessionId.length + 1);
+        messages[chatId] = msgs.slice(-100);
+      }
+    }
+
+    // Persist LID → phone mapping so it survives restarts
+    const lidMap = {};
+    const prefix = `${sessionId}:`;
+    for (const [k, v] of this._lidToPhone.entries()) {
+      if (k.startsWith(prefix)) {
+        lidMap[k.slice(prefix.length)] = v;
+      }
+    }
+
+    try {
+      const groups = await this.getGroups(sessionId);
+      const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': INTERNAL_SECRET
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          contacts,
+          chats,
+          groups,
+          messages,
+          lidMap
+        })
+      });
+    } catch (err) {
+      console.error('Failed to sync to database:', err);
+    }
+  }
+
   // ── Throttled save — at most once per 10s per session to MySQL database ─────
   _scheduleSave(sessionId) {
     if (this._saveTimers.has(sessionId)) return;
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       this._saveTimers.delete(sessionId);
-      const contacts = this._contacts.get(sessionId) || [];
-      const chats = this.getChats(sessionId) || [];
-
-      // Collect last 100 messages per chat for persistence
-      const messages = {};
-      for (const [key, msgs] of this._messages.entries()) {
-        if (key.startsWith(`${sessionId}:`)) {
-          const chatId = key.slice(sessionId.length + 1);
-          messages[chatId] = msgs.slice(-100);
-        }
-      }
-
-      // Persist LID → phone mapping so it survives restarts
-      const lidMap = {};
-      const prefix = `${sessionId}:`;
-      for (const [k, v] of this._lidToPhone.entries()) {
-        if (k.startsWith(prefix)) {
-          lidMap[k.slice(prefix.length)] = v;
-        }
-      }
-
-      this.getGroups(sessionId).then(groups => {
-        const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
-        fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Internal-Secret': INTERNAL_SECRET
-          },
-          body: JSON.stringify({
-            session_id: sessionId,
-            contacts,
-            chats,
-            groups,
-            messages,
-            lidMap
-          })
-        }).catch(err => console.error('Failed to sync to database:', err));
-      }).catch(err => console.error('Failed to get groups for database sync:', err));
+      await this.syncToDb(sessionId);
     }, 10000);
     this._saveTimers.set(sessionId, t);
   }
@@ -481,6 +489,7 @@ class SessionManager extends EventEmitter {
     await this._loadFromDb(sessionId);
 
     const { state, saveCreds, flush } = await useMySQLAuthState(sessionId);
+    this._flushes.set(sessionId, flush);
     let version = [2, 3000, 1017592466];
     try {
       const latest = await Promise.race([
@@ -980,6 +989,7 @@ class SessionManager extends EventEmitter {
     this._sessions.delete(sessionId);
     this._qrs.delete(sessionId);
     this._status.delete(sessionId);
+    this._flushes.delete(sessionId);
     const t = this._saveTimers.get(sessionId);
     if (t) { clearTimeout(t); this._saveTimers.delete(sessionId); }
 
@@ -1008,6 +1018,43 @@ class SessionManager extends EventEmitter {
     } catch (err) {
       console.error('Failed to restore sessions from database:', err);
     }
+  }
+
+  async flushAll() {
+    console.log('[SessionManager] Flushing all sessions & auth states...');
+    
+    // Clear save timers to prevent running after flush
+    for (const timer of this._saveTimers.values()) {
+      clearTimeout(timer);
+    }
+    this._saveTimers.clear();
+
+    const promises = [];
+    
+    // Sync all session data (chats, contacts, messages) to database
+    for (const sessionId of this._sessions.keys()) {
+      promises.push(this.syncToDb(sessionId));
+    }
+    
+    // Flush Baileys credentials
+    for (const [sessionId, flush] of this._flushes.entries()) {
+      if (typeof flush === 'function') {
+        promises.push(flush());
+      }
+    }
+
+    // Gracefully end all active WASocket connections
+    for (const [sessionId, sock] of this._sessions.entries()) {
+      console.log(`[SessionManager] Closing socket for session: ${sessionId}`);
+      try {
+        sock.end();
+      } catch (err) {
+        console.error(`Failed to close socket for ${sessionId}:`, err);
+      }
+    }
+
+    await Promise.allSettled(promises);
+    console.log('[SessionManager] All sessions & auth states flushed and sockets closed.');
   }
 }
 
