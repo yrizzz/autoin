@@ -24,7 +24,7 @@ const plans = [
     period: '/ hari',
     description: 'Sangat fleksibel. Aktifkan fitur premium hanya saat dibutuhkan.',
     features: [
-      { text: 'Device WA Tanpa Batas', included: true, highlight: true },
+      { text: 'Koneksi 3 Device WhatsApp', included: true, highlight: true },
       { text: 'Broadcast Tanpa Batas', included: true, highlight: true },
       { text: 'Template Pesan Tanpa Batas', included: true, highlight: true },
       { text: 'Pesan Terkirim Tanpa Limit', included: true, highlight: true },
@@ -41,6 +41,7 @@ const plans = [
     period: '/ bulan',
     description: 'Pilihan hemat untuk UMKM dan bisnis skala menengah.',
     features: [
+      { text: 'Koneksi 5 Device WhatsApp', included: true, highlight: true },
       { text: 'Semua Fitur Daily Pass', included: true },
       { text: 'Akses Penuh Asisten AI', included: true },
       { text: 'Developer API & Webhook', included: true },

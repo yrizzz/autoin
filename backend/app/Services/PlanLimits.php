@@ -20,7 +20,7 @@ class PlanLimits
             'webhooks'          => 1,    // 1 webhook
         ],
         'daily' => [
-            'channels'          => null,
+            'channels'          => 3,    // Max 3 devices on Daily Pass
             'broadcasts'        => null,
             'templates'         => null,
             'messages_per_day'  => null,
@@ -28,7 +28,7 @@ class PlanLimits
             'webhooks'          => 3,
         ],
         'monthly' => [
-            'channels'          => null,
+            'channels'          => 5,    // Max 5 devices on Monthly Pass
             'broadcasts'        => null,
             'templates'         => null,
             'messages_per_day'  => null,
@@ -36,7 +36,7 @@ class PlanLimits
             'webhooks'          => null,
         ],
         'yearly' => [
-            'channels'          => null,
+            'channels'          => 10,   // Max 10 devices on Yearly Pass
             'broadcasts'        => null,
             'templates'         => null,
             'messages_per_day'  => null,

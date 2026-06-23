@@ -79,6 +79,15 @@ export default function LandingHero() {
           </span>
         </div>
 
+        {/* Navigation Menu Links */}
+        <nav className="hidden md:flex items-center gap-6 text-xs font-bold text-zinc-650 dark:text-white/70">
+          <a href="#features" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Fitur</a>
+          <a href="#pricing" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Harga</a>
+          <a href="#faq" className="hover:text-zinc-900 dark:hover:text-white transition-colors">FAQ</a>
+          <a href="/terms" className="hover:text-zinc-900 dark:hover:text-white transition-colors text-blue-600 dark:text-blue-400">Syarat & Ketentuan</a>
+          <a href="/privacy" className="hover:text-zinc-900 dark:hover:text-white transition-colors text-blue-600 dark:text-blue-400">Kebijakan Privasi</a>
+        </nav>
+
         <div className="flex items-center gap-1.5 sm:gap-2.5">
           <button
             onClick={toggleTheme}
