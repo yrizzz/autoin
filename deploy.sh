@@ -103,10 +103,29 @@ fi
 #  DEPLOY (jalankan setiap update)
 # ─────────────────────────────────────────────────────────
 
-# 1. Pull latest code
-log "Git pull..."
+# 1. Pull latest code & check for changes in whatsapp-service
+log "Checking for updates..."
 cd "$ROOT"
-git pull origin main
+CHANGED_WA=true
+WA_ENV_HASH=""
+
+if [ -f "$ROOT/whatsapp-service/.env" ]; then
+  WA_ENV_HASH=$(md5sum "$ROOT/whatsapp-service/.env" 2>/dev/null || sha1sum "$ROOT/whatsapp-service/.env" 2>/dev/null || echo "")
+fi
+
+if [ -d "$ROOT/.git" ] && git rev-parse HEAD &>/dev/null; then
+  PREV_COMMIT=$(git rev-parse HEAD)
+  git pull origin main
+  NEXT_COMMIT=$(git rev-parse HEAD)
+  if git diff --quiet "$PREV_COMMIT" "$NEXT_COMMIT" -- whatsapp-service; then
+    CHANGED_WA=false
+    log "No changes detected in whatsapp-service source code."
+  else
+    log "Changes detected in whatsapp-service source code."
+  fi
+else
+  git pull origin main
+fi
 ok "Code up to date"
 
 # 2. Backend — auto-configure production .env
@@ -183,9 +202,30 @@ fi
 log "Restart semua service via PM2..."
 cd "$ROOT"
 
-# Delete stale PM2 processes, then start fresh from ecosystem config
-pm2 delete ecosystem.config.cjs 2>/dev/null || true
-pm2 start ecosystem.config.cjs
+# Check if whatsapp-service/.env was changed during this deploy
+if [ -f "$ROOT/whatsapp-service/.env" ]; then
+  NEW_WA_ENV_HASH=$(md5sum "$ROOT/whatsapp-service/.env" 2>/dev/null || sha1sum "$ROOT/whatsapp-service/.env" 2>/dev/null || echo "")
+  if [ "$WA_ENV_HASH" != "$NEW_WA_ENV_HASH" ]; then
+    CHANGED_WA=true
+    log "Changes detected in whatsapp-service/.env."
+  fi
+fi
+
+# Check if pm2 service autoin-wa is running, if not force restart all
+if ! pm2 info autoin-wa &>/dev/null; then
+  CHANGED_WA=true
+fi
+
+if [ "$CHANGED_WA" = true ]; then
+  log "whatsapp-service has changes or is not running. Restarting all services..."
+  pm2 delete ecosystem.config.cjs 2>/dev/null || true
+  pm2 start ecosystem.config.cjs
+else
+  log "whatsapp-service has no changes. Only restarting backend and frontend..."
+  pm2 restart autoin-backend || pm2 start ecosystem.config.cjs
+  pm2 restart autoin-frontend || pm2 start ecosystem.config.cjs
+fi
+
 pm2 save --force >/dev/null
 ok "Services started"
 
