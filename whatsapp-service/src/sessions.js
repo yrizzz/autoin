@@ -842,13 +842,6 @@ class SessionManager extends EventEmitter {
       console.log(`[sessions] send quoted message: targetJid=${jid}, quotedRemoteJid=${quoted.key?.remoteJid}, quotedId=${quoted.key?.id}`);
       options.quoted = quoted;
       senderJid = quoted.key?.participant || quoted.participant || quoted.key?.remoteJid;
-      if (senderJid) {
-        const cleanNumber = senderJid.split('@')[0].split(':')[0];
-        const mentionPrefix = `@${cleanNumber} `;
-        if (message && typeof message === 'string' && !message.startsWith(mentionPrefix)) {
-          message = mentionPrefix + message;
-        }
-      }
     }
 
     let isTextStatusColor = false;
