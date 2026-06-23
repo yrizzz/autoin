@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, Zap, CheckCircle, Sun, Moon, LayoutDashboard, MessageSquare, Play, FileText, Image as ImageIcon, Send } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap, CheckCircle, Sun, Moon, LayoutDashboard, MessageSquare, Play, FileText, Image as ImageIcon, Send, Code, Terminal } from 'lucide-react';
+
+const aiSuggestions = [
+  "Halo Kak! Terima kasih sudah menghubungi AUTOIN. Ini adalah contoh pesan otomatis menggunakan API AUTOIN. Keren kan? 😎",
+  "🚨 PENGINGAT TAGIHAN: Yth. Kak Budi, tagihan Anda sebesar Rp 25.000 akan jatuh tempo besok. Silakan lakukan pembayaran ke rekening Virtual Account Anda. Terima kasih! 🙏",
+  "🎉 PROMO SPESIAL GAJIAN! Dapatkan diskon hingga 50% untuk produk kecantikan favorit Anda hari ini saja. Gunakan kode promo: GAJIAN50 saat checkout. Beli sekarang: autoin.my.id/promo",
+  "Halo Kak! 👋 Tim CS kami telah menerima tiket kendala Anda (#1092). Kami akan segera menghubungi Anda kembali dalam waktu maksimal 10 menit. Terima kasih atas kesabaran Anda. - AutoIn AI Assistant"
+];
 
 export default function LandingHero() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-  const [activeTab, setActiveTab] = useState<'simulator' | 'dashboard'>('simulator');
+  const [activeTab, setActiveTab] = useState<'simulator' | 'dashboard' | 'api'>('simulator');
+  const [apiLang, setApiLang] = useState<'curl' | 'js' | 'php' | 'python'>('curl');
   
   // Simulator states
   const [simMessage, setSimMessage] = useState('Halo Kak! Terima kasih sudah menghubungi AUTOIN. Ini adalah contoh pesan otomatis menggunakan API AUTOIN. Keren kan? 😎');
@@ -42,6 +50,11 @@ export default function LandingHero() {
   const selectPreset = (type: 'none' | 'image' | 'video' | 'pdf', preset: string) => {
     setSimMediaType(type);
     setSimMediaPreset(preset);
+  };
+
+  const handleAiWrite = () => {
+    const randomIndex = Math.floor(Math.random() * aiSuggestions.length);
+    setSimMessage(aiSuggestions[randomIndex]);
   };
 
   return (
@@ -180,6 +193,17 @@ export default function LandingHero() {
                   <LayoutDashboard className="w-3.5 h-3.5" />
                   <span>Dashboard Preview</span>
                 </button>
+                <button
+                  onClick={() => setActiveTab('api')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'api'
+                      ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <Code className="w-3.5 h-3.5" />
+                  <span>Developer REST API</span>
+                </button>
               </div>
             </div>
 
@@ -249,7 +273,17 @@ export default function LandingHero() {
                       <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full mb-2">
                         Langkah 2
                       </span>
-                      <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-2">Tulis Teks Pesan</h3>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-sm font-bold text-zinc-800 dark:text-white">Tulis Teks Pesan</h3>
+                        <button
+                          type="button"
+                          onClick={handleAiWrite}
+                          className="flex items-center gap-1 text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 px-2 py-1 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-500/20 transition-all cursor-pointer"
+                        >
+                          <Sparkles className="w-3 h-3 animate-pulse" />
+                          <span>AI Tulis Pesan</span>
+                        </button>
+                      </div>
                       <textarea
                         value={simMessage}
                         onChange={(e) => setSimMessage(e.target.value)}
@@ -421,6 +455,175 @@ export default function LandingHero() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT: DEVELOPER REST API */}
+            {activeTab === 'api' && (
+              <div className="p-4 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch font-sans animate-fadeIn text-left">
+                {/* Features list */}
+                <div className="space-y-6 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div>
+                      <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full mb-2">
+                        Integrasi Developer
+                      </span>
+                      <h3 className="text-lg font-bold text-zinc-800 dark:text-white">API Ready & Fleksibel</h3>
+                      <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed">
+                        Hubungkan sistem pembayaran, CRM, web toko online, atau aplikasi buatan Anda sendiri langsung ke WhatsApp dengan satu REST API sederhana.
+                      </p>
+                    </div>
+
+                    <div className="space-y-3.5">
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-zinc-800 dark:text-white">Autentikasi Bearer Token</h4>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Amankan integrasi endpoint Anda dengan kredensial API Key dari dashboard.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-400">
+                          <Zap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-zinc-800 dark:text-white">Multi-Media Dukungan</h4>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Kirim teks pesan biasa, lampiran gambar promosi, invoice PDF, hingga video tutorial.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-500/20 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400">
+                          <Code className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-zinc-800 dark:text-white">Webhook Callback Status</h4>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Terima response balik secara instan ketika pesan sukses atau gagal dikirim.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <a 
+                    href="/dashboard"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    Dapatkan API Key Gratis di Dashboard &rarr;
+                  </a>
+                </div>
+
+                {/* Interactive Code Playground Panel */}
+                <div className="bg-[#030712] border border-zinc-250 dark:border-white/5 rounded-2xl overflow-hidden flex flex-col justify-between shadow-xl">
+                  {/* Language selectors */}
+                  <div className="bg-[#090d16] border-b border-white/5 px-4 py-2 flex items-center gap-2 overflow-x-auto">
+                    {[
+                      { id: 'curl', label: 'cURL' },
+                      { id: 'js', label: 'JavaScript' },
+                      { id: 'php', label: 'PHP' },
+                      { id: 'python', label: 'Python' }
+                    ].map(lang => (
+                      <button
+                        key={lang.id}
+                        onClick={() => setApiLang(lang.id as any)}
+                        className={`text-[10px] font-bold px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                          apiLang === lang.id
+                            ? 'bg-white/10 text-white'
+                            : 'text-zinc-500 hover:text-zinc-350'
+                        }`}
+                      >
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Code editor body */}
+                  <div className="p-4 flex-1 font-mono text-[10.5px] leading-relaxed text-zinc-300 overflow-y-auto max-h-[220px]">
+                    {apiLang === 'curl' && (
+                      <pre className="whitespace-pre-wrap select-all">
+{`curl -X POST "https://api.autoin.my.id/api/v1/send" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "to": "628123456789",
+    "message": "Halo! Ini adalah notifikasi otomatis dari API AutoIn 🚀",
+    "mediaUrl": "https://r2.autoin.my.id/media/promo.png"
+  }'`}
+                      </pre>
+                    )}
+                    {apiLang === 'js' && (
+                      <pre className="whitespace-pre-wrap select-all">
+{`fetch('https://api.autoin.my.id/api/v1/send', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    to: '628123456789',
+    message: 'Halo! Ini adalah notifikasi otomatis dari API AutoIn 🚀',
+    mediaUrl: 'https://r2.autoin.my.id/media/promo.png'
+  })
+})
+.then(res => res.json())
+.then(data => console.log('Pesan terkirim:', data));`}
+                      </pre>
+                    )}
+                    {apiLang === 'php' && (
+                      <pre className="whitespace-pre-wrap select-all">
+{`<?php
+$curl = curl_init();
+curl_setopt_array($curl, [
+  CURLOPT_URL => "https://api.autoin.my.id/api/v1/send",
+  CURLOPT_RETURNTRANSFER => true,
+  CURLOPT_CUSTOMREQUEST => "POST",
+  CURLOPT_POSTFIELDS => json_encode([
+    "to" => "628123456789",
+    "message" => "Halo! Ini adalah notifikasi otomatis dari API AutoIn 🚀",
+    "mediaUrl" => "https://r2.autoin.my.id/media/promo.png"
+  ]),
+  CURLOPT_HTTPHEADER => [
+    "Authorization: Bearer YOUR_API_KEY",
+    "Content-Type: application/json"
+  ],
+]);
+$response = curl_exec($curl);
+curl_close($curl);
+echo $response;`}
+                      </pre>
+                    )}
+                    {apiLang === 'python' && (
+                      <pre className="whitespace-pre-wrap select-all">
+{`import requests
+
+url = "https://api.autoin.my.id/api/v1/send"
+headers = {
+    "Authorization": "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json"
+}
+payload = {
+    "to": "628123456789",
+    "message": "Halo! Ini adalah notifikasi otomatis dari API AutoIn 🚀",
+    "mediaUrl": "https://r2.autoin.my.id/media/promo.png"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())`}
+                      </pre>
+                    )}
+                  </div>
+
+                  {/* Terminal bar footer */}
+                  <div className="bg-[#090d16]/60 border-t border-white/5 px-4 py-2.5 flex items-center justify-between text-[9px] text-zinc-550">
+                    <div className="flex items-center gap-1.5">
+                      <Terminal className="w-3.5 h-3.5 text-zinc-600" />
+                      <span>Response: 200 OK</span>
+                    </div>
+                    <span>Klik kode untuk menyalin</span>
                   </div>
                 </div>
               </div>

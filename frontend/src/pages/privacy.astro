@@ -1,0 +1,102 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Kebijakan Privasi">
+  <div class="relative min-h-screen py-16 sm:py-24 px-4 sm:px-6 bg-[#f8fafc] dark:bg-[#030712] transition-colors duration-300 overflow-hidden">
+    {/* Aurora background */}
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-70">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.1),transparent_50%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.05),transparent_50%)]"></div>
+    </div>
+
+    {/* Moving Grid Overlay */}
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.03)_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none" />
+
+    <div class="relative z-10 max-w-4xl mx-auto">
+      {/* Header */}
+      <div class="text-center mb-12">
+        <a href="/" class="inline-flex items-center gap-2 mb-6 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+          &larr; Kembali ke Beranda
+        </a>
+        <h1 class="text-3xl sm:text-5xl font-black tracking-tight font-display text-zinc-900 dark:text-white mb-4">
+          Kebijakan Privasi
+        </h1>
+        <p class="text-zinc-550 dark:text-zinc-400 text-xs sm:text-sm font-mono">
+          Terakhir diperbarui: 23 Juni 2026
+        </p>
+        <div class="h-1.5 w-16 bg-gradient-brand mx-auto rounded-full mt-6" />
+      </div>
+
+      {/* Content */}
+      <div class="bg-white dark:bg-[#0a0f1d]/50 border border-zinc-200 dark:border-white/5 rounded-3xl p-6 sm:p-10 shadow-xl backdrop-blur-xl text-zinc-700 dark:text-zinc-300 space-y-8 text-sm sm:text-base leading-relaxed">
+        
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">1.</span> Informasi yang Kami Kumpulkan
+          </h2>
+          <p>
+            Kami mengumpulkan informasi yang Anda berikan langsung ketika mendaftar, seperti nama lengkap dan alamat email Anda melalui integrasi Google SSO. Kami juga menyimpan kredensial autentikasi WhatsApp terenkripsi di server kami secara aman agar sistem otomatisasi Anda dapat bekerja di background.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">2.</span> Penggunaan Informasi
+          </h2>
+          <p>
+            Informasi yang kami kumpulkan digunakan untuk:
+          </p>
+          <ul class="list-disc pl-5 space-y-1.5 text-zinc-650 dark:text-zinc-405">
+            <li>Menyediakan, mengoperasikan, dan memelihara fitur platform AutoIn.</li>
+            <li>Mengirimkan notifikasi tagihan, invoice, dan status pemeliharaan sistem.</li>
+            <li>Memproses transaksi langganan Anda secara aman.</li>
+            <li>Mendeteksi, mencegah, dan mengatasi penyalahgunaan platform (spamming).</li>
+          </ul>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">3.</span> Penyimpanan dan Keamanan Data
+          </h2>
+          <p>
+            Kami berkomitmen menjaga keamanan data Anda. Kami menggunakan metode enkripsi standar industri untuk melindungi transmisi data. Lampiran media yang Anda unggah disimpan di Cloudflare R2 dengan siklus hidup penghapusan otomatis setelah 7 hari untuk meminimalkan paparan data Anda secara permanen di server kami.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">4.</span> Berbagi Data dengan Pihak Ketiga
+          </h2>
+          <p>
+            Kami tidak menjual, menyewakan, atau menukar data pribadi Anda dengan pihak ketiga mana pun. Kami hanya membagikan data Anda dengan penyedia payment gateway kami untuk memproses tagihan/invoice dan dengan Node.js microservice untuk menjembatani komunikasi ke WhatsApp API.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">5.</span> Cookie dan Teknologi Pelacakan
+          </h2>
+          <p>
+            Kami menggunakan cookie browser dan <code>localStorage</code> untuk mengingat status login Anda dan riwayat pengiriman instan (Quick Send) di browser Anda. Anda dapat menonaktifkan cookie melalui pengaturan browser Anda, namun beberapa fungsi dashboard kami mungkin tidak dapat bekerja secara optimal.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">6.</span> Persetujuan
+          </h2>
+          <p>
+            Dengan menggunakan layanan kami, Anda menyetujui seluruh ketentuan dalam Kebijakan Privasi ini.
+          </p>
+        </section>
+
+        <div class="h-px bg-zinc-200 dark:bg-white/5 w-full my-6"></div>
+
+        <div class="text-center text-xs text-zinc-500 dark:text-zinc-500">
+          Hubungi kami melalui <a href="mailto:support@autoin.my.id" class="text-blue-500 hover:underline">support@autoin.my.id</a> jika Anda memiliki pertanyaan tentang Kebijakan Privasi kami.
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

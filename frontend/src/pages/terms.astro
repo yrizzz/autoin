@@ -1,0 +1,107 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+
+<BaseLayout title="Syarat dan Ketentuan">
+  <div class="relative min-h-screen py-16 sm:py-24 px-4 sm:px-6 bg-[#f8fafc] dark:bg-[#030712] transition-colors duration-300 overflow-hidden">
+    {/* Aurora background */}
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-70">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.1),transparent_50%)]"></div>
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(168,85,247,0.05),transparent_50%)]"></div>
+    </div>
+
+    {/* Moving Grid Overlay */}
+    <div class="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.03)_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none" />
+
+    <div class="relative z-10 max-w-4xl mx-auto">
+      {/* Header */}
+      <div class="text-center mb-12">
+        <a href="/" class="inline-flex items-center gap-2 mb-6 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">
+          &larr; Kembali ke Beranda
+        </a>
+        <h1 class="text-3xl sm:text-5xl font-black tracking-tight font-display text-zinc-900 dark:text-white mb-4">
+          Syarat & Ketentuan
+        </h1>
+        <p class="text-zinc-550 dark:text-zinc-400 text-xs sm:text-sm font-mono">
+          Terakhir diperbarui: 23 Juni 2026
+        </p>
+        <div class="h-1.5 w-16 bg-gradient-brand mx-auto rounded-full mt-6" />
+      </div>
+
+      {/* Content */}
+      <div class="bg-white dark:bg-[#0a0f1d]/50 border border-zinc-200 dark:border-white/5 rounded-3xl p-6 sm:p-10 shadow-xl backdrop-blur-xl text-zinc-700 dark:text-zinc-300 space-y-8 text-sm sm:text-base leading-relaxed">
+        
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">1.</span> Pendahuluan
+          </h2>
+          <p>
+            Selamat datang di <strong>AutoIn</strong>. Dengan mengakses, mendaftar, atau menggunakan layanan kami, Anda dianggap telah membaca, memahami, dan menyetujui seluruh isi Syarat & Ketentuan ini. Jika Anda tidak menyetujui bagian mana pun dari ketentuan ini, Anda tidak diperkenankan untuk menggunakan layanan kami.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">2.</span> Deskripsi Layanan
+          </h2>
+          <p>
+            AutoIn adalah penyedia platform broadcasting dan otomatisasi pihak ketiga untuk WhatsApp. Kami menyediakan antarmuka pengiriman pesan massal, sistem chatbot, dan integrasi API untuk membantu efisiensi operasional Anda. AutoIn tidak terafiliasi secara resmi dengan WhatsApp Inc. atau Meta Platforms, Inc.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">3.</span> Batasan Tanggung Jawab (Penting)
+          </h2>
+          <div class="p-4 bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-400 rounded-2xl text-xs sm:text-sm font-medium space-y-2">
+            <p class="font-bold">⚠️ DISCLAIMER PENGGUNAAN LAYANAN:</p>
+            <p>
+              WhatsApp memiliki kebijakan anti-spam yang ketat. Penggunaan AutoIn untuk mengirimkan pesan massal (broadcast) memiliki risiko penangguhan atau pemblokiran (ban) akun WhatsApp Anda oleh WhatsApp/Meta.
+            </p>
+            <p>
+              Anda dengan sadar dan sukarela membebaskan <strong>AutoIn</strong> dari segala tuntutan hukum, tanggung jawab, ganti rugi, maupun kehilangan data/akses yang timbul akibat akun WhatsApp Anda diblokir atau dibatasi akibat penggunaan layanan kami. Penggunaan akun WhatsApp sepenuhnya merupakan tanggung jawab pribadi Anda.
+            </p>
+          </div>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">4.</span> Penggunaan yang Diperbolehkan
+          </h2>
+          <p>
+            Anda setuju untuk menggunakan AutoIn hanya untuk tujuan yang sah menurut hukum dan tidak melanggar ketentuan WhatsApp. Anda dilarang keras menggunakan AutoIn untuk:
+          </p>
+          <ul class="list-disc pl-5 space-y-1.5 text-zinc-600 dark:text-zinc-405">
+            <li>Kirim pesan spam, penipuan (phishing), perjudian, pornografi, obat-obatan terlarang, atau konten ilegal lainnya.</li>
+            <li>Mengirimkan pesan tanpa persetujuan dari penerima pesan (opt-in).</li>
+            <li>Mengganggu integritas sistem atau mencoba meretas server AutoIn.</li>
+          </ul>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">5.</span> Biaya dan Layanan Berlangganan
+          </h2>
+          <p>
+            AutoIn menyediakan paket langganan harian (Daily Pass) dan bulanan (Monthly Pass). Seluruh pembayaran diproses melalui payment gateway resmi yang bekerja sama dengan kami. Tidak ada pengembalian uang (refund) atas paket yang sudah aktif, kecuali terdapat kendala teknis dari sistem internal kami yang tidak dapat diselesaikan.
+          </p>
+        </section>
+
+        <section class="space-y-3">
+          <h2 class="text-lg sm:text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span class="text-blue-500">6.</span> Perubahan Syarat dan Ketentuan
+          </h2>
+          <p>
+            Kami berhak untuk mengubah, memodifikasi, atau memperbarui Syarat & Ketentuan ini kapan saja tanpa pemberitahuan sebelumnya. Perubahan akan berlaku segera setelah dipublikasikan di halaman ini. Penggunaan layanan yang berkelanjutan setelah perubahan tersebut dianggap sebagai persetujuan Anda terhadap syarat yang baru.
+          </p>
+        </section>
+
+        <div class="h-px bg-zinc-200 dark:bg-white/5 w-full my-6"></div>
+
+        <div class="text-center text-xs text-zinc-500 dark:text-zinc-500">
+          Hubungi kami melalui <a href="mailto:support@autoin.my.id" class="text-blue-500 hover:underline">support@autoin.my.id</a> jika Anda memiliki pertanyaan tentang Syarat & Ketentuan ini.
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

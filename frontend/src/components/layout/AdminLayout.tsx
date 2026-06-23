@@ -221,6 +221,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; time: string; read: boolean }>>([]);
   const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(null);
+  const [loginAgreed, setLoginAgreed] = useState(true);
 
   const hasUnread = notifications.some(n => !n.read);
 
@@ -273,6 +274,13 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
     localStorage.setItem('theme', next);
     document.documentElement.classList.toggle('dark', next === 'dark');
     document.documentElement.style.colorScheme = next;
+  };
+
+  const handleGoogleLogin = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!loginAgreed) {
+      e.preventDefault();
+      alert('Anda harus menyetujui Syarat & Ketentuan serta Kebijakan Privasi terlebih dahulu.');
+    }
   };
 
   const handleLogout = async () => {
@@ -398,14 +406,32 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
             </button>
           </div>
         ) : (
-          <div className="p-3">
+          <div className="p-3 space-y-3">
             <a
               href={getGoogleAuthUrl()}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-xl transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
+              onClick={handleGoogleLogin}
+              className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold border rounded-xl transition-all shadow-xs cursor-pointer ${
+                loginAgreed 
+                  ? 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border-zinc-250 dark:border-zinc-800 bg-white dark:bg-zinc-950'
+                  : 'text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 cursor-not-allowed opacity-50'
+              }`}
             >
               <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
               Masuk dengan Google
             </a>
+            
+            <div className="flex items-start gap-2 px-1 text-[10px] text-zinc-500 dark:text-zinc-400">
+              <input
+                type="checkbox"
+                id="agree-sidebar"
+                checked={loginAgreed}
+                onChange={(e) => setLoginAgreed(e.target.checked)}
+                className="mt-0.5 rounded border-zinc-300 dark:border-zinc-800 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              />
+              <label htmlFor="agree-sidebar" className="cursor-pointer select-none leading-relaxed">
+                Saya menyetujui <a href="/terms" target="_blank" className="text-blue-500 hover:underline font-bold">Syarat & Ketentuan</a> dan <a href="/privacy" target="_blank" className="text-blue-500 hover:underline font-bold">Kebijakan Privasi</a>
+              </label>
+            </div>
           </div>
         )}
 
@@ -529,13 +555,32 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                   </div>
                 </div>
               ) : (
-                <a
-                  href={getGoogleAuthUrl()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-lg transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
-                >
-                  <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
-                  Masuk
-                </a>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 text-[10px] text-zinc-500">
+                    <input
+                      type="checkbox"
+                      id="agree-header"
+                      checked={loginAgreed}
+                      onChange={(e) => setLoginAgreed(e.target.checked)}
+                      className="rounded border-zinc-300 dark:border-zinc-800 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                    />
+                    <label htmlFor="agree-header" className="cursor-pointer select-none">
+                      Setuju <a href="/terms" target="_blank" className="text-blue-500 hover:underline">TOS & Privasi</a>
+                    </label>
+                  </div>
+                  <a
+                    href={getGoogleAuthUrl()}
+                    onClick={handleGoogleLogin}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border rounded-lg transition-all shadow-xs cursor-pointer ${
+                      loginAgreed
+                        ? 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border-zinc-250 dark:border-zinc-800 bg-white dark:bg-zinc-950'
+                        : 'text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 cursor-not-allowed opacity-50'
+                    }`}
+                  >
+                    <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
+                    Masuk
+                  </a>
+                </div>
               )}
             </div>
           </div>
