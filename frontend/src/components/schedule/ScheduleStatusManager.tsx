@@ -609,7 +609,7 @@ export default function ScheduleStatusManager() {
               <button
                 type="submit"
                 disabled={submitting || uploading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                className="w-full flex items-center justify-center gap-2 py-2.5 btn-primary text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {submitting ? (
                   <>
@@ -900,7 +900,7 @@ export default function ScheduleStatusManager() {
                 className={`px-4 py-2 text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors ${
                   confirmModal.type === 'red' 
                     ? 'bg-rose-600 hover:bg-rose-700' 
-                    : 'bg-blue-600 hover:bg-blue-700'
+                    : 'btn-primary'
                 }`}
               >
                 {confirmModal.confirmText}
