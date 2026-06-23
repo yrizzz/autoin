@@ -37,7 +37,7 @@ async function useMySQLAuthState(sessionId) {
   try {
     const res = await fetch(getUrl, {
       headers: { 'X-Internal-Secret': INTERNAL_SECRET },
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(15000)
     });
     if (res.ok) {
       dbData = await res.json();
@@ -77,7 +77,7 @@ async function useMySQLAuthState(sessionId) {
         session_id: sessionId,
         data: payload
       }),
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(15000)
     })
     .then(r => r.json().then(d => console.log(`[useMySQLAuthState] Save response:`, d)))
     .catch(err => console.error('[useMySQLAuthState] Failed to save auth state to database:', err));
@@ -223,7 +223,7 @@ class SessionManager extends EventEmitter {
           messages,
           lidMap
         }),
-        signal: AbortSignal.timeout(2000)
+        signal: AbortSignal.timeout(15000)
       });
     } catch (err) {
       console.error('Failed to sync to database:', err);
@@ -248,7 +248,7 @@ class SessionManager extends EventEmitter {
         headers: {
           'X-Internal-Secret': INTERNAL_SECRET
         },
-        signal: AbortSignal.timeout(3000)
+        signal: AbortSignal.timeout(15000)
       });
       if (res.ok) {
         const store = await res.json();
@@ -808,7 +808,7 @@ class SessionManager extends EventEmitter {
           'X-Internal-Secret': INTERNAL_SECRET,
         },
         body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
-        signal: AbortSignal.timeout(2000)
+        signal: AbortSignal.timeout(10000)
       });
       console.log(`[Chatbot] Match API response status: ${res.status}`);
       if (!res.ok) {
@@ -909,18 +909,46 @@ class SessionManager extends EventEmitter {
         finalStatusJidList = Array.from(jidSet);
       }
 
+      // Filter finalStatusJidList to only contain valid, clean phone number JIDs ending with @s.whatsapp.net
+      // Exclude group JIDs, newsletter JIDs, LID JIDs, broadcast JIDs, and JIDs starting with '0'.
+      finalStatusJidList = finalStatusJidList
+        .map(id => {
+          if (!id || typeof id !== 'string') return null;
+          let cleanId = id.trim();
+          // Translate LID to Phone JID if mapping exists
+          cleanId = this.translateJid(sessionId, cleanId);
+          // Strip device/port suffix if any (e.g., 628123:19@s.whatsapp.net -> 628123@s.whatsapp.net)
+          const parts = cleanId.split('@');
+          if (parts.length === 2) {
+            cleanId = `${parts[0].split(':')[0]}@${parts[1]}`;
+          }
+          return cleanId;
+        })
+        .filter(id => {
+          if (!id) return false;
+          // Must end with @s.whatsapp.net and prefix must start with a non-zero digit and contain 6-20 total digits
+          return /^[1-9]\d{5,19}@s\.whatsapp\.net$/.test(id);
+        });
+
+      // Remove duplicates
+      finalStatusJidList = Array.from(new Set(finalStatusJidList));
+
       // Fallback to own JID when contacts not synced
       if (finalStatusJidList.length === 0) {
         const ownJid = sock?.user?.id;
         if (ownJid) {
-          const parts = ownJid.split(':');
+          const translatedOwn = this.translateJid(sessionId, ownJid);
+          const parts = translatedOwn.split(':');
           const rawNum = parts[0].split('@')[0];
-          const server = ownJid.includes('@lid') ? 'lid' : 's.whatsapp.net';
-          const normalizedOwn = `${rawNum}@${server}`;
-          finalStatusJidList = [normalizedOwn];
-          console.log(`[sessions] No contacts synced — using own JID as fallback: ${normalizedOwn}`);
+          const normalizedOwn = `${rawNum}@s.whatsapp.net`;
+          if (/^[1-9]\d{5,19}@s\.whatsapp\.net$/.test(normalizedOwn)) {
+            finalStatusJidList = [normalizedOwn];
+            console.log(`[sessions] No contacts synced — using own JID as fallback: ${normalizedOwn}`);
+          }
         }
       }
+
+      console.log(`[sessions] statusJidList prepared: count=${finalStatusJidList.length} list=${JSON.stringify(finalStatusJidList)}`);
 
       options = {
         ...options,
@@ -1090,7 +1118,7 @@ class SessionManager extends EventEmitter {
     fetch(deleteUrl, {
       method: 'DELETE',
       headers: { 'X-Internal-Secret': INTERNAL_SECRET },
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(15000)
     }).catch(err => console.error('Failed to delete auth state from database:', err));
   }
 
@@ -1099,7 +1127,7 @@ class SessionManager extends EventEmitter {
       const url = `${BACKEND_URL}/api/internal/whatsapp/sessions`;
       const res = await fetch(url, {
         headers: { 'X-Internal-Secret': INTERNAL_SECRET },
-        signal: AbortSignal.timeout(4000)
+        signal: AbortSignal.timeout(15000)
       });
       if (res.ok) {
         const sessionIds = await res.json();
