@@ -47,16 +47,19 @@ class UploadController extends Controller
         $extension    = $file->getClientOriginalExtension();
         $filename     = Str::random(20) . '.' . $extension;
         $originalName = $file->getClientOriginalName();
-        $size         = $file->getSize(); // must be read before move()
+        $size         = $file->getSize();
 
-        if (!file_exists(public_path('uploads'))) {
-            mkdir(public_path('uploads'), 0755, true);
-        }
+        $disk = env('FILESYSTEM_DISK', 'public');
+        
+        $path = $file->storeAs('uploads', $filename, [
+            'disk'       => $disk,
+            'visibility' => 'public',
+        ]);
 
-        $file->move(public_path('uploads'), $filename);
+        $url = \Illuminate\Support\Facades\Storage::disk($disk)->url($path);
 
         return response()->json([
-            'url'       => asset('uploads/' . $filename),
+            'url'       => $url,
             'mediaType' => $mediaType,
             'mime'      => $mime,
             'name'      => $originalName,
