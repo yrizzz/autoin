@@ -18,6 +18,12 @@ class WhatsAppController extends Controller
             return response()->json(['message' => 'Anda harus login dengan Google terlebih dahulu untuk menghubungkan device.'], 403);
         }
 
+        $user = $request->user();
+        $count = $user->channels()->count();
+        if (!\App\Services\PlanLimits::can($user, 'channels', $count)) {
+            return \App\Services\PlanLimits::denyResponse('channels');
+        }
+
         $data = $request->validate([
             'name'             => 'required|string|max:255',
             'target_id'        => 'nullable|string',
@@ -25,9 +31,9 @@ class WhatsAppController extends Controller
             'phone_number'     => 'nullable|string',
         ]);
 
-        $sessionId = 'wa_' . $request->user()->id . '_' . Str::random(8);
+        $sessionId = 'wa_' . $user->id . '_' . Str::random(8);
 
-        $channel = $request->user()->channels()->create([
+        $channel = $user->channels()->create([
             'name'        => $data['name'],
             'platform'    => 'whatsapp',
             'credentials' => ['session_id' => $sessionId],

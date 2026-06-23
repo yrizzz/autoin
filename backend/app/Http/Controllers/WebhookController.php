@@ -19,12 +19,18 @@ class WebhookController extends Controller
     // POST /api/webhooks
     public function store(Request $request)
     {
+        $user = $request->user();
+        $count = $user->webhooks()->count();
+        if (!\App\Services\PlanLimits::can($user, 'webhooks', $count)) {
+            return \App\Services\PlanLimits::denyResponse('webhooks');
+        }
+
         $data = $request->validate([
             'name'     => 'required|string|max:255',
             'platform' => 'required|in:all,whatsapp',
         ]);
 
-        $webhook = $request->user()->webhooks()->create($data);
+        $webhook = $user->webhooks()->create($data);
         return response()->json($this->format($webhook), 201);
     }
 

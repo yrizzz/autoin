@@ -19,6 +19,12 @@ class ChannelController extends Controller
             return response()->json(['message' => 'Anda harus login dengan Google terlebih dahulu untuk menghubungkan device.'], 403);
         }
 
+        $user = $request->user();
+        $count = $user->channels()->count();
+        if (!\App\Services\PlanLimits::can($user, 'channels', $count)) {
+            return \App\Services\PlanLimits::denyResponse('channels');
+        }
+
         $data = $request->validate([
             'name'        => 'required|string|max:255',
             'platform'    => 'required|in:whatsapp',
@@ -26,7 +32,7 @@ class ChannelController extends Controller
             'target_id'   => 'nullable|string',
         ]);
 
-        $channel = $request->user()->channels()->create($data);
+        $channel = $user->channels()->create($data);
 
         return response()->json($channel, 201);
     }

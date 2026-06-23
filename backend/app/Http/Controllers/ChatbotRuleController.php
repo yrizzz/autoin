@@ -19,6 +19,12 @@ class ChatbotRuleController extends Controller
 
     public function store(Request $request)
     {
+        $user = $request->user();
+        $count = $user->chatbotRules()->count();
+        if (!\App\Services\PlanLimits::can($user, 'chatbot_rules', $count)) {
+            return \App\Services\PlanLimits::denyResponse('chatbot_rules');
+        }
+
         $data = $request->validate([
             'trigger'    => 'required|string|max:255',
             'match_type' => 'required|in:exact,contains,starts_with',
@@ -28,7 +34,7 @@ class ChatbotRuleController extends Controller
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
         ]);
 
-        $rule = $request->user()->chatbotRules()->create($data);
+        $rule = $user->chatbotRules()->create($data);
 
         return response()->json($rule, 201);
     }
