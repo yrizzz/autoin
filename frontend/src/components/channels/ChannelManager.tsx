@@ -725,59 +725,55 @@ export default function ChannelManager() {
               {channels.filter(ch => ch.platform === 'whatsapp').map((ch) => (
                 <div 
                   key={ch.id} 
-                  className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 gap-4"
+                  className="flex flex-col p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 gap-3"
                 >
+                  {/* Top: icon + name + status badge */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10">
                       <PlatformIcon platform={ch.platform} className="w-5.5 h-5.5" />
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
                       <div className="flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
                         <span className="text-emerald-600 dark:text-emerald-400">WhatsApp Account</span>
-                        {ch.target_id && (
-                          <>
-                            <span>•</span>
-                            <span className="font-mono text-zinc-500 dark:text-zinc-400 truncate max-w-[150px]">Default Target: {ch.target_id}</span>
-                          </>
-                        )}
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-3 justify-end border-t sm:border-t-0 border-zinc-100 dark:border-zinc-800 pt-3 sm:pt-0">
-                    <div className="flex items-center gap-1.5">
+                    {/* Status badge — always top-right */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {ch.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
                       <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border tracking-wide ${statusBadgeStyle(ch.status)}`}>
                         {ch.status === 'active' ? 'TERHUBUNG' : ch.status === 'error' ? 'ERROR' : ch.status.toUpperCase()}
                       </span>
                     </div>
+                  </div>
 
+                  {/* Bottom: action buttons — always full-width row, wraps on overflow */}
+                  <div className="flex items-center gap-2 flex-wrap border-t border-zinc-100 dark:border-zinc-800 pt-3">
                     {ch.platform === 'whatsapp' && ch.status === 'active' && (
                       <button
                         onClick={() => handleOpenSyncModal(ch)}
-                        className="text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
+                        className="flex-1 min-w-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
                       >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Chats & Grup</span>
+                        <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">Chats & Grup</span>
                       </button>
                     )}
 
                     <button
                       onClick={() => handleTest(ch)}
                       disabled={testing === ch.id}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-3.5 py-1.5 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center gap-1.5"
+                      className="flex-1 min-w-0 text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-3 py-2 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
                     >
-                      {testing === ch.id ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                      <span>Test Koneksi</span>
+                      {testing === ch.id ? <Loader2 className="w-3 h-3 animate-spin shrink-0" /> : null}
+                      <span className="truncate">Test Koneksi</span>
                     </button>
 
                     <button
                       onClick={() => handleDelete(ch)}
-                      className="p-2 rounded-lg bg-red-50 dark:bg-red-500/5 hover:bg-red-100/10 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 text-red-600 dark:text-red-400 transition-all cursor-pointer"
+                      className="p-2 rounded-lg bg-red-50 dark:bg-red-500/5 hover:bg-red-100/10 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 hover:border-red-200 dark:hover:border-red-500/20 text-red-600 dark:text-red-400 transition-all cursor-pointer shrink-0"
                       title="Hapus Integrasi"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>

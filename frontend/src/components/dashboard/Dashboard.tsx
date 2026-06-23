@@ -249,9 +249,9 @@ export default function Dashboard() {
   return (
     <AdminLayout activePage="dashboard" title="Dashboard" onRefresh={handleRefresh} refreshing={refreshing}>
       {/* Welcome Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+      <div className="flex flex-col gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white font-display">
+          <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-zinc-900 dark:text-white font-display">
             Ringkasan Dashboard
           </h1>
           <p className="text-zinc-400 text-xs mt-1">
@@ -579,7 +579,7 @@ export default function Dashboard() {
             {/* Quick Actions Panel */}
             <div className="mb-8">
               <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500 mb-4">Akses Cepat</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {[
                   { href: '/broadcast', label: 'Buat Broadcast Baru', icon: PlusCircle, color: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20', desc: 'Kirim pesan instan ke banyak platform' },
                   { href: '/channels', label: 'Tambah & Hubungkan Channel', icon: Globe, color: 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20', desc: 'WhatsApp' },
