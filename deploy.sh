@@ -130,7 +130,8 @@ FRONTEND_PROD_URL="https://autoin.my.id"
 GOOGLE_CB_URL="${BACKEND_PROD_URL}/auth/google/callback"
 
 _env_set() {
-  local key="$1" val="$2" file="$ROOT/backend/.env"
+  local key="$1" val="$2" file="${3:-$ROOT/backend/.env}"
+  touch "$file"
   if grep -qE "^${key}=" "$file"; then
     sed -i "s|^${key}=.*|${key}=${val}|" "$file"
   else
@@ -143,6 +144,10 @@ _env_set APP_DEBUG     "false"
 _env_set APP_URL       "$BACKEND_PROD_URL"
 _env_set FRONTEND_URL  "$FRONTEND_PROD_URL"
 _env_set GOOGLE_REDIRECT_URI "$GOOGLE_CB_URL"
+
+# Auto-update WA service .env to point back to production domain (not localhost)
+_env_set BACKEND_URL   "$BACKEND_PROD_URL" "$ROOT/whatsapp-service/.env"
+_env_set INTERNAL_SECRET "autoin-wa-secret" "$ROOT/whatsapp-service/.env"
 
 php artisan config:cache --quiet
 php artisan route:cache --quiet
