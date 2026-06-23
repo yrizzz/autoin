@@ -129,7 +129,7 @@ export default function ContactManager() {
 
   // Pagination State
   const [currentPage, setCurrentPage]     = useState(1);
-  const itemsPerPage = 50;
+  const itemsPerPage = 100;
 
   // Reset page and selection on search/channel change
   useEffect(() => {
@@ -199,13 +199,25 @@ export default function ContactManager() {
     );
   }, [contacts, search]);
 
+  // Sort contacts alphabetically by name
+  const sortedContacts = useMemo(() => {
+    return [...filteredContacts].sort((a, b) => {
+      const nameA = (a.name || '').trim().toLowerCase();
+      const nameB = (b.name || '').trim().toLowerCase();
+      if (!nameA && !nameB) return 0;
+      if (!nameA) return 1;
+      if (!nameB) return -1;
+      return nameA.localeCompare(nameB);
+    });
+  }, [filteredContacts]);
+
   // Paginated contacts
   const paginatedContacts = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
-    return filteredContacts.slice(start, start + itemsPerPage);
-  }, [filteredContacts, currentPage]);
+    return sortedContacts.slice(start, start + itemsPerPage);
+  }, [sortedContacts, currentPage]);
 
-  const totalPages = Math.ceil(filteredContacts.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedContacts.length / itemsPerPage);
 
   const grouped = useMemo(() => {
     const map: Record<string, NormalContact[]> = {};
