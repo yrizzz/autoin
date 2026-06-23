@@ -367,7 +367,10 @@ class SessionManager extends EventEmitter {
   }
 
   has(id) { return this._sessions.has(id); }
-  isConnected(id) { return this._status.get(id) === 'connected'; }
+  isConnected(id) {
+    const sock = this._sessions.get(id);
+    return this._status.get(id) === 'connected' || !!(sock && sock.user);
+  }
   getQr(id) { return this._qrs.get(id) ?? null; }
   getPairingCode(id) { return this._pairingCodes.get(id) ?? null; }
 
@@ -846,7 +849,20 @@ class SessionManager extends EventEmitter {
 
     let isTextStatusColor = false;
     let textStatusColor = '#075E54';
-    let finalStatusJidList = Array.isArray(statusJidList) ? statusJidList : [];
+    let finalStatusJidList = [];
+    if (Array.isArray(statusJidList)) {
+      statusJidList.forEach(id => {
+        if (id && typeof id === 'string') {
+          const parts = id.split('@');
+          if (parts.length === 2) {
+            const clean = `${parts[0].split(':')[0]}@${parts[1]}`;
+            finalStatusJidList.push(clean);
+          } else {
+            finalStatusJidList.push(id);
+          }
+        }
+      });
+    }
     let result;
 
     if (jid === 'status@broadcast') {
@@ -865,16 +881,28 @@ class SessionManager extends EventEmitter {
         const jidSet = new Set();
 
         contacts.forEach(c => {
-          const id = this.translateJid(sessionId, c.id || c.jid);
-          if (id && (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid'))) {
-            jidSet.add(id);
+          let id = this.translateJid(sessionId, c.id || c.jid);
+          if (id) {
+            const parts = id.split('@');
+            if (parts.length === 2) {
+              id = `${parts[0].split(':')[0]}@${parts[1]}`;
+            }
+            if (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid')) {
+              jidSet.add(id);
+            }
           }
         });
 
         chats.forEach(ch => {
-          const id = this.translateJid(sessionId, ch.id);
-          if (id && (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid'))) {
-            jidSet.add(id);
+          let id = this.translateJid(sessionId, ch.id);
+          if (id) {
+            const parts = id.split('@');
+            if (parts.length === 2) {
+              id = `${parts[0].split(':')[0]}@${parts[1]}`;
+            }
+            if (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid')) {
+              jidSet.add(id);
+            }
           }
         });
 
@@ -936,7 +964,8 @@ class SessionManager extends EventEmitter {
         let detectedMime = null;
 
         if (fs.existsSync(resolvedUrl)) {
-          mediaSource = { url: resolvedUrl };
+          mediaSource = fs.readFileSync(resolvedUrl);
+          console.log(`[sessions] Read local media file to Buffer: size=${mediaSource.length} bytes`);
         } else if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
           try {
             console.log(`[sessions] Fetching media buffer from: ${resolvedUrl}`);

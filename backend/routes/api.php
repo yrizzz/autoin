@@ -23,18 +23,6 @@ Route::post('internal/whatsapp/auth', [WhatsAppController::class, 'saveAuthInter
 Route::delete('internal/whatsapp/auth', [WhatsAppController::class, 'deleteAuthInternal']);
 Route::get('internal/whatsapp/sessions', [WhatsAppController::class, 'getSessionsInternal']);
 
-// Temporary check-logs route for debugging
-Route::get('check-logs', function () {
-    header('Content-Type: text/plain');
-    echo "=== PM2 STATUS ===\n";
-    echo shell_exec('pm2 status 2>&1');
-    echo "\n=== PM2 LOGS FOR autoin-wa ===\n";
-    echo shell_exec('pm2 logs autoin-wa --lines 100 --nostream 2>&1');
-    echo "\n=== LARAVEL TAIL LOG ===\n";
-    echo shell_exec('tail -n 50 ' . escapeshellarg(storage_path('logs/laravel.log')) . ' 2>&1');
-    exit;
-});
-
 // Webhook trigger — public, auth via X-Webhook-Secret header
 Route::post('webhooks/trigger/{uuid}', [WebhookController::class, 'trigger']);
 
