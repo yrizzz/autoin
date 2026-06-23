@@ -839,13 +839,7 @@ class SessionManager extends EventEmitter {
     let options = {};
     if (quoted) {
       console.log(`[sessions] send quoted message: targetJid=${jid}, quotedRemoteJid=${quoted.key?.remoteJid}, quotedId=${quoted.key?.id}`);
-      options.quoted = {
-        ...quoted,
-        key: quoted.key ? {
-          ...quoted.key,
-          remoteJid: jid
-        } : undefined
-      };
+      options.quoted = quoted;
     }
 
     let isTextStatusColor = false;
