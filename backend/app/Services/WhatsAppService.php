@@ -16,7 +16,7 @@ class WhatsAppService
         $this->secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
     }
 
-    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null): array
+    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null): array
     {
         $content = $content ?? '';
         $credentials = $channel->credentials;
@@ -36,11 +36,15 @@ class WhatsAppService
         }
 
         if (empty($mediaUrls)) {
+            $payload = [
+                'to'        => $to,
+                'message'   => $content,
+            ];
+            if ($statusJidList !== null) {
+                $payload['statusJidList'] = $statusJidList;
+            }
             $response = Http::withHeader('x-api-secret', $this->secret)
-                ->post("{$this->baseUrl}/sessions/{$sessionId}/send", [
-                    'to'        => $to,
-                    'message'   => $content,
-                ]);
+                ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
             return [
                 'ok'       => $response->successful() && $response->json('ok'),
                 'response' => $response->json(),
@@ -48,26 +52,34 @@ class WhatsAppService
         }
 
         // Send first image with the caption/message
+        $payload = [
+            'to'        => $to,
+            'message'   => $content,
+            'mediaUrl'  => $mediaUrls[0],
+            'mediaType' => $mediaType,
+        ];
+        if ($statusJidList !== null) {
+            $payload['statusJidList'] = $statusJidList;
+        }
         $response = Http::withHeader('x-api-secret', $this->secret)
-            ->post("{$this->baseUrl}/sessions/{$sessionId}/send", [
-                'to'        => $to,
-                'message'   => $content,
-                'mediaUrl'  => $mediaUrls[0],
-                'mediaType' => $mediaType,
-            ]);
+            ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
 
         $success = $response->successful() && $response->json('ok');
         $lastResponse = $response->json();
 
         // Send remaining images without caption
         for ($i = 1; $i < count($mediaUrls); $i++) {
+            $payload = [
+                'to'        => $to,
+                'message'   => '',
+                'mediaUrl'  => $mediaUrls[$i],
+                'mediaType' => $mediaType,
+            ];
+            if ($statusJidList !== null) {
+                $payload['statusJidList'] = $statusJidList;
+            }
             Http::withHeader('x-api-secret', $this->secret)
-                ->post("{$this->baseUrl}/sessions/{$sessionId}/send", [
-                    'to'        => $to,
-                    'message'   => '',
-                    'mediaUrl'  => $mediaUrls[$i],
-                    'mediaType' => $mediaType,
-                ]);
+                ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
         }
 
         return [

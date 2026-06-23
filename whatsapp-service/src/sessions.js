@@ -829,8 +829,8 @@ class SessionManager extends EventEmitter {
     }
   }
 
-  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null) {
-    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font}`);
+  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null) {
+    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font} statusJidListLength=${statusJidList?.length ?? 0}`);
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
     if (!message && !mediaUrl) throw new Error('Message or media required');
@@ -846,7 +846,7 @@ class SessionManager extends EventEmitter {
 
     let isTextStatusColor = false;
     let textStatusColor = '#075E54';
-    let statusJidList = [];
+    let finalStatusJidList = Array.isArray(statusJidList) ? statusJidList : [];
     let result;
 
     if (jid === 'status@broadcast') {
@@ -859,33 +859,37 @@ class SessionManager extends EventEmitter {
         mediaUrl = null;
       }
 
-      const contacts = this.getContacts(sessionId) || [];
-      const chats = this._chats.get(sessionId) || [];
-      const jidSet = new Set();
+      if (finalStatusJidList.length === 0) {
+        const contacts = this.getContacts(sessionId) || [];
+        const chats = this._chats.get(sessionId) || [];
+        const jidSet = new Set();
 
-      contacts.forEach(c => {
-        const id = this.translateJid(sessionId, c.id || c.jid);
-        if (id && id.endsWith('@s.whatsapp.net')) {
-          jidSet.add(id);
-        }
-      });
+        contacts.forEach(c => {
+          const id = this.translateJid(sessionId, c.id || c.jid);
+          if (id && (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid'))) {
+            jidSet.add(id);
+          }
+        });
 
-      chats.forEach(ch => {
-        const id = this.translateJid(sessionId, ch.id);
-        if (id && id.endsWith('@s.whatsapp.net')) {
-          jidSet.add(id);
-        }
-      });
+        chats.forEach(ch => {
+          const id = this.translateJid(sessionId, ch.id);
+          if (id && (id.endsWith('@s.whatsapp.net') || id.endsWith('@lid'))) {
+            jidSet.add(id);
+          }
+        });
 
-      statusJidList = Array.from(jidSet);
+        finalStatusJidList = Array.from(jidSet);
+      }
 
       // Fallback to own JID when contacts not synced
-      if (statusJidList.length === 0) {
+      if (finalStatusJidList.length === 0) {
         const ownJid = sock?.user?.id;
         if (ownJid) {
-          const rawNum = ownJid.split(':')[0].split('@')[0];
-          const normalizedOwn = `${rawNum}@s.whatsapp.net`;
-          statusJidList = [normalizedOwn];
+          const parts = ownJid.split(':');
+          const rawNum = parts[0].split('@')[0];
+          const server = ownJid.includes('@lid') ? 'lid' : 's.whatsapp.net';
+          const normalizedOwn = `${rawNum}@${server}`;
+          finalStatusJidList = [normalizedOwn];
           console.log(`[sessions] No contacts synced — using own JID as fallback: ${normalizedOwn}`);
         }
       }
@@ -893,7 +897,7 @@ class SessionManager extends EventEmitter {
       options = {
         ...options,
         broadcast: true,
-        ...(statusJidList.length > 0 ? { statusJidList } : {}),
+        ...(finalStatusJidList.length > 0 ? { statusJidList: finalStatusJidList } : {}),
         ...(isTextStatusColor ? {
           backgroundColor: textStatusColor,
           font: font !== null && font !== undefined ? Number(font) : 0, // SANS_SERIF
@@ -901,7 +905,7 @@ class SessionManager extends EventEmitter {
       };
 
       if (isTextStatusColor) {
-        console.log(`[sessions] Sending text status → jidCount=${statusJidList.length} color=${textStatusColor}`);
+        console.log(`[sessions] Sending text status → jidCount=${finalStatusJidList.length} color=${textStatusColor}`);
         result = await sock.sendMessage(jid, {
           text: message || '',
         }, options);
@@ -914,34 +918,76 @@ class SessionManager extends EventEmitter {
         let resolvedUrl = mediaUrl;
         if (mediaUrl.includes('/uploads/')) {
           const filename = mediaUrl.split('/').pop();
-          const localPath = `/media/yr/DATA/Web/autoin/backend/public/uploads/${filename}`;
+          const localPath = path.join(__dirname, '../../backend/public/uploads', filename);
           if (fs.existsSync(localPath)) {
             resolvedUrl = localPath;
             console.log(`[sessions] Resolved local media URL to filesystem path: ${resolvedUrl}`);
+          } else {
+            // Rewrite domain to local server port if loopback fails
+            const publicAppUrl = 'https://api.autoin.my.id';
+            if (mediaUrl.startsWith(publicAppUrl)) {
+              resolvedUrl = mediaUrl.replace(publicAppUrl, BACKEND_URL);
+              console.log(`[sessions] Rewrote public media URL to internal backend URL: ${resolvedUrl}`);
+            }
+          }
+        }
+
+        let mediaSource = { url: resolvedUrl };
+        let detectedMime = null;
+
+        if (fs.existsSync(resolvedUrl)) {
+          mediaSource = { url: resolvedUrl };
+        } else if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+          try {
+            console.log(`[sessions] Fetching media buffer from: ${resolvedUrl}`);
+            const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15000) });
+            if (res.ok) {
+              const ab = await res.arrayBuffer();
+              mediaSource = Buffer.from(ab);
+              detectedMime = res.headers.get('content-type');
+              console.log(`[sessions] Successfully fetched media buffer: size=${mediaSource.length} bytes, mime=${detectedMime}`);
+            } else {
+              console.warn(`[sessions] Fetching media buffer failed with status ${res.status}, using URL fallback`);
+            }
+          } catch (e) {
+            console.error(`[sessions] Error fetching media buffer, using URL fallback:`, e.message || e);
           }
         }
 
         switch (mediaType) {
           case 'image':
-            content = { image: { url: resolvedUrl }, caption: message || '' };
+            content = { image: mediaSource };
+            if (detectedMime) content.mimetype = detectedMime;
+            else if (typeof mediaSource === 'object' && mediaSource.url) {
+              // let Baileys resolve MIME automatically for URL string
+            } else {
+              content.mimetype = resolvedUrl.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            }
+            if (message) content.caption = message;
             break;
           case 'video':
-            content = { video: { url: resolvedUrl }, caption: message || '' };
+            content = { video: mediaSource };
+            content.mimetype = detectedMime || 'video/mp4';
+            if (message) content.caption = message;
             break;
           case 'audio':
-            content = { audio: { url: resolvedUrl }, mimetype: 'audio/mp4', ptt: false };
+            content = { audio: mediaSource };
+            content.mimetype = detectedMime || 'audio/mp4';
+            content.ptt = false;
             break;
           case 'document':
           case 'pdf':
             content = {
-              document: { url: resolvedUrl },
-              mimetype: mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+              document: mediaSource,
+              mimetype: detectedMime || (mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
               fileName: mediaUrl.split('/').pop() || 'file',
-              caption: message || '',
             };
+            if (message) content.caption = message;
             break;
           default:
-            content = { image: { url: resolvedUrl }, caption: message || '' };
+            content = { image: mediaSource };
+            if (detectedMime) content.mimetype = detectedMime;
+            if (message) content.caption = message;
             break;
         }
       } else {
