@@ -221,9 +221,10 @@ if [ "$CHANGED_WA" = true ]; then
   pm2 delete ecosystem.config.cjs 2>/dev/null || true
   pm2 start ecosystem.config.cjs
 else
-  log "whatsapp-service has no changes. Only restarting backend and frontend..."
+  log "whatsapp-service has no changes. Only restarting app services..."
   pm2 restart autoin-backend || pm2 start ecosystem.config.cjs
   pm2 restart autoin-frontend || pm2 start ecosystem.config.cjs
+  pm2 restart autoin-scheduler || pm2 start ecosystem.config.cjs
 fi
 
 pm2 save --force >/dev/null

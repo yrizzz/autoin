@@ -66,5 +66,24 @@ module.exports = {
       error_file: '/var/log/autoin/frontend-err.log',
       merge_logs: true,
     },
+
+    // ── Laravel Scheduler Daemon ──────────────────────────
+    {
+      name: 'autoin-scheduler',
+      cwd: path.join(ROOT, 'backend'),
+      script: 'artisan',
+      args: 'schedule:work',
+      interpreter: 'php',
+      watch: false,
+      autorestart: true,
+      max_restarts: 10,
+      restart_delay: 5000,
+      env: {
+        APP_ENV: 'production',
+      },
+      out_file: '/var/log/autoin/scheduler.log',
+      error_file: '/var/log/autoin/scheduler-err.log',
+      merge_logs: true,
+    },
   ],
 };
