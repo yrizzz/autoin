@@ -70,7 +70,8 @@ class ChatbotRuleController extends Controller
     public function matchInternal(Request $request)
     {
         $secret = $request->header('X-Internal-Secret');
-        if ($secret !== config('services.internal.secret', 'autoin-internal-secret')) {
+        if ($secret !== config('services.internal.secret', 'autoin-internal-secret') && 
+            $secret !== config('services.whatsapp.secret', 'autoin-wa-secret')) {
             return response()->json(['reply' => null], 401);
         }
 
