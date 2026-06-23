@@ -134,11 +134,13 @@ class BillingController extends Controller
                 $sub->started_at = now();
                 $sub->expires_at = now()->addDays($daysToAdd);
             } else {
-                $sub->plan = $data['plan'];
-                $currentExpire = $sub->expires_at ? Carbon\Carbon::parse($sub->expires_at) : now();
-                if ($currentExpire->isPast()) {
+                $currentExpire = $sub->expires_at ? \Illuminate\Support\Carbon::parse($sub->expires_at) : now();
+                if ($currentExpire->isPast() || $sub->plan === 'free') {
+                    $sub->plan = $data['plan'];
+                    $sub->started_at = now();
                     $sub->expires_at = now()->addDays($daysToAdd);
                 } else {
+                    // Keep the current premium plan and extend expiration
                     $sub->expires_at = $currentExpire->addDays($daysToAdd);
                 }
             }
