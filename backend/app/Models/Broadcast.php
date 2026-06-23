@@ -9,6 +9,7 @@ class Broadcast extends Model
     protected $fillable = [
         'user_id', 'title', 'content', 'media_url', 'media_type',
         'status', 'scheduled_at', 'recurring', 'sent_at',
+        'delay_min', 'delay_max', 'chunk_size', 'chunk_delay_min', 'chunk_delay_max'
     ];
 
     protected function casts(): array

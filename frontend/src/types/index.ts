@@ -33,6 +33,9 @@ export interface Broadcast {
   created_at: string;
   targets?: BroadcastTarget[];
   logs?: BroadcastLog[];
+  total_logs?: number;
+  sent_logs?: number;
+  failed_logs?: number;
 }
 
 export interface BroadcastTarget {

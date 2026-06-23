@@ -14,7 +14,18 @@ class BroadcastController extends Controller
 
     public function index(Request $request)
     {
-        $query = $request->user()->broadcasts()->with('targets.channel')->latest();
+        $query = $request->user()->broadcasts()
+            ->with('targets.channel')
+            ->withCount([
+                'logs as total_logs',
+                'logs as sent_logs' => function ($q) {
+                    $q->whereIn('status', ['success', 'sent']);
+                },
+                'logs as failed_logs' => function ($q) {
+                    $q->where('status', 'failed');
+                }
+            ])
+            ->latest();
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
@@ -65,6 +76,11 @@ class BroadcastController extends Controller
             'background_color' => 'nullable|string',
             'backgroundColor'  => 'nullable|string',
             'font'             => 'nullable|integer',
+            'delay_min'        => 'nullable|integer|min:0',
+            'delay_max'        => 'nullable|integer|min:0',
+            'chunk_size'       => 'nullable|integer|min:1',
+            'chunk_delay_min'  => 'nullable|integer|min:0',
+            'chunk_delay_max'  => 'nullable|integer|min:0',
         ]);
 
         $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
@@ -80,13 +96,18 @@ class BroadcastController extends Controller
         }
 
         $broadcast = $request->user()->broadcasts()->create([
-            'title'        => $data['title'] ?? null,
-            'content'      => $data['content'],
-            'media_url'    => $mediaUrl,
-            'media_type'   => $mediaType,
-            'scheduled_at' => $data['scheduled_at'] ?? null,
-            'recurring'    => $data['recurring'] ?? 'none',
-            'status'       => $status,
+            'title'           => $data['title'] ?? null,
+            'content'         => $data['content'],
+            'media_url'       => $mediaUrl,
+            'media_type'      => $mediaType,
+            'scheduled_at'    => $data['scheduled_at'] ?? null,
+            'recurring'       => $data['recurring'] ?? 'none',
+            'status'          => $status,
+            'delay_min'       => $data['delay_min'] ?? 2,
+            'delay_max'       => $data['delay_max'] ?? 5,
+            'chunk_size'      => $data['chunk_size'] ?? 10,
+            'chunk_delay_min' => $data['chunk_delay_min'] ?? 10,
+            'chunk_delay_max' => $data['chunk_delay_max'] ?? 20,
         ]);
 
         $recipientsMap = $data['recipients'] ?? [];

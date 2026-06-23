@@ -14,6 +14,7 @@ class SendBroadcastJob implements ShouldQueue
     use Queueable;
 
     public int $tries = 3;
+    public int $timeout = 3600;
 
     public function __construct(public Broadcast $broadcast) {}
 
@@ -26,7 +27,23 @@ class SendBroadcastJob implements ShouldQueue
             ->with('channel')
             ->get();
 
-        foreach ($logs as $log) {
+        $delayMin = $this->broadcast->delay_min ?? 2;
+        $delayMax = $this->broadcast->delay_max ?? 5;
+        $chunkSize = $this->broadcast->chunk_size ?? 10;
+        $chunkDelayMin = $this->broadcast->chunk_delay_min ?? 10;
+        $chunkDelayMax = $this->broadcast->chunk_delay_max ?? 20;
+
+        foreach ($logs as $index => $log) {
+            if ($index > 0) {
+                if ($index % $chunkSize === 0) {
+                    $delay = rand($chunkDelayMin, $chunkDelayMax);
+                    sleep($delay);
+                } else {
+                    $delay = rand($delayMin, $delayMax);
+                    sleep($delay);
+                }
+            }
+
             $channel     = $log->channel;
             $recipientId = $log->recipient_id;
             $result      = $this->sendToChannel($channel, $recipientId);

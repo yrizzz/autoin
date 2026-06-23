@@ -93,6 +93,27 @@ export default function BroadcastHistory() {
     fetchBroadcasts(currentPage);
   }, [currentPage, statusFilter]);
 
+  useEffect(() => {
+    const hasActiveBroadcasts = broadcasts.some(b => ['sending', 'queued'].includes(b.status));
+    if (!hasActiveBroadcasts) return;
+
+    const intervalId = setInterval(() => {
+      let url = `/api/broadcasts?page=${currentPage}`;
+      if (statusFilter !== 'all') {
+        url += `&status=${statusFilter}`;
+      }
+      api.get<{ data: Broadcast[]; current_page: number; last_page: number; total: number }>(url)
+        .then((r) => {
+          setBroadcasts(r.data);
+          setLastPage(r.last_page);
+          setTotalItems(r.total);
+        })
+        .catch(() => {});
+    }, 3000);
+
+    return () => clearInterval(intervalId);
+  }, [broadcasts, currentPage, statusFilter]);
+
   const fetchBroadcasts = (page = 1) => {
     setLoading(true);
     let url = `/api/broadcasts?page=${page}`;
@@ -355,10 +376,29 @@ export default function BroadcastHistory() {
                       </td>
 
                       {/* Status */}
-                      <td className="px-5 py-4 whitespace-nowrap text-center">
-                        <span className={`inline-block text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border tracking-wide uppercase ${statusColor(bc.status)}`}>
-                          {bc.status}
-                        </span>
+                      <td className="px-5 py-4 whitespace-nowrap">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`inline-block text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border tracking-wide uppercase ${statusColor(bc.status)}`}>
+                            {bc.status}
+                          </span>
+                          {bc.total_logs !== undefined && bc.total_logs > 0 && (
+                            <div className="w-24 mt-1">
+                              <div className="flex justify-between text-[9px] text-zinc-400 dark:text-zinc-500 font-bold mb-0.5">
+                                <span>{(bc.sent_logs || 0) + (bc.failed_logs || 0)}/{bc.total_logs}</span>
+                                <span>{Math.round((((bc.sent_logs || 0) + (bc.failed_logs || 0)) / bc.total_logs) * 100)}%</span>
+                              </div>
+                              <div className="w-full h-1 bg-zinc-150 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                <div 
+                                  className={`h-full rounded-full transition-all duration-300 ${
+                                    bc.status === 'sending' ? 'bg-blue-500 animate-pulse' :
+                                    bc.status === 'failed' ? 'bg-red-500' : 'bg-emerald-500'
+                                  }`}
+                                  style={{ width: `${Math.round((((bc.sent_logs || 0) + (bc.failed_logs || 0)) / bc.total_logs) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}

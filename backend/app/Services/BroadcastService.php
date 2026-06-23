@@ -44,7 +44,13 @@ class BroadcastService
             }
         }
 
-        SendBroadcastJob::dispatch($broadcast);
+        if (config('queue.default') === 'sync') {
+            $artisan = base_path('artisan');
+            $cmd = "php {$artisan} broadcast:run {$broadcast->id} > /dev/null 2>&1 &";
+            exec($cmd);
+        } else {
+            SendBroadcastJob::dispatch($broadcast);
+        }
     }
 
     public function schedule(Broadcast $broadcast): void

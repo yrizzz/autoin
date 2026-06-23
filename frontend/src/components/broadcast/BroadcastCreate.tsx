@@ -8,7 +8,7 @@ import {
   Loader2, Bookmark, Image as ImageIcon, Video, FileText, Plus,
   Trash2, Paperclip, Upload, X, Calendar, Clock, Users, Search,
   Phone, Hash, UserCheck, Wand2, Lightbulb, Copy, CheckCircle2,
-  ArrowRight, Info, Eye, HelpCircle
+  ArrowRight, Info, Eye, HelpCircle, Shield, ShieldAlert, ShieldCheck
 } from 'lucide-react';
 
 interface Recipient { id: string; name: string; phone?: string; type: 'contact' | 'group'; }
@@ -237,6 +237,31 @@ export default function BroadcastCreate() {
   const [sending, setSending]             = useState(false);
   const [result, setResult]               = useState<{ ok: boolean; message: string } | null>(null);
 
+  // Anti-Banned & Smart Blast States
+  const [smartBlastEnabled, setSmartBlastEnabled] = useState(true);
+  const [delayMin, setDelayMin]                   = useState(2);
+  const [delayMax, setDelayMax]                   = useState(5);
+  const [chunkSize, setChunkSize]                 = useState(10);
+  const [chunkDelayMin, setChunkDelayMin]         = useState(10);
+  const [chunkDelayMax, setChunkDelayMax]         = useState(20);
+
+  // Live Progress States
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
+  const [activeBroadcastId, setActiveBroadcastId] = useState<number | null>(null);
+  const [progressData, setProgressData]           = useState<{
+    id: number;
+    title: string | null;
+    status: string;
+    logs: Array<{
+      id: number;
+      recipient_id: string;
+      recipient_name: string | null;
+      status: string;
+      error: string | null;
+      sent_at: string | null;
+    }>;
+  } | null>(null);
+
   const [scheduledAt, setScheduledAt]     = useState('');
   const [recurring, setRecurring]         = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
 
@@ -284,6 +309,32 @@ export default function BroadcastCreate() {
         .catch(() => setTemplates([]));
     }
   }, [templatePickerOpen]);
+
+  useEffect(() => {
+    if (!progressModalOpen || !activeBroadcastId) return;
+
+    let intervalId: any = null;
+
+    const fetchProgress = async () => {
+      try {
+        const data = await api.get<any>(`/api/broadcasts/${activeBroadcastId}`);
+        setProgressData(data);
+
+        if (['sent', 'failed'].includes(data.status)) {
+          clearInterval(intervalId);
+        }
+      } catch (err) {
+        console.error('Error polling broadcast progress:', err);
+      }
+    };
+
+    fetchProgress();
+    intervalId = setInterval(fetchProgress, 1500);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [progressModalOpen, activeBroadcastId]);
 
   function applyFormat(type: 'bold' | 'italic' | 'strike' | 'code') {
     const el = textareaRef.current;
@@ -465,24 +516,39 @@ export default function BroadcastCreate() {
         recipients: Object.keys(recipientsMap).length > 0 ? recipientsMap : undefined,
         scheduled_at: scheduledAtUtc,
         recurring: scheduledAtUtc ? recurring : undefined,
+        delay_min: smartBlastEnabled ? Number(delayMin) : 0,
+        delay_max: smartBlastEnabled ? Number(delayMax) : 0,
+        chunk_size: smartBlastEnabled ? Number(chunkSize) : 999999,
+        chunk_delay_min: smartBlastEnabled ? Number(chunkDelayMin) : 0,
+        chunk_delay_max: smartBlastEnabled ? Number(chunkDelayMax) : 0,
       });
 
       if (!isScheduled) {
         await api.post(`/api/broadcasts/${broadcast.id}/send`);
-        setResult({ ok: true, message: '🚀 Broadcast sukses dikirim ke antrean platform!' });
+        setActiveBroadcastId(broadcast.id);
+        setProgressModalOpen(true);
+        setProgressData(null);
       } else {
         setResult({ ok: true, message: `📅 Broadcast dijadwalkan pada ${new Date(scheduledAt).toLocaleString('id-ID')}` });
+        setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
+        setScheduledAt(''); setRecurring('none'); setRecipientState({});
+        setActiveTab('editor');
       }
-
-      setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
-      setScheduledAt(''); setRecurring('none'); setRecipientState({});
-      setActiveTab('editor');
     } catch (e: any) {
       setResult({ ok: false, message: e.message ?? 'Gagal memproses broadcast.' });
     } finally {
       setSending(false);
     }
   }
+
+  const resetForm = () => {
+    setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
+    setScheduledAt(''); setRecurring('none'); setRecipientState({});
+    setActiveTab('editor');
+    setProgressModalOpen(false);
+    setActiveBroadcastId(null);
+    setProgressData(null);
+  };
 
   const handleAiRewrite = async (tone: string) => {
     if (!content.trim()) { alert('Tulis draf pesan di editor utama terlebih dahulu!'); return; }
@@ -864,6 +930,76 @@ export default function BroadcastCreate() {
                     <strong>{new Date(scheduledAt).toLocaleString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
                     {recurring !== 'none' && <span> · Pola pengulangan: <strong>{recurring === 'daily' ? 'Harian' : recurring === 'weekly' ? 'Mingguan' : 'Bulanan'}</strong></span>}
                   </span>
+                </div>
+              )}
+            </div>
+
+            {/* Anti-Banned Settings Card */}
+            <div className={`bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 ${activeTab === 'editor' ? 'block' : 'hidden md:block'}`}>
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+                <div className="flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-emerald-500" />
+                  <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">Proteksi Anti-Ban (Smart Blast)</h3>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={smartBlastEnabled} onChange={e => setSmartBlastEnabled(e.target.checked)} className="sr-only peer" />
+                  <div className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              {smartBlastEnabled ? (
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <p className="text-[11px] text-zinc-550 dark:text-zinc-400 leading-relaxed">
+                    Fitur Smart Blast memperlambat pengiriman pesan secara acak dan membaginya ke dalam batch kecil (chunk) untuk meniru perilaku manusia agar aman dari deteksi spam WhatsApp.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Delays between messages */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Jeda Antar Pesan (Detik)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min={0} value={delayMin} onChange={e => setDelayMin(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 text-center" placeholder="Min" />
+                        <span className="text-zinc-400 text-xs">s/d</span>
+                        <input type="number" min={0} value={delayMax} onChange={e => setDelayMax(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 text-center" placeholder="Max" />
+                      </div>
+                    </div>
+
+                    {/* Chunk size */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Ukuran Batch (Chunk Size)</label>
+                      <input type="number" min={1} value={chunkSize} onChange={e => setChunkSize(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500" placeholder="Contoh: 10 pesan" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Delays between chunks */}
+                    <div className="space-y-2 sm:col-span-2">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Jeda Istirahat Antar Batch (Detik)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min={0} value={chunkDelayMin} onChange={e => setChunkDelayMin(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 text-center" placeholder="Min" />
+                        <span className="text-zinc-400 text-xs">s/d</span>
+                        <input type="number" min={0} value={chunkDelayMax} onChange={e => setChunkDelayMax(Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-250 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs text-zinc-800 dark:text-zinc-200 focus:outline-none focus:border-blue-500 text-center" placeholder="Max" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[10px] text-emerald-650 dark:text-emerald-400 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl px-4 py-3 font-semibold">
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>Rekomendasi proteksi aktif: Menghindari pemblokiran WhatsApp secara efektif.</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-2xl flex items-start gap-2.5 animate-in fade-in duration-200">
+                  <ShieldAlert className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                  <div className="text-[10px] text-zinc-550 dark:text-zinc-400 leading-normal">
+                    <span className="font-bold text-red-500 block">Peringatan: Proteksi Dinonaktifkan!</span>
+                    Pesan akan dikirim secepat mungkin tanpa jeda. Ini dapat memicu pemblokiran nomor WhatsApp Anda oleh sistem Meta jika mengirim ke banyak kontak.
+                  </div>
                 </div>
               )}
             </div>
@@ -1289,6 +1425,167 @@ export default function BroadcastCreate() {
                 className="px-4 py-2 bg-gradient-brand hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all cursor-pointer">
                 Mengerti
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live Progress Modal */}
+      {progressModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 dark:bg-black/85 backdrop-blur-sm">
+          <div className="bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150 relative">
+            
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-blue-500 animate-pulse" />
+                <div>
+                  <h3 className="font-extrabold text-sm text-zinc-900 dark:text-white uppercase tracking-wider">Live Broadcast Progress</h3>
+                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500">Pemantauan pengiriman Smart Blast real-time</p>
+                </div>
+              </div>
+              {progressData && ['sent', 'failed'].includes(progressData.status) && (
+                <button onClick={resetForm} className="p-1 rounded-xl text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-200 transition-all cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed max-h-[70vh]">
+              {!progressData ? (
+                <div className="flex flex-col items-center justify-center py-16 gap-3">
+                  <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+                  <span className="text-xs font-bold text-zinc-500 dark:text-zinc-400 font-semibold">Menghubungkan ke antrean server...</span>
+                </div>
+              ) : (
+                <>
+                  {/* Status Box */}
+                  <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+                    <div>
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Status Pengiriman</span>
+                      <span className={`text-xs font-extrabold uppercase tracking-wide flex items-center gap-1.5 mt-0.5 ${
+                        progressData.status === 'sending' ? 'text-blue-500 animate-pulse' :
+                        progressData.status === 'sent' ? 'text-emerald-500' :
+                        progressData.status === 'failed' ? 'text-red-500' : 'text-zinc-400'
+                      }`}>
+                        {progressData.status === 'sending' && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                        {progressData.status === 'sent' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {progressData.status === 'failed' && <AlertCircle className="w-3.5 h-3.5" />}
+                        {progressData.status === 'sending' ? 'Sedang Mengirim...' :
+                         progressData.status === 'sent' ? 'Sukses Dikirim!' :
+                         progressData.status === 'failed' ? 'Gagal Terkirim' : progressData.status}
+                      </span>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest block">Metode Proteksi</span>
+                      <span className="text-xs font-bold text-emerald-500 flex items-center gap-1 mt-0.5 justify-end">
+                        <Shield className="w-3 h-3" />
+                        Smart Blast Active
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progress Metrics & Bar */}
+                  {(() => {
+                    const logs = progressData.logs || [];
+                    const total = logs.length;
+                    const success = logs.filter(l => l.status === 'success' || l.status === 'sent').length;
+                    const failed = logs.filter(l => l.status === 'failed').length;
+                    const completed = success + failed;
+                    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+                    return (
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center text-[10px] font-bold uppercase text-zinc-400 tracking-wider">
+                          <span>Progress Pengiriman</span>
+                          <span className="text-blue-600 dark:text-blue-400 text-xs">{percent}%</span>
+                        </div>
+                        {/* Progress Bar Container */}
+                        <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-950 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-800">
+                          <div 
+                            className="h-full bg-gradient-brand rounded-full transition-all duration-500" 
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+
+                        {/* Counts Grid */}
+                        <div className="grid grid-cols-4 gap-2 text-center pt-2">
+                          <div className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+                            <span className="block text-[8px] font-bold text-zinc-400 uppercase">Target</span>
+                            <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">{total}</span>
+                          </div>
+                          <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+                            <span className="block text-[8px] font-bold text-emerald-500 uppercase">Sukses</span>
+                            <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-450">{success}</span>
+                          </div>
+                          <div className="p-3 bg-red-500/5 border border-red-500/10 rounded-xl">
+                            <span className="block text-[8px] font-bold text-red-500 uppercase">Gagal</span>
+                            <span className="text-sm font-extrabold text-red-650 dark:text-red-400">{failed}</span>
+                          </div>
+                          <div className="p-3 bg-blue-500/5 border border-blue-500/10 rounded-xl">
+                            <span className="block text-[8px] font-bold text-blue-500 uppercase">Sisa</span>
+                            <span className="text-sm font-extrabold text-blue-600 dark:text-blue-450">{total - completed}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Scrollable Logs Queue */}
+                  <div className="space-y-2">
+                    <span className="block font-bold text-[10px] uppercase text-zinc-400 tracking-wider">Antrian & Riwayat Logs</span>
+                    <div className="border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden divide-y divide-zinc-200 dark:divide-zinc-800 bg-zinc-50 dark:bg-zinc-950/40 max-h-48 overflow-y-auto pr-1">
+                      {(progressData.logs || []).map((log, idx) => (
+                        <div key={log.id || idx} className="p-3 flex items-center justify-between gap-3 text-xs">
+                          <div className="min-w-0">
+                            <span className="font-bold text-zinc-800 dark:text-zinc-200 block truncate">
+                              {log.recipient_name || 'Kontak Tanpa Nama'}
+                            </span>
+                            <span className="text-[10px] text-zinc-450 dark:text-zinc-500 font-mono">
+                              {log.recipient_id ? log.recipient_id.split('@')[0] : 'Channel Default'}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {log.status === 'success' || log.status === 'sent' ? (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-600 dark:text-emerald-450 bg-emerald-50 dark:bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-500/20">
+                                <Check className="w-3 h-3" /> Sukses
+                              </span>
+                            ) : log.status === 'failed' ? (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-red-650 dark:text-red-400 bg-red-50 dark:bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-100 dark:border-red-550/20" title={log.error || undefined}>
+                                <X className="w-3 h-3" /> Gagal
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-100 dark:border-blue-500/20 animate-pulse">
+                                <Loader2 className="w-3 h-3 animate-spin" /> Proses
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between shrink-0 gap-3">
+              <button 
+                onClick={resetForm}
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-200 rounded-xl text-xs font-bold transition-all cursor-pointer"
+              >
+                Tutup & Jalankan di Background
+              </button>
+              
+              <a 
+                href="/broadcast/history"
+                className="px-4 py-2 bg-gradient-brand hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-sm shadow-blue-500/15"
+              >
+                Buka Riwayat
+              </a>
             </div>
           </div>
         </div>
