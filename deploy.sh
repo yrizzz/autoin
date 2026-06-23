@@ -144,6 +144,8 @@ _env_set APP_DEBUG     "false"
 _env_set APP_URL       "$BACKEND_PROD_URL"
 _env_set FRONTEND_URL  "$FRONTEND_PROD_URL"
 _env_set GOOGLE_REDIRECT_URI "$GOOGLE_CB_URL"
+_env_set WHATSAPP_SERVICE_URL "http://127.0.0.1:3001"
+_env_set WHATSAPP_SERVICE_SECRET "autoin-wa-secret"
 
 # Auto-update WA service .env to point back to production domain (not localhost)
 _env_set BACKEND_URL   "$BACKEND_PROD_URL" "$ROOT/whatsapp-service/.env"
