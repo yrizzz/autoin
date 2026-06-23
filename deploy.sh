@@ -116,8 +116,8 @@ composer install --no-dev --optimize-autoloader --no-interaction --quiet
 php artisan migrate --force --quiet
 
 # Auto-update production URLs in .env
-BACKEND_PROD_URL="http://autoin.my.id:8001"
-FRONTEND_PROD_URL="http://autoin.my.id:4322"
+BACKEND_PROD_URL="https://api.autoin.my.id"
+FRONTEND_PROD_URL="https://autoin.my.id"
 GOOGLE_CB_URL="${BACKEND_PROD_URL}/auth/google/callback"
 
 _env_set() {
@@ -179,7 +179,7 @@ echo -e "  ${GREEN}${BOLD}Deploy selesai!${RESET}"
 echo ""
 pm2 status
 echo ""
-echo -e "  🌐 Frontend  → ${CYAN}http://$(curl -s ifconfig.me 2>/dev/null || echo SERVER_IP):4322${RESET}"
-echo -e "  🔧 API       → ${CYAN}http://$(curl -s ifconfig.me 2>/dev/null || echo SERVER_IP):8001${RESET}"
+echo -e "  🌐 Frontend  → ${CYAN}${FRONTEND_PROD_URL}${RESET}"
+echo -e "  🔧 API       → ${CYAN}${BACKEND_PROD_URL}${RESET}"
 echo -e "  💬 WA Svc    → ${CYAN}http://localhost:3001${RESET} (internal)"
 sep
