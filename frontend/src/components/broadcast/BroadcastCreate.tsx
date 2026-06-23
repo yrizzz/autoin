@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { api } from '../../lib/api';
 import type { Channel } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
+import Toast from '../ui/Toast';
 import {
   Send, Sparkles, Check, AlertCircle, MessageSquare, Globe,
   Loader2, Bookmark, Image as ImageIcon, Video, FileText, Plus,
@@ -1292,12 +1293,7 @@ export default function BroadcastCreate() {
           </div>
         </div>
       )}
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 px-4.5 py-3 bg-zinc-950/90 dark:bg-white text-white dark:text-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800 dark:border-zinc-200/20 shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-[11px] font-bold tracking-wide">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </AdminLayout>
   );
 }

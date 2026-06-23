@@ -3,8 +3,9 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Outfit", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-display: "Outfit", sans-serif;
+  --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
 
   --color-brand-primary: #2563EB;
   --color-brand-secondary: #7C3AED;
@@ -17,9 +18,85 @@
   --color-border-dark: rgba(255, 255, 255, 0.06);
 }
 
+html {
+  font-size: 16px;
+}
+
 body {
-  font-family: var(--font-sans);
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  font-size: 0.9375rem; /* 15px — sedikit lebih besar dari browser default Tailwind */
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
+}
+
+/* ─────────────────────────────────────────────────
+   Page Subtitle
+   Teks deskripsi di bawah <h1> setiap halaman.
+   Selector h1 + p men-target <p> langsung setelah h1 secara global.
+───────────────────────────────────────────────── */
+h1 + p {
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  line-height: 1.65 !important;
+  letter-spacing: 0.01em;
+  margin-top: 6px !important;
+}
+
+/* ─────────────────────────────────────────────────
+   Typography Floor
+   Gently raises the smallest text to a minimum readable size.
+   9px → 10px, 10px → 11px, 11px stays (sudah cukup, handled by Tailwind text-xs)
+───────────────────────────────────────────────── */
+.text-\[9px\]  { font-size: 10px !important; }
+.text-\[10px\] { font-size: 11px !important; }
+
+/* ─────────────────────────────────────────────────
+   Semantic Typography Utilities
+   Use these for new components to keep scale consistent.
+   eyebrow → section labels / table headers
+   caption  → secondary/meta info
+   body     → readable paragraph/card text
+   label    → form labels, key-value labels
+───────────────────────────────────────────────── */
+.typo-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.4;
+}
+.typo-caption {
+  font-size: 12px;
+  line-height: 1.55;
+  font-weight: 400;
+}
+.typo-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.typo-body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  font-weight: 400;
+}
+.typo-subhead {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.typo-heading {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.typo-title {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
 }
 
 /* Scrollbar — light mode */
@@ -48,6 +125,15 @@ body {
 }
 .dark ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar {
+  scrollbar-width: none;        /* Firefox */
+  -ms-overflow-style: none;     /* IE/Edge */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;                /* Chrome/Safari/Opera */
 }
 
 /* Glassmorphism */

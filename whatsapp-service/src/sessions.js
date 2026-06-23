@@ -815,16 +815,80 @@ class SessionManager extends EventEmitter {
     }
   }
 
-  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null) {
-    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType}`);
+  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null) {
+    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font}`);
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
     if (!message && !mediaUrl) throw new Error('Message or media required');
 
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
-    const options = quoted ? { quoted } : {};
+    let options = quoted ? { quoted } : {};
 
+    let isTextStatusColor = false;
+    let textStatusColor = '#075E54';
+    let statusJidList = [];
     let result;
+
+    if (jid === 'status@broadcast') {
+      if (backgroundColor) {
+        isTextStatusColor = true;
+        textStatusColor = backgroundColor;
+      } else if (mediaUrl && mediaUrl.startsWith('#')) {
+        isTextStatusColor = true;
+        textStatusColor = mediaUrl;
+        mediaUrl = null;
+      }
+
+      const contacts = this.getContacts(sessionId) || [];
+      const chats = this._chats.get(sessionId) || [];
+      const jidSet = new Set();
+
+      contacts.forEach(c => {
+        const id = this.translateJid(sessionId, c.id || c.jid);
+        if (id && id.endsWith('@s.whatsapp.net')) {
+          jidSet.add(id);
+        }
+      });
+
+      chats.forEach(ch => {
+        const id = this.translateJid(sessionId, ch.id);
+        if (id && id.endsWith('@s.whatsapp.net')) {
+          jidSet.add(id);
+        }
+      });
+
+      statusJidList = Array.from(jidSet);
+
+      // Fallback to own JID when contacts not synced
+      if (statusJidList.length === 0) {
+        const ownJid = sock?.user?.id;
+        if (ownJid) {
+          const rawNum = ownJid.split(':')[0].split('@')[0];
+          const normalizedOwn = `${rawNum}@s.whatsapp.net`;
+          statusJidList = [normalizedOwn];
+          console.log(`[sessions] No contacts synced — using own JID as fallback: ${normalizedOwn}`);
+        }
+      }
+
+      options = {
+        ...options,
+        broadcast: true,
+        ...(statusJidList.length > 0 ? { statusJidList } : {}),
+        ...(isTextStatusColor ? {
+          backgroundColor: textStatusColor,
+          font: font !== null && font !== undefined ? Number(font) : 0, // SANS_SERIF
+        } : {}),
+      };
+
+      if (isTextStatusColor) {
+        console.log(`[sessions] Sending text status → jidCount=${statusJidList.length} color=${textStatusColor}`);
+        result = await sock.sendMessage(jid, {
+          text: message || '',
+        }, options);
+      }
+    }
+
+    if (!result) {
     if (mediaUrl) {
       let resolvedUrl = mediaUrl;
       if (mediaUrl.includes('/uploads/')) {
@@ -861,6 +925,7 @@ class SessionManager extends EventEmitter {
       }
     } else {
       result = await sock.sendMessage(jid, { text: message || '' }, options);
+    }
     }
 
     if (result) {

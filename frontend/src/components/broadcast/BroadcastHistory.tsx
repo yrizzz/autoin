@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import type { Broadcast } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
+import Toast from '../ui/Toast';
 import { 
   Search, 
   Calendar, 
@@ -677,19 +678,7 @@ export default function BroadcastHistory() {
         </div>
       )}
 
-      {/* Floating Toast Notification */}
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[100] flex items-center gap-2 px-4.5 py-3.5 bg-zinc-900/90 dark:bg-white/95 text-white dark:text-zinc-900 rounded-2xl shadow-xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-300">
-          {toast.type === 'success' ? (
-            <CheckCircle2 className="w-4 h-4 text-emerald-500 dark:text-emerald-600" />
-          ) : toast.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-red-500 dark:text-red-600" />
-          ) : (
-            <Sparkles className="w-4 h-4 text-blue-400 dark:text-blue-500 animate-pulse" />
-          )}
-          <span className="text-xs font-bold tracking-wide">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
 
     </AdminLayout>
   );

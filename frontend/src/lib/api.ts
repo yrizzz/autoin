@@ -1,11 +1,18 @@
 export function getApiUrl(): string {
+  // 1. PUBLIC_API_URL is baked in at build time by deploy.sh (highest priority)
+  const baked = import.meta.env.PUBLIC_API_URL;
+  if (baked) return baked;
+
+  // 2. Runtime fallback: if not on localhost, assume backend is on same host port 8001
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
       return `${window.location.protocol}//${hostname}:8001`;
     }
   }
-  return import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
+
+  // 3. Local dev default
+  return 'http://localhost:8001';
 }
 
 const API_URL = getApiUrl();

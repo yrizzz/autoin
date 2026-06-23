@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { Send, Smartphone, Globe, Mail, Link2, Paperclip, CheckCircle, AlertCircle, Loader2, Upload, Trash2, FileText, X, ChevronLeft, ChevronRight, RotateCcw, Sparkles, Copy, ArrowRight, Lightbulb } from 'lucide-react';
 import { api } from '../../lib/api';
+import Toast from '../ui/Toast';
 
 interface Channel {
   id: string;
@@ -911,12 +912,7 @@ export default function QuickSend() {
           )}
         </div>
       </div>
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 px-4.5 py-3 bg-zinc-950/90 dark:bg-white text-white dark:text-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800 dark:border-zinc-200/20 shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-[11px] font-bold tracking-wide">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </AdminLayout>
   );
 }

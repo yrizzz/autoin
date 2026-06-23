@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { api } from '../../lib/api';
 import { Settings, Shield, CreditCard, Megaphone, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { AlertBanner } from '../ui/Toast';
 
 interface SettingsData {
   duitku_merchant_code: string;
@@ -85,19 +86,8 @@ export default function AdminSettings() {
           </p>
         </div>
 
-        {error && (
-          <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 dark:text-red-400 text-xs font-bold">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {success && (
-          <div className="flex items-center gap-2 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400 text-xs font-bold">
-            <Check className="w-4 h-4 shrink-0" />
-            <span>{success}</span>
-          </div>
-        )}
+        <AlertBanner message={error} type="error" />
+        <AlertBanner message={success} type="success" />
 
         {loading ? (
           <div className="py-20 text-center text-xs text-zinc-500 flex flex-col items-center justify-center gap-2">

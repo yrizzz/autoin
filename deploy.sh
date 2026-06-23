@@ -109,22 +109,43 @@ cd "$ROOT"
 git pull origin main
 ok "Code up to date"
 
-# 2. Backend
+# 2. Backend — auto-configure production .env
 log "Backend — install & migrate..."
 cd "$ROOT/backend"
 composer install --no-dev --optimize-autoloader --no-interaction --quiet
 php artisan migrate --force --quiet
+
+# Auto-update production URLs in .env
+BACKEND_PROD_URL="http://autoin.my.id:8001"
+FRONTEND_PROD_URL="http://autoin.my.id:4322"
+GOOGLE_CB_URL="${BACKEND_PROD_URL}/auth/google/callback"
+
+_env_set() {
+  local key="$1" val="$2" file="$ROOT/backend/.env"
+  if grep -qE "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${val}|" "$file"
+  else
+    echo "${key}=${val}" >> "$file"
+  fi
+}
+
+_env_set APP_ENV       "production"
+_env_set APP_DEBUG     "false"
+_env_set APP_URL       "$BACKEND_PROD_URL"
+_env_set FRONTEND_URL  "$FRONTEND_PROD_URL"
+_env_set GOOGLE_REDIRECT_URI "$GOOGLE_CB_URL"
+
 php artisan config:cache --quiet
 php artisan route:cache --quiet
 php artisan view:cache --quiet
-ok "Backend ready"
+ok "Backend ready (APP_URL=${BACKEND_PROD_URL})"
 
-# 3. Frontend
+# 3. Frontend — build with correct API URL baked in
 log "Frontend — build..."
 cd "$ROOT/frontend"
 npm ci --silent
-npm run build --silent 2>/dev/null || true
-ok "Frontend built"
+PUBLIC_API_URL="$BACKEND_PROD_URL" npm run build 2>/dev/null || { warn "Build warning, continuing..."; true; }
+ok "Frontend built (PUBLIC_API_URL=${BACKEND_PROD_URL})"
 
 # 4. WA Service
 log "WA Service — install deps..."

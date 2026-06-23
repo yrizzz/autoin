@@ -103,7 +103,7 @@ function ContactCard({ c, platform, onCopy, copied }: {
       </div>
       {platform === 'whatsapp' && (
         <a href={`/chats?to=${encodeURIComponent(c.id.split('@')[0])}`}
-          className="opacity-0 group-hover:opacity-100 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-xl transition-all border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20">
+          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-xl transition-all border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20">
           <MessageSquare className="w-3 h-3" />Chat
         </a>
       )}
@@ -538,7 +538,7 @@ export default function ContactManager() {
                           <span className="font-mono truncate">{phoneOrId}</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <button onClick={() => handleCopy(phoneOrId)}
                           className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all cursor-pointer"
                           title="Salin">

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
-import { Users, CreditCard, Search, Calendar, ChevronLeft, ChevronRight, Activity, Smartphone, Cpu, Link as LinkIcon, RefreshCw, BadgeAlert, Plus, X, Check, Trash } from 'lucide-react';
+import { Users, CreditCard, Search, Calendar, ChevronLeft, ChevronRight, Activity, Smartphone, Cpu, Link as LinkIcon, RefreshCw, BadgeAlert, Plus, X, Check, Trash, MoreVertical } from 'lucide-react';
 import { api } from '../../lib/api';
+import { AlertBanner } from '../ui/Toast';
 
 interface SubscriberUser {
   id: number;
@@ -53,6 +54,9 @@ export default function SubscribersManager() {
   const [cancelingUser, setCancelingUser] = useState<SubscriberUser | null>(null);
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
+
+  // Active Dropdown state
+  const [activeDropdownUserId, setActiveDropdownUserId] = useState<number | null>(null);
 
   const getDefaultDays = (plan: string): number => {
     switch (plan) {
@@ -429,7 +433,7 @@ export default function SubscribersManager() {
                   </div>
 
                   {/* Desktop Table View */}
-                  <div className="hidden md:block overflow-x-auto">
+                  <div className="hidden md:block overflow-x-auto pb-16">
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
@@ -442,7 +446,7 @@ export default function SubscribersManager() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60 text-xs">
-                        {paginatedSubscribers.map((user) => (
+                        {paginatedSubscribers.map((user, idx) => (
                           <tr key={user.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors">
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
@@ -506,41 +510,76 @@ export default function SubscribersManager() {
                             <td className="px-6 py-4 text-center text-zinc-500 dark:text-zinc-450 font-bold">
                               {user.trial_count} Pesan
                             </td>
-                             <td className="px-6 py-4 text-center whitespace-nowrap">
-                               <div className="flex items-center justify-center gap-2">
-                                 <button
-                                   type="button"
-                                   onClick={() => {
-                                     setSelectedUser(user);
-                                     const defaultPlan = user.subscription?.plan || 'monthly';
-                                     setExtendPlan(defaultPlan);
-                                     setExtendDays(getDefaultDays(defaultPlan));
-                                   }}
-                                   className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600/10 hover:bg-blue-600 text-blue-600 hover:text-white dark:text-blue-400 dark:hover:text-white border border-blue-500/10 hover:border-transparent rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                                 >
-                                   <Plus className="w-3.5 h-3.5" />
-                                   <span>Extend</span>
-                                 </button>
-                                 {user.subscription && (
-                                   <button
-                                     type="button"
-                                     onClick={() => handleCancelSubscription(user)}
-                                     className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-600/10 hover:bg-amber-600 text-amber-600 hover:text-white dark:text-amber-400 dark:hover:text-white border border-amber-500/10 hover:border-transparent rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                                   >
-                                     <X className="w-3.5 h-3.5" />
-                                     <span>Hapus Sub</span>
-                                   </button>
-                                 )}
-                                 <button
-                                   type="button"
-                                   onClick={() => handleDeleteUser(user)}
-                                   className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-rose-600/10 hover:bg-rose-600 text-rose-600 hover:text-white dark:text-rose-400 dark:hover:text-white border border-rose-500/10 hover:border-transparent rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer"
-                                 >
-                                   <Trash className="w-3.5 h-3.5" />
-                                   <span>Hapus</span>
-                                 </button>
-                               </div>
-                             </td>
+                            <td className={`px-6 py-4 text-center whitespace-nowrap ${activeDropdownUserId === user.id ? 'z-30 relative' : ''}`}>
+                              <div className="flex items-center justify-center">
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveDropdownUserId(activeDropdownUserId === user.id ? null : user.id);
+                                    }}
+                                    className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+
+                                  {activeDropdownUserId === user.id && (
+                                    <>
+                                      {/* Backdrop to close the dropdown when clicking outside */}
+                                      <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setActiveDropdownUserId(null)}
+                                      />
+                                      <div className="absolute right-0 mt-1.5 w-36 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl shadow-lg z-50 py-1 text-left animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveDropdownUserId(null);
+                                            setSelectedUser(user);
+                                            const defaultPlan = user.subscription?.plan || 'monthly';
+                                            setExtendPlan(defaultPlan);
+                                            setExtendDays(getDefaultDays(defaultPlan));
+                                          }}
+                                          className="w-full px-3 py-2 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-850/60 font-semibold text-[10.5px] uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Plus className="w-3.5 h-3.5 text-blue-500" />
+                                          <span>Extend</span>
+                                        </button>
+                                        
+                                        {user.subscription && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setActiveDropdownUserId(null);
+                                              handleCancelSubscription(user);
+                                            }}
+                                            className="w-full px-3 py-2 text-amber-600 hover:bg-zinc-50 dark:hover:bg-zinc-850/60 font-semibold text-[10.5px] uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
+                                          >
+                                            <X className="w-3.5 h-3.5" />
+                                            <span>Hapus Sub</span>
+                                          </button>
+                                        )}
+                                        
+                                        <div className="border-t border-zinc-100 dark:border-zinc-800/80 my-1" />
+                                        
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveDropdownUserId(null);
+                                            handleDeleteUser(user);
+                                          }}
+                                          className="w-full px-3 py-2 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-semibold text-[10.5px] uppercase tracking-wider flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Trash className="w-3.5 h-3.5" />
+                                          <span>Hapus</span>
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -580,18 +619,18 @@ export default function SubscribersManager() {
         )}
         {selectedUser && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/40 backdrop-blur-xs">
-            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl space-y-6">
+            <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
               
               {/* Close Button */}
               <button
                 onClick={() => setSelectedUser(null)}
-                className="absolute top-4 right-4 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all cursor-pointer bg-white dark:bg-zinc-900"
+                className="absolute top-4 right-4 p-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-all cursor-pointer bg-white dark:bg-zinc-900 z-10"
               >
                 <X className="w-4 h-4" />
               </button>
 
               {/* Title */}
-              <div>
+              <div className="shrink-0 mb-4 pr-8">
                 <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <Calendar className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
                   Perpanjang Langganan
@@ -602,21 +641,13 @@ export default function SubscribersManager() {
               </div>
 
               {/* Feedback messages */}
-              {extendError && (
-                <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs font-bold rounded-xl">
-                  {extendError}
-                </div>
-              )}
-              {extendSuccess && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold rounded-xl">
-                  {extendSuccess}
-                </div>
-              )}
+              <AlertBanner message={extendError} type="error" />
+              <AlertBanner message={extendSuccess} type="success" />
 
               {/* Form */}
-              <form onSubmit={handleExtend} className="space-y-4">
+              <form onSubmit={handleExtend} className="flex-1 overflow-y-auto space-y-4 pr-1">
                 <div>
-                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-450 uppercase tracking-wider mb-1.5">Tipe Paket</label>
+                  <label className="block text-[10px] font-bold text-zinc-500 dark:text-zinc-455 uppercase tracking-wider mb-1.5">Tipe Paket</label>
                   <select
                     value={extendPlan}
                     onChange={(e: any) => {

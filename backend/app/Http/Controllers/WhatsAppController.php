@@ -429,18 +429,22 @@ class WhatsAppController extends Controller
         $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
 
         $data = $request->validate([
-            'to'       => 'required|string',
-            'message'  => 'nullable|string',
-            'mediaUrl' => 'nullable|string',
-            'mediaType'=> 'nullable|string',
+            'to'              => 'required|string',
+            'message'         => 'nullable|string',
+            'mediaUrl'        => 'nullable|string',
+            'mediaType'       => 'nullable|string',
+            'backgroundColor' => 'nullable|string',
+            'font'            => 'nullable|integer',
         ]);
 
         $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
             ->post("{$baseUrl}/sessions/{$credentials['session_id']}/send", [
-                'to'       => $data['to'],
-                'message'  => $data['message'] ?? '',
-                'mediaUrl' => $data['mediaUrl'] ?? null,
-                'mediaType'=> $data['mediaType'] ?? null,
+                'to'              => $data['to'],
+                'message'         => $data['message'] ?? '',
+                'mediaUrl'        => $data['mediaUrl'] ?? null,
+                'mediaType'       => $data['mediaType'] ?? null,
+                'backgroundColor' => $data['backgroundColor'] ?? null,
+                'font'            => $data['font'] ?? null,
             ]);
 
         return response()->json($response->json() ?? ['status' => 'error']);

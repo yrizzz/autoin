@@ -14,13 +14,13 @@ class BroadcastController extends Controller
 
     public function index(Request $request)
     {
-        $query = $request->user()->broadcasts()->latest();
+        $query = $request->user()->broadcasts()->with('targets.channel')->latest();
 
         if ($request->has('status')) {
             $query->where('status', $request->input('status'));
         }
 
-        $broadcasts = $query->paginate(20);
+        $broadcasts = $query->paginate(50);
 
         return response()->json($broadcasts);
     }
@@ -53,24 +53,37 @@ class BroadcastController extends Controller
         }
 
         $data = $request->validate([
-            'title'          => 'nullable|string|max:255',
-            'content'        => 'required|string',
-            'media_url'      => 'nullable|string',
-            'media_type'     => 'nullable|in:image,video,pdf,document',
-            'channel_ids'    => 'required|array|min:1',
-            'channel_ids.*'  => 'exists:channels,id',
-            'recipients'     => 'nullable|array',
-            'scheduled_at'   => 'nullable|date|after:now',
-            'recurring'      => 'nullable|in:none,daily,weekly,monthly',
+            'title'            => 'nullable|string|max:255',
+            'content'          => 'required|string',
+            'media_url'        => 'nullable|string',
+            'media_type'       => 'nullable|in:image,video,pdf,document',
+            'channel_ids'      => 'required|array|min:1',
+            'channel_ids.*'    => 'exists:channels,id',
+            'recipients'       => 'nullable|array',
+            'scheduled_at'     => 'nullable|date|after:now',
+            'recurring'        => 'nullable|in:none,daily,weekly,monthly',
+            'background_color' => 'nullable|string',
+            'backgroundColor'  => 'nullable|string',
+            'font'             => 'nullable|integer',
         ]);
 
         $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
 
+        // If backgroundColor is passed for a status text broadcast,
+        // store it in media_url with '#' prefix (existing convention)
+        $mediaUrl  = $data['media_url'] ?? null;
+        $mediaType = $data['media_type'] ?? null;
+        $bgColor   = $data['backgroundColor'] ?? $data['background_color'] ?? null;
+        if ($bgColor && !$mediaUrl) {
+            $mediaUrl  = str_starts_with($bgColor, '#') ? $bgColor : "#{$bgColor}";
+            $mediaType = null;
+        }
+
         $broadcast = $request->user()->broadcasts()->create([
             'title'        => $data['title'] ?? null,
             'content'      => $data['content'],
-            'media_url'    => $data['media_url'] ?? null,
-            'media_type'   => $data['media_type'] ?? null,
+            'media_url'    => $mediaUrl,
+            'media_type'   => $mediaType,
             'scheduled_at' => $data['scheduled_at'] ?? null,
             'recurring'    => $data['recurring'] ?? 'none',
             'status'       => $status,

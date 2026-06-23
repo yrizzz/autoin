@@ -8,6 +8,10 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   integrations: [react()],
 
+  devToolbar: {
+    enabled: false
+  },
+
   server: {
     port: 4322,
     host: true,

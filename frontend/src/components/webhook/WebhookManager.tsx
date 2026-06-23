@@ -284,8 +284,8 @@ X-Webhook-Secret: whsec_xxx`}
       {/* Modal */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100 dark:bg-zinc-900/60">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] flex flex-col overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-100 dark:bg-zinc-900/60 shrink-0">
               <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
                 {editingWebhook ? 'Edit Webhook' : 'Buat Webhook Baru'}
               </h3>
@@ -294,7 +294,7 @@ X-Webhook-Secret: whsec_xxx`}
                 Tutup
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 space-y-4">
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Nama Webhook</label>
                 <input type="text" placeholder="Contoh: WooCommerce Payment Success"

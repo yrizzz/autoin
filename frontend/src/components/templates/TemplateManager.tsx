@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { api } from '../../lib/api';
+import Toast, { AlertBanner } from '../ui/Toast';
 import { 
   Plus, 
   Search, 
@@ -365,21 +366,17 @@ export default function TemplateManager() {
 
       {/* Create / Edit Modal (Premium 2-column layout with WhatsApp formatting & simulator preview) */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl w-full max-w-5xl overflow-hidden animate-in fade-in zoom-in duration-200 my-8">
-            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/60">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/60 shrink-0">
               <h3 className="text-sm font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
                 {editingTemplate ? '✍️ Edit Template Pesan' : '✨ Buat Template Pesan Baru'}
               </h3>
               <button onClick={() => setModalOpen(false)} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100 text-xs font-semibold cursor-pointer transition-colors">Tutup</button>
             </div>
             
-            <form onSubmit={handleSave} className="p-6 space-y-6">
-              {error && (
-                <div className="flex items-center gap-2 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-xs px-3 py-2 rounded-xl">
-                  <AlertTriangle className="w-3.5 h-3.5 shrink-0" />{error}
-                </div>
-              )}
+            <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 space-y-6">
+              <AlertBanner message={error} type="error" />
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
@@ -595,12 +592,7 @@ export default function TemplateManager() {
           </div>
         </div>
       )}
-      {toast && (
-        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 px-4.5 py-3 bg-zinc-950/90 dark:bg-white text-white dark:text-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800 dark:border-zinc-200/20 shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          <span className="text-[11px] font-bold tracking-wide">{toast.message}</span>
-        </div>
-      )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </AdminLayout>
   );
 }

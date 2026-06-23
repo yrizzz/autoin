@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket
+  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -292,7 +292,6 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
     settingsItems.unshift({ id: 'users', label: 'Daftar Pelanggan', icon: Users, href: '/users' });
     settingsItems.unshift({ id: 'admin_settings', label: 'Sistem Admin', icon: Settings, href: '/admin-settings' });
   }
-
   const navGroups = [
     {
       title: null,
@@ -303,6 +302,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'templates', label: 'Template Pesan', icon: FileText, href: '/templates' },
         { id: 'broadcast', label: 'Broadcast Pesan', icon: Rocket, href: '/broadcast' },
         { id: 'schedule', label: 'Jadwal Broadcast', icon: Calendar, href: '/schedule' },
+        { id: 'schedule_status', label: 'Jadwal Status WA', icon: Layers, href: '/schedule-status' },
       ]
     },
     {
@@ -347,7 +347,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         {navGroups.map((group, gi) => (
           <div key={gi} className="space-y-0.5">
             {group.title && (
-              <div className="px-3 pt-1 pb-1.5 text-[9px] font-extrabold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">
+              <div className="px-3 pt-1 pb-1.5 text-[11px] font-extrabold text-zinc-400 dark:text-zinc-600 uppercase tracking-widest">
                 {group.title}
               </div>
             )}
@@ -359,7 +359,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                   key={item.id}
                   href={item.href}
                   onClick={onNav}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[11px] font-semibold tracking-wide transition-all ${active
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${active
                       ? 'nav-active-item'
                       : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900'
                     }`}
@@ -391,7 +391,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
             </div>
             <button
               onClick={handleLogout}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[11px] font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 rounded-xl transition-all cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 rounded-xl transition-all cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
               Keluar Sesi
@@ -401,7 +401,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
           <div className="p-3">
             <a
               href={getGoogleAuthUrl()}
-              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-xl transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-xl transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
             >
               <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
               Masuk dengan Google
@@ -409,11 +409,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
           </div>
         )}
 
-        <div className="px-5 py-3 border-t border-zinc-100 dark:border-zinc-800/60 flex items-center justify-center gap-1.5">
-          <span className="text-[9px] text-zinc-400 dark:text-zinc-600">Crafted by</span>
-          <a href="https://yrizzz.my.id" target="_blank" rel="noopener noreferrer" className="text-[9px] font-bold text-blue-500 hover:underline">YrizzzDev</a>
-          <Heart className="w-2.5 h-2.5 text-red-400 fill-current" />
-        </div>
+
       </div>
     </>
   );
@@ -454,7 +450,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="flex items-center gap-1.5 text-[11px] font-semibold min-w-0">
+            <div className="flex items-center gap-1.5 text-xs font-semibold min-w-0">
               <span className="text-zinc-400 dark:text-zinc-500 shrink-0">AUTOIN</span>
               <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-700 shrink-0" />
               <span className="text-zinc-800 dark:text-zinc-200 font-bold truncate">{title}</span>
@@ -493,9 +489,9 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                   <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
                   <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl z-50 overflow-hidden">
                     <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/60">
-                      <span className="text-[10px] font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-widest">Notifikasi</span>
+                      <span className="text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Notifikasi</span>
                       {hasUnread && (
-                        <button onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} className="text-[10px] text-blue-500 font-bold hover:underline cursor-pointer">
+                        <button onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} className="text-xs text-blue-500 font-bold hover:underline cursor-pointer">
                           Tandai dibaca
                         </button>
                       )}
@@ -508,10 +504,10 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                           className={`px-4 py-3 flex flex-col gap-1 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <span className={`text-[11px] font-bold truncate ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
-                            <span className="text-[9px] text-zinc-400 shrink-0">{n.time}</span>
+                            <span className={`text-xs font-bold truncate ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
+                            <span className="text-[11px] text-zinc-400 shrink-0">{n.time}</span>
                           </div>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-snug">{n.message}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-snug">{n.message}</p>
                         </div>
                       ))}
                     </div>
@@ -527,7 +523,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                     <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </div>
                   <div className="text-right hidden lg:block">
-                    <div className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 leading-none">
+                    <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 leading-none">
                       {formatDisplayName(user.name)}
                     </div>
                   </div>
@@ -535,7 +531,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
               ) : (
                 <a
                   href={getGoogleAuthUrl()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-lg transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-lg transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
                 >
                   <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
                   Masuk

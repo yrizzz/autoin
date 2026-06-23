@@ -45,14 +45,12 @@ module.exports = {
       merge_logs: true,
     },
 
-    // ── Astro Frontend (SSR / dev server) ────────────────
-    // NOTE: For production, consider serving the built output via nginx instead.
-    // This runs the Astro dev server as a fallback.
+    // ── Astro Frontend (preview built output) ─────────────
     {
       name: 'autoin-frontend',
       cwd: path.join(ROOT, 'frontend'),
       script: 'node_modules/.bin/astro',
-      args: 'dev --port 4322 --host 0.0.0.0',
+      args: 'preview --port 4322 --host 0.0.0.0',
       interpreter: 'node',
       watch: false,
       autorestart: true,
@@ -60,6 +58,9 @@ module.exports = {
       restart_delay: 3000,
       env: {
         NODE_ENV: 'production',
+        // PUBLIC_API_URL is baked into the frontend at build time (npm run build).
+        // Set this in the shell before deploying: export PUBLIC_API_URL=http://autoin.my.id:8001
+        // The runtime fallback in api.ts will use window.location.hostname:8001 if not set.
       },
       out_file: '/var/log/autoin/frontend.log',
       error_file: '/var/log/autoin/frontend-err.log',

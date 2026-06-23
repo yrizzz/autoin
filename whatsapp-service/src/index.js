@@ -161,8 +161,8 @@ app.delete('/sessions/:sessionId', auth, (req, res) => {
 // Send a message
 app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   const { sessionId } = req.params;
-  const { to, message, mediaUrl, mediaType } = req.body;
-  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType}`);
+  const { to, message, mediaUrl, mediaType, backgroundColor, font } = req.body;
+  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType} backgroundColor:${backgroundColor} font:${font}`);
 
   if (!sessionManager.isConnected(sessionId)) {
     console.warn(`[index] Session ${sessionId} not connected`);
@@ -170,7 +170,7 @@ app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   }
 
   try {
-    const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType);
+    const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType, null, backgroundColor, font);
     console.log(`[index] Send success for ${sessionId}`);
     res.json({ ok: true, result });
   } catch (err) {

@@ -20,3 +20,7 @@
 .vscode/
 .idea/
 .DS_Store
+
+# Temporary & Test files
+**/media-temp/
+backend/test_*.php

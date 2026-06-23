@@ -195,25 +195,27 @@ print(res.json())`
         )}
       </div>
 
-      {/* Tab Bar */}
-      <div className="flex bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 mb-6 w-fit gap-0.5">
-        {TABS.map(tab => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? 'tab-active'
-                  : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-          );
-        })}
+      {/* Tab Bar — scrollable on mobile, no visible scrollbar */}
+      <div className="overflow-x-auto no-scrollbar -mx-4 px-4 md:mx-0 md:px-0 mb-6">
+        <div className="flex bg-zinc-100 dark:bg-zinc-950 p-1 rounded-xl border border-zinc-200 dark:border-zinc-800 gap-0.5 w-max md:w-fit min-w-full md:min-w-0">
+          {TABS.map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? 'tab-active'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── TAB: OVERVIEW ─────────────────────────── */}
@@ -241,14 +243,14 @@ print(res.json())`
                   <div className="space-y-5">
                     {/* Key display */}
                     <div className="relative group">
-                      <div className="flex items-center gap-2 bg-zinc-950 dark:bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3.5 font-mono text-xs">
+                      <div className="flex items-center gap-2 bg-zinc-950 dark:bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-3.5 font-mono text-xs overflow-hidden">
                         <Key className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                        <span className="flex-1 truncate text-zinc-300 tracking-wider select-all">
+                        <span className="flex-1 min-w-0 truncate text-zinc-300 tracking-wider select-all text-[10px] sm:text-xs">
                           {maskedKey}
                         </span>
                         <button
                           onClick={() => setShowKey(!showKey)}
-                          className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer shrink-0"
+                          className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer shrink-0 ml-1"
                           title={showKey ? 'Sembunyikan' : 'Tampilkan'}
                         >
                           {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -257,10 +259,10 @@ print(res.json())`
                     </div>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2.5">
                       <button
                         onClick={handleCopy}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-brand hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-gradient-brand hover:opacity-95 text-white text-xs font-bold rounded-xl transition-all shadow-sm cursor-pointer flex-1 sm:flex-none justify-center"
                       >
                         {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                         {copied ? 'Tersalin!' : 'Salin Key'}
@@ -269,7 +271,7 @@ print(res.json())`
                       <button
                         onClick={handleGenerate}
                         disabled={generating}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-xl transition-all border border-zinc-200 dark:border-zinc-700 cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-bold rounded-xl transition-all border border-zinc-200 dark:border-zinc-700 cursor-pointer flex-1 sm:flex-none justify-center"
                       >
                         <RefreshCw className={`w-3.5 h-3.5 ${generating ? 'animate-spin' : ''}`} />
                         Regenerate
@@ -277,7 +279,7 @@ print(res.json())`
 
                       <button
                         onClick={() => setDeleteConfirm(true)}
-                        className="flex items-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                        className="flex items-center gap-1.5 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-xs font-bold rounded-xl transition-all cursor-pointer justify-center"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                         Revoke
@@ -382,28 +384,29 @@ print(res.json())`
       {activeTab === 'examples' && (
         <div className="space-y-5">
           <div className="bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-            {/* Snippet tab bar */}
-            <div className="flex items-center gap-0 border-b border-zinc-100 dark:border-zinc-800 px-4 overflow-x-auto">
-              {SNIPPET_TABS.map(t => (
-                <button
-                  key={t.id}
-                  onClick={() => setActiveSnippet(t.id)}
-                  className={`px-4 py-3.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
-                    activeSnippet === t.id
-                      ? 'border-blue-500 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-                  }`}
-                >
-                  {t.label}
-                </button>
-              ))}
-              <div className="flex-1" />
+            {/* Snippet tab bar — scrollable on mobile */}
+            <div className="flex items-center border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex overflow-x-auto no-scrollbar flex-1 min-w-0">
+                {SNIPPET_TABS.map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveSnippet(t.id)}
+                    className={`px-4 py-3.5 text-xs font-semibold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                      activeSnippet === t.id
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               <button
                 onClick={() => handleCopySnippet(activeSnippet, snippets[activeSnippet])}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all cursor-pointer mr-1"
+                className="flex items-center gap-1.5 px-3 py-2 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition-all cursor-pointer shrink-0 mr-2"
               >
                 {copiedSnippet === activeSnippet ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                {copiedSnippet === activeSnippet ? 'Tersalin!' : 'Salin'}
+                <span className="hidden sm:inline">{copiedSnippet === activeSnippet ? 'Tersalin!' : 'Salin'}</span>
               </button>
             </div>
 
@@ -494,7 +497,7 @@ print(res.json())`
                     </div>
                     <button
                       onClick={() => removeIP(ip)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
+                      className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all cursor-pointer"
                       title="Hapus"
                     >
                       <XIcon className="w-3.5 h-3.5" />
