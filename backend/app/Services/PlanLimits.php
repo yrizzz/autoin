@@ -16,7 +16,7 @@ class PlanLimits
             'broadcasts'        => 3,    // 3 broadcasts total (lifetime)
             'templates'         => 1,    // 1 saved template
             'messages_per_day'  => 50,   // 50 WA direct messages/day
-            'chatbot_rules'     => 0,    // no chatbot
+            'chatbot_rules'     => 1,    // 1 chatbot rule for trial
             'webhooks'          => 1,    // 1 webhook
         ],
         'daily' => [
@@ -92,7 +92,7 @@ class PlanLimits
             'broadcasts'       => 'Batas 3 broadcast gratis tercapai. Upgrade untuk broadcast tanpa batas.',
             'templates'        => 'Batas 1 template gratis tercapai. Upgrade untuk menyimpan lebih banyak template.',
             'messages_per_day' => 'Batas 50 pesan/hari tercapai. Upgrade untuk pengiriman pesan tanpa batas.',
-            'chatbot_rules'    => 'Fitur Chatbot tidak tersedia di paket gratis. Upgrade untuk mengaktifkan Auto-Reply.',
+            'chatbot_rules'    => 'Batas 1 auto-reply gratis tercapai. Upgrade untuk mengaktifkan lebih banyak Auto-Reply.',
             'webhooks'         => 'Batas webhook tercapai. Upgrade untuk webhook tanpa batas.',
         ];
 
