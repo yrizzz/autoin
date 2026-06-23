@@ -247,6 +247,12 @@ async function gracefulShutdown(signal) {
   shuttingDown = true;
   console.log(`Received ${signal}. Gracefully shutting down...`);
   
+  // Set a hard timeout to force exit if flushing takes too long
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out. Force exiting...');
+    process.exit(1);
+  }, 3000);
+
   // Stop accepting new requests
   server.close(() => {
     console.log('HTTP server closed.');

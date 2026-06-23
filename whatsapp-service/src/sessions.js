@@ -36,7 +36,8 @@ async function useMySQLAuthState(sessionId) {
   let dbData = {};
   try {
     const res = await fetch(getUrl, {
-      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET },
+      signal: AbortSignal.timeout(2000)
     });
     if (res.ok) {
       dbData = await res.json();
@@ -75,7 +76,8 @@ async function useMySQLAuthState(sessionId) {
       body: JSON.stringify({
         session_id: sessionId,
         data: payload
-      })
+      }),
+      signal: AbortSignal.timeout(2000)
     })
     .then(r => r.json().then(d => console.log(`[useMySQLAuthState] Save response:`, d)))
     .catch(err => console.error('[useMySQLAuthState] Failed to save auth state to database:', err));
@@ -220,7 +222,8 @@ class SessionManager extends EventEmitter {
           groups,
           messages,
           lidMap
-        })
+        }),
+        signal: AbortSignal.timeout(2000)
       });
     } catch (err) {
       console.error('Failed to sync to database:', err);
@@ -244,7 +247,8 @@ class SessionManager extends EventEmitter {
       const res = await fetch(url, {
         headers: {
           'X-Internal-Secret': INTERNAL_SECRET
-        }
+        },
+        signal: AbortSignal.timeout(3000)
       });
       if (res.ok) {
         const store = await res.json();
@@ -801,6 +805,7 @@ class SessionManager extends EventEmitter {
           'X-Internal-Secret': INTERNAL_SECRET,
         },
         body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
+        signal: AbortSignal.timeout(2000)
       });
       console.log(`[Chatbot] Match API response status: ${res.status}`);
       if (!res.ok) {
@@ -996,7 +1001,8 @@ class SessionManager extends EventEmitter {
     const deleteUrl = `${BACKEND_URL}/api/internal/whatsapp/auth?session_id=${sessionId}`;
     fetch(deleteUrl, {
       method: 'DELETE',
-      headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+      headers: { 'X-Internal-Secret': INTERNAL_SECRET },
+      signal: AbortSignal.timeout(2000)
     }).catch(err => console.error('Failed to delete auth state from database:', err));
   }
 
@@ -1004,7 +1010,8 @@ class SessionManager extends EventEmitter {
     try {
       const url = `${BACKEND_URL}/api/internal/whatsapp/sessions`;
       const res = await fetch(url, {
-        headers: { 'X-Internal-Secret': INTERNAL_SECRET }
+        headers: { 'X-Internal-Secret': INTERNAL_SECRET },
+        signal: AbortSignal.timeout(4000)
       });
       if (res.ok) {
         const sessionIds = await res.json();
