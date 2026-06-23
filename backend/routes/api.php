@@ -34,7 +34,7 @@ Route::get('login', function () {
     return response()->json(['message' => 'Unauthorized.'], 401);
 })->name('login');
 
-Route::middleware('auth:api')->group(function () {
+Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me/limits', function (\Illuminate\Http\Request $r) {
