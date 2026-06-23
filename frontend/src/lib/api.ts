@@ -13,14 +13,27 @@ export function clearToken(): void {
   localStorage.removeItem('autoin_token');
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function request<T>(path: string, options: RequestInit & { timeout?: number } = {}): Promise<T> {
   const token = getToken();
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  const timeoutMs = options.timeout ?? 60000; // Increased to 60 seconds
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  const { timeout, ...fetchOptions } = options;
 
   const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    credentials: 'include',        // send HttpOnly cookie automatically
+    ...fetchOptions,
+    credentials: 'include',
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
@@ -32,7 +45,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Unknown error' }));
-    throw new Error(error.message ?? `HTTP ${res.status}`);
+    throw new ApiError(error.message ?? `HTTP ${res.status}`, res.status);
   }
 
   if (res.status === 204) return null as T;
@@ -40,10 +53,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const api = {
-  get: <T>(path: string) => request<T>(path),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
-  put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: 'PUT', body: JSON.stringify(body) }),
-  delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
+  get: <T>(path: string, options: RequestInit & { timeout?: number } = {}) => 
+    request<T>(path, options),
+  post: <T>(path: string, body?: unknown, options: RequestInit & { timeout?: number } = {}) =>
+    request<T>(path, { method: 'POST', body: JSON.stringify(body), ...options }),
+  put: <T>(path: string, body?: unknown, options: RequestInit & { timeout?: number } = {}) =>
+    request<T>(path, { method: 'PUT', body: JSON.stringify(body), ...options }),
+  delete: <T>(path: string, options: RequestInit & { timeout?: number } = {}) => 
+    request<T>(path, { method: 'DELETE', ...options }),
 };

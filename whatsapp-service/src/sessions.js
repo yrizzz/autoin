@@ -60,12 +60,13 @@ async function useMySQLAuthState(sessionId) {
     updateTimeout = null;
 
     const payload = { ...pendingUpdates };
+    if (Object.keys(payload).length === 0) return Promise.resolve();
     pendingUpdates = {};
 
     console.log(`[useMySQLAuthState] Flushing ${Object.keys(payload).length} updates to MySQL:`, Object.keys(payload));
 
     const saveUrl = `${BACKEND_URL}/api/internal/whatsapp/auth`;
-    fetch(saveUrl, {
+    return fetch(saveUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -141,7 +142,9 @@ async function useMySQLAuthState(sessionId) {
     saveCreds: () => {
       authCache['creds'] = creds;
       queueUpdate('creds', creds);
-    }
+      flushUpdates(); // Flush credentials immediately!
+    },
+    flush: () => flushUpdates()
   };
 }
 
@@ -477,8 +480,17 @@ class SessionManager extends EventEmitter {
     // Load any persisted data before connecting
     await this._loadFromDb(sessionId);
 
-    const { state, saveCreds } = await useMySQLAuthState(sessionId);
-    const { version } = await fetchLatestBaileysVersion();
+    const { state, saveCreds, flush } = await useMySQLAuthState(sessionId);
+    let version = [2, 3000, 1017592466];
+    try {
+      const latest = await Promise.race([
+        fetchLatestBaileysVersion(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1200))
+      ]);
+      version = latest.version;
+    } catch (err) {
+      console.log('[sessions] Using stable fallback Baileys version due to NPM version fetch timeout');
+    }
 
     this._status.set(sessionId, 'connecting');
 
@@ -701,7 +713,13 @@ class SessionManager extends EventEmitter {
           const reason = new Boom(lastDisconnect?.error)?.output?.statusCode;
           this._status.set(sessionId, 'disconnected');
           if (reason !== DisconnectReason.loggedOut) {
-            this.create(sessionId, usePairingCode, phoneNumber);
+            console.log(`[connection.update] Session closed (reason: ${reason}). Reconnecting in 3 seconds...`);
+            if (typeof flush === 'function') {
+              flush();
+            }
+            setTimeout(() => {
+              this.create(sessionId, usePairingCode, phoneNumber);
+            }, 3000);
           } else {
             this._sessions.delete(sessionId);
             this._qrs.delete(sessionId);
@@ -798,6 +816,7 @@ class SessionManager extends EventEmitter {
   }
 
   async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null) {
+    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType}`);
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
     if (!message && !mediaUrl) throw new Error('Message or media required');
@@ -807,27 +826,37 @@ class SessionManager extends EventEmitter {
 
     let result;
     if (mediaUrl) {
+      let resolvedUrl = mediaUrl;
+      if (mediaUrl.includes('/uploads/')) {
+        const filename = mediaUrl.split('/').pop();
+        const localPath = `/media/yr/DATA/Web/autoin/backend/public/uploads/${filename}`;
+        if (fs.existsSync(localPath)) {
+          resolvedUrl = localPath;
+          console.log(`[sessions] Resolved local media URL to filesystem path: ${resolvedUrl}`);
+        }
+      }
+
       switch (mediaType) {
         case 'image':
-          result = await sock.sendMessage(jid, { image: { url: mediaUrl }, caption: message || '' }, options);
+          result = await sock.sendMessage(jid, { image: { url: resolvedUrl }, caption: message || '' }, options);
           break;
         case 'video':
-          result = await sock.sendMessage(jid, { video: { url: mediaUrl }, caption: message || '' }, options);
+          result = await sock.sendMessage(jid, { video: { url: resolvedUrl }, caption: message || '' }, options);
           break;
         case 'audio':
-          result = await sock.sendMessage(jid, { audio: { url: mediaUrl }, mimetype: 'audio/mp4', ptt: false }, options);
+          result = await sock.sendMessage(jid, { audio: { url: resolvedUrl }, mimetype: 'audio/mp4', ptt: false }, options);
           break;
         case 'document':
         case 'pdf':
           result = await sock.sendMessage(jid, {
-            document: { url: mediaUrl },
+            document: { url: resolvedUrl },
             mimetype: mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream',
             fileName: mediaUrl.split('/').pop() || 'file',
             caption: message || '',
           }, options);
           break;
         default:
-          result = await sock.sendMessage(jid, { image: { url: mediaUrl }, caption: message || '' }, options);
+          result = await sock.sendMessage(jid, { image: { url: resolvedUrl }, caption: message || '' }, options);
           break;
       }
     } else {

@@ -50,10 +50,56 @@ class SendBroadcastJob implements ShouldQueue
             'sent_at' => now(),
         ]);
 
+        // If this broadcast is recurring, automatically schedule the next occurrence
+        if (in_array($this->broadcast->recurring, ['daily', 'weekly', 'monthly'])) {
+            $this->scheduleNextOccurrence($this->broadcast);
+        }
+
         // Deduct trial if on free plan
         $user = $this->broadcast->user;
         if (!$user->subscription || $user->subscription->plan === 'free') {
             $user->decrement('trial_count');
+        }
+    }
+
+    /**
+     * Helper to clone and schedule the next occurrence of a recurring broadcast.
+     */
+    private function scheduleNextOccurrence(Broadcast $broadcast): void
+    {
+        $baseDate = $broadcast->scheduled_at ?? $broadcast->created_at ?? now();
+        $nextScheduledAt = \Carbon\Carbon::parse($baseDate);
+        
+        while ($nextScheduledAt->isPast()) {
+            if ($broadcast->recurring === 'daily') {
+                $nextScheduledAt->addDay();
+            } elseif ($broadcast->recurring === 'weekly') {
+                $nextScheduledAt->addWeek();
+            } elseif ($broadcast->recurring === 'monthly') {
+                $nextScheduledAt->addMonth();
+            } else {
+                break;
+            }
+        }
+
+        // Create next scheduled broadcast
+        $nextBroadcast = Broadcast::create([
+            'user_id'      => $broadcast->user_id,
+            'title'        => $broadcast->title,
+            'content'      => $broadcast->content,
+            'media_url'    => $broadcast->media_url,
+            'media_type'   => $broadcast->media_type,
+            'scheduled_at' => $nextScheduledAt,
+            'recurring'    => $broadcast->recurring,
+            'status'       => 'scheduled',
+        ]);
+
+        foreach ($broadcast->targets as $target) {
+            \App\Models\BroadcastTarget::create([
+                'broadcast_id' => $nextBroadcast->id,
+                'channel_id'   => $target->channel_id,
+                'recipients'   => $target->recipients,
+            ]);
         }
     }
 

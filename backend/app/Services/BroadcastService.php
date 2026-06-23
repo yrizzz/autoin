@@ -57,10 +57,10 @@ class BroadcastService
         $broadcasts = Broadcast::where('user_id', $userId);
 
         return [
-            'total'     => $broadcasts->count(),
-            'sent'      => $broadcasts->where('status', 'sent')->count(),
-            'failed'    => $broadcasts->where('status', 'failed')->count(),
-            'scheduled' => $broadcasts->where('status', 'scheduled')->count(),
+            'total'     => (clone $broadcasts)->count(),
+            'sent'      => (clone $broadcasts)->where('status', 'sent')->count(),
+            'failed'    => (clone $broadcasts)->where('status', 'failed')->count(),
+            'scheduled' => (clone $broadcasts)->where('status', 'scheduled')->count(),
         ];
     }
 }

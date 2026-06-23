@@ -99,7 +99,67 @@ class WhatsAppController extends Controller
         abort_if($channel->platform !== 'whatsapp', 422);
 
         $synced = $channel->synced_data ?? [];
-        return response()->json(['contacts' => $synced['contacts'] ?? []]);
+        $contacts = $synced['contacts'] ?? [];
+        $chats = $synced['chats'] ?? [];
+
+        // Build a unique map of contacts by their JID
+        $contactsMap = [];
+        foreach ($contacts as $c) {
+            if (isset($c['id'])) {
+                $contactsMap[$c['id']] = $c;
+            }
+        }
+
+        // Add personal chats that are not already present in contacts
+        foreach ($chats as $chat) {
+            $jid = $chat['id'] ?? null;
+            if ($jid && (str_ends_with($jid, '@s.whatsapp.net') || str_ends_with($jid, '@lid'))) {
+                if (!isset($contactsMap[$jid])) {
+                    $contactsMap[$jid] = [
+                        'id' => $jid,
+                        'name' => $chat['name'] ?? explode('@', $jid)[0],
+                    ];
+                } else if (empty($contactsMap[$jid]['name']) && !empty($chat['name'])) {
+                    $contactsMap[$jid]['name'] = $chat['name'];
+                }
+            }
+        }
+
+        // Map internal LID mappings to real phone numbers if available
+        $lidMap = $synced['lidMap'] ?? [];
+        $resolvedContacts = [];
+
+        foreach ($contactsMap as $id => $c) {
+            $resolvedId = $id;
+            if (str_ends_with($id, '@lid')) {
+                if (isset($lidMap[$id])) {
+                    $resolvedId = $lidMap[$id];
+                } else {
+                    // Try name-matching fallback with phone contacts
+                    $searchName = strtolower(trim($c['name'] ?? ''));
+                    if ($searchName !== '') {
+                        foreach ($contactsMap as $otherId => $otherC) {
+                            if (str_ends_with($otherId, '@s.whatsapp.net') && strtolower(trim($otherC['name'] ?? '')) === $searchName) {
+                                $resolvedId = $otherId;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            $name = $c['name'] ?? '';
+            if (str_contains($name, '@')) {
+                $name = explode('@', $name)[0];
+            }
+
+            $resolvedContacts[$resolvedId] = [
+                'id' => $resolvedId,
+                'name' => $name ?: explode('@', $resolvedId)[0],
+            ];
+        }
+
+        return response()->json(['contacts' => array_values($resolvedContacts)]);
     }
 
     public function updateContacts(Request $request, Channel $channel)
@@ -201,6 +261,28 @@ class WhatsAppController extends Controller
         }
         if (isset($data['contacts'])) {
             $syncedData['contacts'] = $data['contacts'];
+            
+            // Build additional LID mappings by matching names of contacts who have both @lid and @s.whatsapp.net
+            $lidMap = $syncedData['lidMap'] ?? [];
+            $phoneContacts = [];
+            $lidContacts = [];
+            foreach ($data['contacts'] as $c) {
+                $cId = $c['id'] ?? '';
+                $cName = strtolower(trim($c['name'] ?? ''));
+                if ($cName !== '') {
+                    if (str_ends_with($cId, '@s.whatsapp.net')) {
+                        $phoneContacts[$cName] = $cId;
+                    } elseif (str_ends_with($cId, '@lid')) {
+                        $lidContacts[$cName] = $cId;
+                    }
+                }
+            }
+            foreach ($lidContacts as $name => $lid) {
+                if (isset($phoneContacts[$name]) && !isset($lidMap[$lid])) {
+                    $lidMap[$lid] = $phoneContacts[$name];
+                }
+            }
+            $syncedData['lidMap'] = $lidMap;
         }
         if (isset($data['messages'])) {
             // Deep-merge: keep existing chats, only overwrite chats that have new data
@@ -309,6 +391,7 @@ class WhatsAppController extends Controller
         }
 
         $sessionIds = Channel::where('platform', 'whatsapp')
+            ->where('status', 'active')
             ->get()
             ->map(function ($c) {
                 return $c->credentials['session_id'] ?? null;

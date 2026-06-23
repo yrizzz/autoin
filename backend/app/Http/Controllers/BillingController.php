@@ -242,7 +242,7 @@ class BillingController extends Controller
 
     public function subscribers(Request $request)
     {
-        abort_if($request->user()->email !== 'Arisedyhandoko@gmail.com', 403, 'Unauthorized. Admin access only.');
+        abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized. Admin access only.');
 
         $users = \App\Models\User::with(['subscription'])
             ->withCount(['channels', 'chatbotRules', 'webhooks'])

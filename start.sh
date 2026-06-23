@@ -16,10 +16,12 @@ err() { echo -e "${RED}[ERROR]${RESET} $1"; }
 cleanup() {
   echo ""
   log "Menghentikan semua service..."
-  [ -n "$PID_BACKEND"  ] && kill "$PID_BACKEND"  2>/dev/null
-  [ -n "$PID_FRONTEND" ] && kill "$PID_FRONTEND" 2>/dev/null
-  [ -n "$PID_WA"       ] && kill "$PID_WA"       2>/dev/null
-  [ -n "$PID_TG"       ] && kill "$PID_TG"       2>/dev/null
+  [ -n "$PID_BACKEND"   ] && kill "$PID_BACKEND"   2>/dev/null
+  [ -n "$PID_SCHEDULER" ] && kill "$PID_SCHEDULER" 2>/dev/null
+  [ -n "$PID_FRONTEND"  ] && kill "$PID_FRONTEND"  2>/dev/null
+  [ -n "$PID_WA"        ] && kill "$PID_WA"        2>/dev/null
+  [ -n "$PID_TG"        ] && kill "$PID_TG"        2>/dev/null
+  pkill -f "artisan schedule:work" 2>/dev/null || true
   ok "Semua service dihentikan."
   exit 0
 }
@@ -56,16 +58,24 @@ if [ ! -f ".env" ]; then
   warn ".env dibuat dari .env.example"
 fi
 
-php artisan migrate --force --quiet 2>/dev/null
+timeout 5 php artisan migrate --force --quiet 2>/dev/null || warn "Migrate skip (DB tidak reachable)"
 php artisan config:clear --quiet 2>/dev/null
 
 export PHP_CLI_SERVER_WORKERS=5
 php artisan serve --port=8001 --quiet > /tmp/autoin-backend.log 2>&1 &
 PID_BACKEND=$!
 
+php artisan schedule:work --quiet > /tmp/autoin-scheduler.log 2>&1 &
+PID_SCHEDULER=$!
+
 sleep 2
 if kill -0 "$PID_BACKEND" 2>/dev/null; then
   ok "Backend berjalan → http://localhost:8001"
+  if kill -0 "$PID_SCHEDULER" 2>/dev/null; then
+    ok "Scheduler (schedule:work) berjalan aktif"
+  else
+    warn "Scheduler gagal start. Cek /tmp/autoin-scheduler.log"
+  fi
 else
   err "Backend gagal start. Cek /tmp/autoin-backend.log"
   cat /tmp/autoin-backend.log | tail -5

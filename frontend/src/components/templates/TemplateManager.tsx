@@ -14,7 +14,8 @@ import {
   AlertTriangle, 
   ArrowRight,
   HelpCircle,
-  Globe
+  Globe,
+  Sparkles
 } from 'lucide-react';
 
 interface Template {
@@ -74,6 +75,11 @@ export default function TemplateManager() {
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [showVarHelp, setShowVarHelp] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     loadAll();
@@ -193,6 +199,28 @@ export default function TemplateManager() {
       el.focus();
       el.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
     }, 0);
+  };
+
+  const [quickAiLoading, setQuickAiLoading] = useState(false);
+
+  const handleQuickAiAction = async (action: 'optimize' | 'marketing' | 'santai' | 'formal') => {
+    if (!content.trim()) { alert('Tulis draf pesan di editor terlebih dahulu!'); return; }
+    setQuickAiLoading(true);
+    try {
+      if (action === 'optimize') {
+        const res = await api.post<{ optimized: string; suggestions: string[]; is_simulated: boolean }>('/api/ai/optimize', { content });
+        setContent(res.optimized);
+        showToast('Pesan template berhasil dioptimasi oleh AI!', 'success');
+      } else {
+        const res = await api.post<{ rewritten: string; is_simulated: boolean }>('/api/ai/rewrite', { content, tone: action });
+        setContent(res.rewritten);
+        showToast('Gaya bahasa template berhasil diperbarui oleh AI!', 'success');
+      }
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal memproses AI helper.');
+    } finally {
+      setQuickAiLoading(false);
+    }
   };
 
   const handleCopy = (t: Template) => {
@@ -388,13 +416,42 @@ export default function TemplateManager() {
                       <button type="button" onClick={() => applyFormat('italic')} className="w-8 h-8 flex items-center justify-center text-xs italic font-semibold text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-all cursor-pointer" title="Miring (Italic)">I</button>
                       <button type="button" onClick={() => applyFormat('strike')} className="w-8 h-8 flex items-center justify-center text-xs line-through text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-all cursor-pointer" title="Coret">S</button>
                       <button type="button" onClick={() => applyFormat('code')} className="px-2.5 h-8 flex items-center justify-center text-[10px] font-mono text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-lg transition-all cursor-pointer" title="Code Format">&lt;/&gt;</button>
-                      <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-1.5" />
-                      <span className="text-[9px] text-zinc-400 select-none">Sorot kata lalu pilih gaya</span>
+                      <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                      
+                      {/* Inline AI Quick Helpers */}
+                      <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 flex items-center gap-1 select-none">
+                        <Sparkles className="w-3 h-3 text-blue-500" />
+                        AI Quick:
+                      </span>
+                      <button type="button" onClick={() => handleQuickAiAction('optimize')} disabled={quickAiLoading || !content.trim()}
+                        className="px-2.5 py-1 text-[9px] font-bold bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/35 hover:border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1">
+                        {quickAiLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : '✨ Optimalkan'}
+                      </button>
+                      <button type="button" onClick={() => handleQuickAiAction('marketing')} disabled={quickAiLoading || !content.trim()}
+                        className="px-2.5 py-1 text-[9px] font-bold bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/35 hover:border-amber-500 text-amber-600 dark:text-amber-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                        🔥 Marketing
+                      </button>
+                      <button type="button" onClick={() => handleQuickAiAction('santai')} disabled={quickAiLoading || !content.trim()}
+                        className="px-2.5 py-1 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/35 hover:border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                        🥤 Santai
+                      </button>
+                      <button type="button" onClick={() => handleQuickAiAction('formal')} disabled={quickAiLoading || !content.trim()}
+                        className="px-2.5 py-1 text-[9px] font-bold bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/35 hover:border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                        💼 Formal
+                      </button>
                     </div>
 
                     {/* Textarea */}
-                    <textarea ref={textareaRef} placeholder="Tulis pesan template di sini..." value={content} onChange={e => setContent(e.target.value)} rows={7}
-                      className="w-full px-4 py-3.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 resize-none leading-relaxed shadow-inner" required />
+                    <div className="relative">
+                      <textarea ref={textareaRef} placeholder="Tulis pesan template di sini..." value={content} onChange={e => setContent(e.target.value)} rows={7}
+                        className="w-full px-4 py-3.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 resize-y min-h-[120px] leading-relaxed shadow-inner" required disabled={quickAiLoading} />
+                      {quickAiLoading && (
+                        <div className="absolute inset-0 bg-zinc-900/60 dark:bg-zinc-950/70 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center gap-2 animate-in fade-in z-10">
+                          <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                          <span className="text-[10px] text-white font-bold">AI sedang mengoptimasi template Anda...</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Variable Buttons */}
@@ -536,6 +593,12 @@ export default function TemplateManager() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 px-4.5 py-3 bg-zinc-950/90 dark:bg-white text-white dark:text-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800 dark:border-zinc-200/20 shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-[11px] font-bold tracking-wide">{toast.message}</span>
         </div>
       )}
     </AdminLayout>

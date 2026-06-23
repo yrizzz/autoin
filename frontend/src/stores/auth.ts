@@ -25,9 +25,11 @@ export async function initAuth(): Promise<void> {
     try {
       const user = await api.get<User>('/api/me');
       $user.set(user);
-    } catch {
-      clearToken();
-      $token.set(null);
+    } catch (err: any) {
+      if (err.status === 401 || err.status === 403) {
+        clearToken();
+        $token.set(null);
+      }
     }
   }
 }

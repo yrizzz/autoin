@@ -8,7 +8,7 @@ class BroadcastLog extends Model
 {
     public $timestamps = false;
 
-    protected $fillable = ['broadcast_id', 'channel_id', 'recipient_id', 'status', 'response', 'error', 'sent_at'];
+    protected $fillable = ['broadcast_id', 'channel_id', 'recipient_id', 'status', 'response', 'error', 'sent_at', 'created_at'];
 
     protected function casts(): array
     {

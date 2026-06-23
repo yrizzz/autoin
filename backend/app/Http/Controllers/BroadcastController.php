@@ -107,19 +107,130 @@ class BroadcastController extends Controller
     public function show(Request $request, Broadcast $broadcast)
     {
         $this->authorize($request->user(), $broadcast);
-        return response()->json($broadcast->load('targets.channel', 'logs.channel'));
+        $broadcast->load('targets.channel', 'logs.channel');
+
+        foreach ($broadcast->logs as $log) {
+            // Fix NULL created_at for existing logs
+            if (!$log->created_at) {
+                $log->created_at = $log->sent_at ?? $broadcast->created_at ?? now();
+            }
+
+            $log->recipient_name = null;
+            if ($log->recipient_id && $log->channel) {
+                $synced = $log->channel->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $originalJid = $log->recipient_id;
+                $originalKey = explode('@', $originalJid)[0];
+
+                // Resolve phone number if it is an LID
+                $resolvedPhone = null;
+                if (isset($lidMap[$originalJid])) {
+                    $resolvedPhone = $lidMap[$originalJid];
+                } elseif (isset($lidMap[$originalKey])) {
+                    $resolvedPhone = $lidMap[$originalKey];
+                }
+
+                // Look up contact name using original JID first
+                $contacts = $synced['contacts'] ?? [];
+                foreach ($contacts as $contact) {
+                    if (($contact['id'] ?? '') === $originalJid || ($contact['id'] ?? '') === $originalKey) {
+                        $log->recipient_name = $contact['name'] ?? null;
+                        break;
+                    }
+                }
+
+                // If not found and we have resolved phone, search with resolved phone
+                if (!$log->recipient_name && $resolvedPhone) {
+                    $resolvedPhoneKey = explode('@', $resolvedPhone)[0];
+                    foreach ($contacts as $contact) {
+                        if (($contact['id'] ?? '') === $resolvedPhone || ($contact['id'] ?? '') === $resolvedPhoneKey) {
+                            $log->recipient_name = $contact['name'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
+                // If still not found, search in groups
+                if (!$log->recipient_name) {
+                    $groups = $synced['groups'] ?? [];
+                    foreach ($groups as $group) {
+                        if (($group['id'] ?? '') === $originalJid || ($group['id'] ?? '') === $originalKey) {
+                            $log->recipient_name = $group['name'] ?? $group['subject'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
+                // Fallback: If resolvedPhone is still null but recipient_name is set, resolve by name matching
+                if (!$resolvedPhone && $log->recipient_name) {
+                    $searchName = strtolower(trim($log->recipient_name));
+                    if ($searchName !== '') {
+                        // 1. Search in contacts for phone JID
+                        foreach ($contacts as $contact) {
+                            $cId = $contact['id'] ?? '';
+                            $cName = strtolower(trim($contact['name'] ?? ''));
+                            if ($cName === $searchName && str_ends_with($cId, '@s.whatsapp.net')) {
+                                $resolvedPhone = $cId;
+                                break;
+                            }
+                        }
+                        
+                        // 2. Search in chats for phone JID if still not found
+                        if (!$resolvedPhone) {
+                            $chats = $synced['chats'] ?? [];
+                            foreach ($chats as $chat) {
+                                $chatId = $chat['id'] ?? '';
+                                $chatName = strtolower(trim($chat['name'] ?? ''));
+                                if ($chatName === $searchName && str_ends_with($chatId, '@s.whatsapp.net')) {
+                                    $resolvedPhone = $chatId;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Overwrite recipient_id with phone number if resolved
+                if ($resolvedPhone) {
+                    $log->recipient_id = $resolvedPhone;
+                }
+            }
+        }
+
+        return response()->json($broadcast);
     }
 
     public function update(Request $request, Broadcast $broadcast)
     {
         $this->authorize($request->user(), $broadcast);
 
-        $data = $request->validate([
+        $rules = [
             'title'        => 'nullable|string|max:255',
             'content'      => 'sometimes|string',
-            'scheduled_at' => 'nullable|date|after:now',
             'recurring'    => 'nullable|in:none,daily,weekly,monthly',
-        ]);
+        ];
+
+        if ($request->has('scheduled_at') && $request->input('scheduled_at') !== null) {
+            $newScheduledAt = $request->input('scheduled_at');
+            $currentScheduledAtStr = $broadcast->scheduled_at ? $broadcast->scheduled_at->format('Y-m-d H:i:s') : null;
+            $newScheduledAtStr = date('Y-m-d H:i:s', strtotime($newScheduledAt));
+
+            if ($currentScheduledAtStr !== $newScheduledAtStr) {
+                $rules['scheduled_at'] = 'nullable|date|after:now';
+            } else {
+                $rules['scheduled_at'] = 'nullable|date';
+            }
+        } else {
+            $rules['scheduled_at'] = 'nullable|date';
+        }
+
+        $data = $request->validate($rules);
+
+        if (array_key_exists('scheduled_at', $data)) {
+            $data['status'] = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
+        } elseif ($broadcast->scheduled_at && $broadcast->scheduled_at->isFuture()) {
+            $data['status'] = 'scheduled';
+        }
 
         $broadcast->update($data);
 
@@ -168,7 +279,97 @@ class BroadcastController extends Controller
     {
         $this->authorize($request->user(), $broadcast);
 
-        return response()->json($broadcast->logs()->with('channel')->get());
+        $logs = $broadcast->logs()->with('channel')->get();
+
+        foreach ($logs as $log) {
+            // Fix NULL created_at for existing logs
+            if (!$log->created_at) {
+                $log->created_at = $log->sent_at ?? $broadcast->created_at ?? now();
+            }
+
+            $log->recipient_name = null;
+            if ($log->recipient_id && $log->channel) {
+                $synced = $log->channel->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $originalJid = $log->recipient_id;
+                $originalKey = explode('@', $originalJid)[0];
+
+                // Resolve phone number if it is an LID
+                $resolvedPhone = null;
+                if (isset($lidMap[$originalJid])) {
+                    $resolvedPhone = $lidMap[$originalJid];
+                } elseif (isset($lidMap[$originalKey])) {
+                    $resolvedPhone = $lidMap[$originalKey];
+                }
+
+                // Look up contact name using original JID first
+                $contacts = $synced['contacts'] ?? [];
+                foreach ($contacts as $contact) {
+                    if (($contact['id'] ?? '') === $originalJid || ($contact['id'] ?? '') === $originalKey) {
+                        $log->recipient_name = $contact['name'] ?? null;
+                        break;
+                    }
+                }
+
+                // If not found and we have resolved phone, search with resolved phone
+                if (!$log->recipient_name && $resolvedPhone) {
+                    $resolvedPhoneKey = explode('@', $resolvedPhone)[0];
+                    foreach ($contacts as $contact) {
+                        if (($contact['id'] ?? '') === $resolvedPhone || ($contact['id'] ?? '') === $resolvedPhoneKey) {
+                            $log->recipient_name = $contact['name'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
+                // If still not found, search in groups
+                if (!$log->recipient_name) {
+                    $groups = $synced['groups'] ?? [];
+                    foreach ($groups as $group) {
+                        if (($group['id'] ?? '') === $originalJid || ($group['id'] ?? '') === $originalKey) {
+                            $log->recipient_name = $group['name'] ?? $group['subject'] ?? null;
+                            break;
+                        }
+                    }
+                }
+
+                // Fallback: If resolvedPhone is still null but recipient_name is set, resolve by name matching
+                if (!$resolvedPhone && $log->recipient_name) {
+                    $searchName = strtolower(trim($log->recipient_name));
+                    if ($searchName !== '') {
+                        // 1. Search in contacts for phone JID
+                        foreach ($contacts as $contact) {
+                            $cId = $contact['id'] ?? '';
+                            $cName = strtolower(trim($contact['name'] ?? ''));
+                            if ($cName === $searchName && str_ends_with($cId, '@s.whatsapp.net')) {
+                                $resolvedPhone = $cId;
+                                break;
+                            }
+                        }
+                        
+                        // 2. Search in chats for phone JID if still not found
+                        if (!$resolvedPhone) {
+                            $chats = $synced['chats'] ?? [];
+                            foreach ($chats as $chat) {
+                                $chatId = $chat['id'] ?? '';
+                                $chatName = strtolower(trim($chat['name'] ?? ''));
+                                if ($chatName === $searchName && str_ends_with($chatId, '@s.whatsapp.net')) {
+                                    $resolvedPhone = $chatId;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Overwrite recipient_id with phone number if resolved
+                if ($resolvedPhone) {
+                    $log->recipient_id = $resolvedPhone;
+                }
+            }
+        }
+
+        return response()->json($logs);
     }
 
     private function authorize($user, Broadcast $broadcast): void

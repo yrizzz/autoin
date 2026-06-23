@@ -260,6 +260,11 @@ export default function BroadcastCreate() {
   const [aiOptResult, setAiOptResult]     = useState('');
   const [aiOptLoading, setAiOptLoading]   = useState(false);
   const [showOptResult, setShowOptResult] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [templates, setTemplates]         = useState<Array<{ id: number; title: string; content: string; platform: string }>>([]);
@@ -304,6 +309,26 @@ export default function BroadcastCreate() {
     }, 0);
   }
 
+  const [quickAiLoading, setQuickAiLoading] = useState(false);
+
+  const handleQuickAiAction = async (action: 'optimize' | 'marketing' | 'santai' | 'formal') => {
+    if (!content.trim()) { alert('Tulis draf pesan di editor terlebih dahulu!'); return; }
+    setQuickAiLoading(true);
+    try {
+      if (action === 'optimize') {
+        const res = await api.post<{ optimized: string; suggestions: string[]; is_simulated: boolean }>('/api/ai/optimize', { content });
+        setContent(res.optimized);
+      } else {
+        const res = await api.post<{ rewritten: string; is_simulated: boolean }>('/api/ai/rewrite', { content, tone: action });
+        setContent(res.rewritten);
+      }
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal memproses AI helper.');
+    } finally {
+      setQuickAiLoading(false);
+    }
+  };
+
   function toggleChannel(id: number) {
     setSelectedChannels(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
   }
@@ -328,7 +353,12 @@ export default function BroadcastCreate() {
           ]);
           const contacts: Recipient[] = (cRes.contacts || [])
             .filter((c: any) => c.id && (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@'))
-            .map((c: any) => ({ id: c.id, name: c.name || c.id.split('@')[0], phone: `+${c.id.split('@')[0]}`, type: 'contact' as const }));
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name && !c.name.includes('@') ? c.name : (c.id.endsWith('@lid') ? 'Kontak WhatsApp' : c.id.split('@')[0]),
+              phone: c.id.endsWith('@lid') ? undefined : `+${c.id.split('@')[0]}`,
+              type: 'contact' as const
+            }));
           const groups: Recipient[] = (gRes.groups || [])
             .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
           items = [...contacts, ...groups];
@@ -421,6 +451,10 @@ export default function BroadcastCreate() {
         if (state && state.selected.size > 0) recipientsMap[String(id)] = Array.from(state.selected);
       });
 
+      const scheduledAtUtc = scheduledAt && !isNaN(new Date(scheduledAt).getTime())
+        ? new Date(scheduledAt).toISOString()
+        : undefined;
+
       const broadcast = await api.post<{ id: number }>('/api/broadcasts', {
         title: title || undefined,
         content,
@@ -428,8 +462,8 @@ export default function BroadcastCreate() {
         media_type: mediaUrls.length > 0 ? mediaType : undefined,
         channel_ids: selectedChannels,
         recipients: Object.keys(recipientsMap).length > 0 ? recipientsMap : undefined,
-        scheduled_at: scheduledAt || undefined,
-        recurring: scheduledAt ? recurring : undefined,
+        scheduled_at: scheduledAtUtc,
+        recurring: scheduledAtUtc ? recurring : undefined,
       });
 
       if (!isScheduled) {
@@ -460,6 +494,7 @@ export default function BroadcastCreate() {
       });
       setContent(res.rewritten);
       setIsSimulatedInfo(res.is_simulated);
+      showToast('Gaya bahasa berhasil diperbarui oleh AI!', 'success');
     } catch (err: any) {
       alert(err.message ?? 'Gagal memproses gaya bahasa.');
     } finally {
@@ -478,6 +513,7 @@ export default function BroadcastCreate() {
       });
       setAiGenResult(res.generated);
       setIsSimulatedInfo(res.is_simulated);
+      showToast('Draf pesan berhasil dibuat oleh AI!', 'success');
     } catch (err: any) {
       alert(err.message ?? 'Gagal membuat pesan.');
     } finally {
@@ -496,6 +532,7 @@ export default function BroadcastCreate() {
       setAiOptResult(res.optimized);
       setIsSimulatedInfo(res.is_simulated);
       setShowOptResult(true);
+      showToast('Audit & optimasi AI selesai!', 'success');
     } catch (err: any) {
       alert(err.message ?? 'Gagal mengoptimalkan pesan.');
     } finally {
@@ -631,21 +668,43 @@ export default function BroadcastCreate() {
                   <button type="button" onClick={() => applyFormat('italic')} className="w-8 h-8 flex items-center justify-center text-xs italic font-semibold text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-all cursor-pointer" title="Miring (Italic)">I</button>
                   <button type="button" onClick={() => applyFormat('strike')} className="w-8 h-8 flex items-center justify-center text-xs line-through text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-all cursor-pointer" title="Coret">S</button>
                   <button type="button" onClick={() => applyFormat('code')} className="px-2.5 h-8 flex items-center justify-center text-[10px] font-mono text-zinc-600 dark:text-zinc-400 hover:text-blue-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl transition-all cursor-pointer" title="Code Format">&lt;/&gt;</button>
-                  <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-1.5 hidden sm:block" />
-                  <span className="text-[9px] text-zinc-400 select-none hidden sm:inline flex-1">Sorot kata lalu pilih gaya di atas</span>
+                  <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-1" />
+                               {/* Inline AI Quick Helpers */}
+                  <span className="text-[10px] font-bold text-zinc-450 dark:text-zinc-500 flex items-center gap-1 select-none">
+                    <Sparkles className="w-3 h-3 text-blue-500" />
+                    AI Quick:
+                  </span>
+                  <button type="button" onClick={() => handleQuickAiAction('optimize')} disabled={quickAiLoading || aiGenerating || !content.trim()}
+                    className="px-2.5 py-1 text-[9px] font-bold bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/35 hover:border-blue-500 text-blue-600 dark:text-blue-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer flex items-center gap-1">
+                    {quickAiLoading ? <Loader2 className="w-2.5 h-2.5 animate-spin" /> : '✨ Optimalkan'}
+                  </button>
+                  <button type="button" onClick={() => handleQuickAiAction('marketing')} disabled={quickAiLoading || aiGenerating || !content.trim()}
+                    className="px-2.5 py-1 text-[9px] font-bold bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/35 hover:border-amber-500 text-amber-600 dark:text-amber-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                    🔥 Marketing
+                  </button>
+                  <button type="button" onClick={() => handleQuickAiAction('santai')} disabled={quickAiLoading || aiGenerating || !content.trim()}
+                    className="px-2.5 py-1 text-[9px] font-bold bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/35 hover:border-emerald-500 text-emerald-600 dark:text-emerald-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                    🥤 Santai
+                  </button>
+                  <button type="button" onClick={() => handleQuickAiAction('formal')} disabled={quickAiLoading || aiGenerating || !content.trim()}
+                    className="px-2.5 py-1 text-[9px] font-bold bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/35 hover:border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer">
+                    💼 Formal
+                  </button>
                 </div>
-
+ 
                 {/* Editor Textarea */}
                 <div className="relative">
                   <textarea ref={textareaRef} value={content} onChange={e => setContent(e.target.value)}
                     placeholder="Tulis pesan promosi, pemberitahuan, atau informasi berharga Anda di sini..."
                     rows={8}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl px-4 py-4 text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-blue-500 transition-all resize-none leading-relaxed shadow-inner" />
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-3xl px-4 py-4 text-xs text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 focus:outline-none focus:border-blue-500 transition-all resize-y min-h-[120px] leading-relaxed shadow-inner" />
                   
-                  {aiGenerating && (
-                    <div className="absolute inset-0 bg-zinc-900/60 dark:bg-zinc-950/70 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center gap-2.5 animate-in fade-in">
+                  {(aiGenerating || quickAiLoading) && (
+                    <div className="absolute inset-0 bg-zinc-900/60 dark:bg-zinc-950/70 backdrop-blur-sm rounded-3xl flex flex-col items-center justify-center gap-2.5 animate-in fade-in z-10">
                       <Loader2 className="w-6 h-6 text-blue-400 animate-spin" />
-                      <span className="text-xs text-white font-bold">AI sedang menyusun gaya {aiTone}...</span>
+                      <span className="text-xs text-white font-bold">
+                        {aiGenerating ? `AI sedang menyusun gaya ${aiTone}...` : 'AI sedang mengoptimasi pesan Anda...'}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -704,43 +763,42 @@ export default function BroadcastCreate() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Drag / Upload */}
-                <label className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-blue-500 rounded-2xl p-5 cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-950/20 transition-all">
-                  <input type="file" multiple
-                    accept={mediaType === 'image' ? 'image/*' : mediaType === 'video' ? 'video/*' : mediaType === 'pdf' ? '.pdf' : '*'}
-                    className="hidden" onChange={handleFileUpload} disabled={uploading} />
-                  {uploading ? (
-                    <>
-                      <Loader2 className="w-5 h-5 text-blue-500 animate-spin mb-2" />
-                      <span className="text-xs text-zinc-400 font-bold">Mengupload file...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="w-5 h-5 text-zinc-400 mb-2" />
-                      <span className="text-xs text-zinc-700 dark:text-zinc-300 font-extrabold">Unggah File</span>
-                      <span className="text-[9px] text-zinc-400 mt-1">Seret berkas ke sini</span>
-                    </>
-                  )}
-                </label>
+              <label className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 dark:border-zinc-800 hover:border-blue-500 rounded-2xl p-6 cursor-pointer hover:bg-blue-50/20 dark:hover:bg-blue-500/5 transition-all">
+                <input type="file" multiple
+                  accept={mediaType === 'image' ? 'image/*' : mediaType === 'video' ? 'video/*' : mediaType === 'pdf' ? '.pdf' : '*'}
+                  className="hidden" onChange={handleFileUpload} disabled={uploading} />
+                {uploading ? (
+                  <>
+                    <Loader2 className="w-7 h-7 text-blue-500 animate-spin mb-2" />
+                    <span className="text-sm text-zinc-500 font-bold">Mengupload file...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-7 h-7 text-zinc-300 dark:text-zinc-600 mb-2" />
+                    <span className="text-xs text-zinc-700 dark:text-zinc-300 font-extrabold">Klik atau seret file ke sini</span>
+                    <span className="text-[10px] text-zinc-400 mt-1">
+                      {mediaType === 'image' ? 'JPG, PNG, WEBP, GIF' : mediaType === 'video' ? 'MP4, MOV, AVI' : mediaType === 'pdf' ? 'PDF' : 'Semua tipe file'} · Maks. 16MB
+                    </span>
+                  </>
+                )}
+              </label>
 
-                {/* External URL */}
-                <div className="flex flex-col justify-between border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 bg-zinc-50/50 dark:bg-zinc-950/20">
-                  <div>
-                    <span className="text-xs text-zinc-700 dark:text-zinc-300 font-bold block">Tautan Media Eksternal</span>
-                    <span className="text-[9px] text-zinc-500 dark:text-zinc-500 block mt-0.5">Tempel link hosting eksternal Anda</span>
-                  </div>
-                  <div className="flex gap-2 mt-3">
-                    <input type="url" value={inputUrl} onChange={e => setInputUrl(e.target.value)}
-                      placeholder="https://images.unsplash.com/photo-..."
-                      className="flex-1 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-zinc-800 dark:text-zinc-200"
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl(); } }} />
-                    <button type="button" onClick={handleAddUrl}
-                      className="px-3 bg-gradient-brand hover:opacity-95 text-white rounded-xl text-xs font-bold transition-all cursor-pointer">
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+              {/* External URL - alternative */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest shrink-0">atau tempel tautan</span>
+                <div className="flex-1 h-px bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+              <div className="flex gap-2">
+                <input type="url" value={inputUrl} onChange={e => setInputUrl(e.target.value)}
+                  placeholder="https://cdn.example.com/gambar.jpg"
+                  className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl px-4 py-2.5 text-xs focus:outline-none focus:border-blue-500 text-zinc-800 dark:text-zinc-200 placeholder-zinc-400"
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddUrl(); } }} />
+                <button type="button" onClick={handleAddUrl}
+                  className="px-4 bg-gradient-brand hover:opacity-95 text-white rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shrink-0">
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah</span>
+                </button>
               </div>
 
               {/* Attachments List */}
@@ -813,28 +871,23 @@ export default function BroadcastCreate() {
             <div className={`bg-gradient-to-br from-white to-zinc-50/30 dark:from-[#0c0c0e] dark:to-zinc-950/40 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden ${activeTab === 'ai' ? 'block' : 'hidden md:block'}`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-500" />
                   <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">Asisten Penulisan AI</h3>
-                </div>
-                {isSimulatedInfo !== null && (
-                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
-                    isSimulatedInfo ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400'
-                  }`}>
-                    {isSimulatedInfo ? 'AI Demo Mode' : 'AI Live Mode'}
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                    ✦ AI Live
                   </span>
-                )}
+                </div>
               </div>
-
-              {/* AI Inner Tabs */}
-              <div className="flex p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl">
+               {/* AI Inner Tabs */}
+              <div className="flex p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl">
                 {(['rewrite', 'generate', 'optimize'] as const).map(tab => (
                   <button key={tab} type="button" onClick={() => setAiTab(tab)}
                     className={`flex-1 py-2 text-center rounded-xl text-[10px] font-bold capitalize transition-all cursor-pointer ${
                       aiTab === tab
                         ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-800'
+                        : 'text-zinc-550 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
                     }`}>
                     {tab === 'rewrite' ? 'Gaya Bahasa' : tab === 'generate' ? 'Buat Baru' : 'Audit'}
                   </button>
@@ -844,7 +897,7 @@ export default function BroadcastCreate() {
               {/* Rewrite Tone */}
               {aiTab === 'rewrite' && (
                 <div className="space-y-4">
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-500 leading-relaxed">
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
                     Tulis pesan Anda di form editor utama terlebih dahulu, lalu klik tombol gaya di bawah untuk memolesnya secara otomatis menggunakan AI.
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -858,7 +911,7 @@ export default function BroadcastCreate() {
                     ].map(tone => (
                       <button key={tone.id} type="button" onClick={() => handleAiRewrite(tone.id)}
                         disabled={aiGenerating || !content.trim()}
-                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-zinc-50 dark:bg-zinc-950 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-300 font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-sm">
+                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-200 font-bold transition-all disabled:bg-zinc-150/40 dark:disabled:bg-zinc-950/20 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:border-zinc-200/50 dark:disabled:border-zinc-900/50 disabled:cursor-not-allowed cursor-pointer shadow-sm">
                         <span className="text-xs">{tone.emoji}</span>
                         <span>{tone.label}</span>
                       </button>
@@ -903,12 +956,12 @@ export default function BroadcastCreate() {
                     <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3 animate-in fade-in">
                       <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
                         <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Hasil Draft AI</span>
-                        <button type="button" onClick={() => { navigator.clipboard.writeText(aiGenResult); alert('Tersalin!'); }} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
+                        <button type="button" onClick={() => { navigator.clipboard.writeText(aiGenResult); showToast('Teks berhasil disalin!', 'success'); }} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
                           <Copy className="w-3.5 h-3.5" />
                         </button>
                       </div>
                       <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{aiGenResult}</p>
-                      <button type="button" onClick={() => { setContent(aiGenResult); setActiveTab('editor'); }}
+                      <button type="button" onClick={() => { setContent(aiGenResult); setActiveTab('editor'); showToast('Draf AI berhasil diterapkan ke editor!', 'success'); }}
                         className="w-full py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-450 hover:bg-blue-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1">
                         <span>Terapkan Ke Editor Utama</span>
                         <ArrowRight className="w-3.5 h-3.5" />
@@ -950,12 +1003,12 @@ export default function BroadcastCreate() {
                         <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3 animate-in fade-in">
                           <div className="flex items-center justify-between pb-2 border-b border-zinc-200 dark:border-zinc-800">
                             <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Teks Optimasi AI</span>
-                            <button type="button" onClick={() => { navigator.clipboard.writeText(aiOptResult); alert('Tersalin!'); }} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
+                            <button type="button" onClick={() => { navigator.clipboard.writeText(aiOptResult); showToast('Teks berhasil disalin!', 'success'); }} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
                               <Copy className="w-3.5 h-3.5" />
                             </button>
                           </div>
                           <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">{aiOptResult}</p>
-                          <button type="button" onClick={() => { setContent(aiOptResult); setActiveTab('editor'); }}
+                          <button type="button" onClick={() => { setContent(aiOptResult); setActiveTab('editor'); showToast('Teks optimasi berhasil diterapkan!', 'success'); }}
                             className="w-full py-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1">
                             <span>Ganti Dengan Versi Optimasi</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -1237,6 +1290,12 @@ export default function BroadcastCreate() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-5 right-5 z-[9999] flex items-center gap-2.5 px-4.5 py-3 bg-zinc-950/90 dark:bg-white text-white dark:text-zinc-900 backdrop-blur-md rounded-2xl border border-zinc-800 dark:border-zinc-200/20 shadow-2xl animate-in slide-in-from-bottom-5 fade-in duration-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-[11px] font-bold tracking-wide">{toast.message}</span>
         </div>
       )}
     </AdminLayout>

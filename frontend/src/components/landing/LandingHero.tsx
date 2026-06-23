@@ -1,8 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, ArrowRight, Zap, CheckCircle, Shield, Sun, Moon } from 'lucide-react';
+import { Sparkles, ArrowRight, Zap, CheckCircle, Sun, Moon, LayoutDashboard, MessageSquare, Play, FileText, Image as ImageIcon, Send } from 'lucide-react';
 
 export default function LandingHero() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [activeTab, setActiveTab] = useState<'simulator' | 'dashboard'>('simulator');
+  
+  // Simulator states
+  const [simMessage, setSimMessage] = useState('Halo Kak! Terima kasih sudah menghubungi AUTOIN. Ini adalah contoh pesan otomatis menggunakan API AUTOIN. Keren kan? 😎');
+  const [simMediaType, setSimMediaType] = useState<'none' | 'image' | 'video' | 'pdf'>('image');
+  const [simMediaPreset, setSimMediaPreset] = useState('promo');
 
   useEffect(() => {
     const saved = localStorage.getItem('theme') as 'dark' | 'light' | null;
@@ -32,15 +38,22 @@ export default function LandingHero() {
 
   const isDark = theme === 'dark';
 
-  return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-20 text-center overflow-hidden transition-colors duration-300 bg-[#f8fafc] dark:bg-[#030712]">
-      {/* Decorative Glows */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute top-[30%] left-[50%] -translate-x-1/2 w-[800px] h-[300px] bg-glow-radial pointer-events-none" />
+  // Handle media presets
+  const selectPreset = (type: 'none' | 'image' | 'video' | 'pdf', preset: string) => {
+    setSimMediaType(type);
+    setSimMediaPreset(preset);
+  };
 
-      {/* Grid Pattern Overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.04)_1px,transparent_1px)] bg-[size:4rem_4rem] pointer-events-none" />
+  return (
+    <section className="relative min-h-screen flex flex-col items-center justify-center px-4 sm:px-6 pt-24 sm:pt-32 pb-16 sm:pb-24 text-center overflow-hidden transition-colors duration-300 bg-[#f8fafc] dark:bg-[#030712]">
+      {/* Wavy Aurora Background (Northern Lights wave curtains) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-70 dark:opacity-85">
+        <div className="absolute inset-0 aurora-bg-wave-1" />
+        <div className="absolute inset-0 aurora-bg-wave-2" />
+      </div>
+      
+      {/* Moving Grid Overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.05)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.05)_1px,transparent_1px)] bg-[size:3.5rem_3.5rem] pointer-events-none" />
 
       {/* Floating Header Navbar */}
       <header className="absolute top-0 left-0 right-0 z-50 h-20 px-4 sm:px-12 flex items-center justify-between max-w-7xl mx-auto w-full">
@@ -48,16 +61,15 @@ export default function LandingHero() {
           <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center border shadow-lg backdrop-blur-md bg-white/5 border-zinc-200 dark:border-white/10">
             <img src="/autoin-logo.webp" alt="AUTOIN Logo" className="w-full h-full object-cover" />
           </div>
-          <span className="hidden xs:block font-extrabold text-base tracking-tight uppercase font-display text-zinc-900 dark:text-white">
-            AUTOIN
+          <span className="block font-black text-base tracking-tight font-display text-zinc-900 dark:text-white">
+            AutoIn
           </span>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Theme Toggle */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl border transition-all duration-300 cursor-pointer bg-white dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-650 dark:text-white/70 hover:bg-zinc-150 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white"
+            className="p-2.5 rounded-xl border transition-all duration-300 cursor-pointer bg-white dark:bg-white/5 border-zinc-200 dark:border-white/10 text-zinc-650 dark:text-white/70 hover:bg-zinc-150 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white"
             title={isDark ? 'Mode Terang' : 'Mode Gelap'}
           >
             {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -65,7 +77,7 @@ export default function LandingHero() {
 
           <a
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all duration-300 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-zinc-850 dark:text-white/90 hover:bg-zinc-100 dark:hover:bg-white/10 shadow-sm cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl px-4.5 py-2.5 text-xs font-bold transition-all duration-300 bg-white dark:bg-white/5 border border-zinc-200 dark:border-white/10 text-zinc-850 dark:text-white/90 hover:bg-zinc-100 dark:hover:bg-white/10 shadow-sm cursor-pointer"
           >
             <span>Masuk Dashboard</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -73,146 +85,347 @@ export default function LandingHero() {
         </div>
       </header>
 
-      <div className="relative z-10 flex flex-col items-center max-w-5xl mx-auto w-full">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 bg-zinc-100 dark:bg-white/5 border border-zinc-200 dark:border-white/8 backdrop-blur-md rounded-full px-4.5 py-1.5 text-xs sm:text-sm text-zinc-650 dark:text-white/70 mb-8 hover:border-zinc-300 dark:hover:border-white/15 transition-all duration-300 shadow-sm dark:shadow-none">
-          <Sparkles className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 animate-pulse" />
-          <span className="font-medium">Platform Broadcasting WhatsApp Modern</span>
+      <div className="relative z-10 flex flex-col items-center max-w-6xl mx-auto w-full">
+        {/* Animated Badge */}
+        <div className="inline-flex items-center gap-2 bg-blue-500/10 dark:bg-white/5 border border-blue-500/20 dark:border-white/8 backdrop-blur-md rounded-full px-4.5 py-1.5 text-xs sm:text-sm text-blue-600 dark:text-white/75 mb-8 hover:border-blue-550 dark:hover:border-white/15 transition-all duration-300 shadow-xs">
+          <Sparkles className="w-3.5 h-3.5 text-blue-500 dark:text-cyan-400 animate-pulse" />
+          <span className="font-semibold tracking-wide">Platform Broadcasting WhatsApp Premium</span>
         </div>
 
-        {/* Title */}
-        <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight max-w-4xl mb-6 font-display leading-[1.1] text-zinc-900 dark:text-white">
+        {/* Hero Title */}
+        <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight max-w-4xl mb-6 font-display leading-[1.08] text-zinc-900 dark:text-white">
           Broadcast Sekali, <br />
           <span className="text-gradient-brand">
-            Terkirim Secara Instan & Otomatis.
+            Terkirim Instan & Otomatis.
           </span>
         </h1>
 
-        {/* Description */}
-        <p className="text-zinc-600 dark:text-white/60 text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed px-2">
-          Hubungkan WhatsApp dan mulai kirim pesan otomatis dalam hitungan detik.
-          Kirim kampanye pesan secara serentak dari satu dashboard tanpa setup VPS yang rumit.
+        {/* Hero Description */}
+        <p className="text-zinc-650 dark:text-white/60 text-sm sm:text-base md:text-lg max-w-2xl mb-10 leading-relaxed px-2">
+          Koneksikan WhatsApp Anda secara langsung tanpa perlu repot mengatur VPS sendiri. Kirim kampanye promosi massal atau integrasikan API notifikasi real-time dalam hitungan menit.
         </p>
 
         {/* Action Buttons */}
-        <div className="flex flex-row items-center justify-center gap-3 mb-16 w-full sm:w-auto px-2">
+        <div className="flex flex-row items-center justify-center gap-3 mb-16 w-full sm:w-auto px-4">
           <a
             href="/dashboard"
-            className="group relative inline-flex items-center justify-center gap-1.5 bg-gradient-brand text-white font-semibold px-3 sm:px-8 py-3.5 rounded-xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:scale-[1.02] cursor-pointer text-xs w-1/2 sm:w-auto"
+            className="group relative inline-flex items-center justify-center gap-1.5 bg-gradient-brand text-white font-bold px-6 sm:px-8 py-3.5 rounded-2xl transition-all duration-300 hover:shadow-[0_0_30px_rgba(37,99,235,0.3)] hover:scale-[1.02] cursor-pointer text-xs w-1/2 sm:w-auto"
           >
-            <span>Mulai Gratis</span>
+            <span>Mulai Uji Coba</span>
             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
           </a>
           <a
             href="#features"
-            className="inline-flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-white/8 bg-white dark:bg-white/5 text-zinc-700 dark:text-white/80 px-3 sm:px-8 py-3.5 rounded-xl hover:border-zinc-300 dark:hover:border-white/20 hover:bg-zinc-50 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all duration-300 cursor-pointer text-xs shadow-sm dark:shadow-none w-1/2 sm:w-auto"
+            className="inline-flex items-center justify-center gap-1.5 border border-zinc-200 dark:border-white/8 bg-white dark:bg-white/5 text-zinc-700 dark:text-white/80 px-6 sm:px-8 py-3.5 rounded-2xl hover:border-zinc-300 dark:hover:border-white/20 hover:bg-zinc-50 dark:hover:bg-white/10 hover:text-zinc-900 dark:hover:text-white transition-all duration-300 cursor-pointer text-xs shadow-sm dark:shadow-none w-1/2 sm:w-auto"
           >
             <span>Eksplor Fitur</span>
           </a>
         </div>
 
-        {/* Key Points */}
-        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-20 text-xs sm:text-sm text-zinc-500 dark:text-white/50 font-medium">
-          <span className="flex items-center gap-1.5">
+        {/* Key Features Icons bar */}
+        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 mb-16 text-xs sm:text-sm text-zinc-500 dark:text-white/50 font-bold">
+          <span className="flex items-center gap-2">
             <CheckCircle className="w-4 h-4 text-emerald-500" />
-            Trial 3 Broadcast & 1 Template
+            Gratis 3 Broadcast
           </span>
-          <span className="flex items-center gap-1.5">
+          <span className="flex items-center gap-2 text-zinc-500 dark:text-white/50">
             <Sparkles className="w-4 h-4 text-purple-500" />
-            Asisten AI Penulis Pesan
+            AI Writer Assistant
           </span>
-          <span className="flex items-center gap-1.5">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            Pairing WhatsApp Instan
+          <span className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-amber-500 animate-pulse" />
+            Pairing Instan Cepat
           </span>
         </div>
 
-        {/* Interactive App Mockup Preview */}
-        <div className="relative w-full max-w-4xl mx-auto rounded-2xl border border-zinc-200 dark:border-white/8 bg-white dark:bg-[#0a0f1d]/50 p-1.5 sm:p-3 shadow-xl dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] backdrop-blur-xl">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000" />
-          <div className="relative rounded-xl overflow-hidden border border-zinc-150 dark:border-white/5 bg-white dark:bg-[#030712] aspect-auto min-h-[300px] sm:aspect-[16/10] sm:min-h-0 flex flex-col text-left transition-colors duration-300">
-            {/* Mockup Header */}
-            <div className="border-b border-zinc-150 dark:border-white/5 bg-zinc-50 dark:bg-[#090d16] px-4 py-3 flex items-center justify-between transition-colors duration-300">
+        {/* Dual Tab Mockup Preview (Dashboard vs Live Simulator) */}
+        <div className="relative w-full max-w-4xl mx-auto rounded-3xl border border-zinc-200 dark:border-white/8 bg-white dark:bg-[#0a0f1d]/50 p-2 sm:p-4 shadow-2xl dark:shadow-[0_30px_70px_-15px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-purple-500 rounded-3xl blur opacity-20 pointer-events-none" />
+          
+          {/* Tab Selector Header */}
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-150 dark:border-white/5 bg-white dark:bg-[#030712] flex flex-col text-left transition-colors duration-300">
+            
+            {/* Toolbar Area */}
+            <div className="border-b border-zinc-150 dark:border-white/5 bg-zinc-50/80 dark:bg-[#090d16]/80 px-4 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors duration-300">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
                 <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/80" />
                 <span className="w-2.5 h-2.5 rounded-full bg-green-500/80" />
-                <span className="text-[11px] text-zinc-400 dark:text-white/30 ml-2 font-mono">dashboard.autoin.id</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] text-zinc-500 dark:text-white/50 font-medium">Auto-Sync Active</span>
-              </div>
-            </div>
-            {/* Mockup Body */}
-            <div className="flex-1 p-4 sm:p-6 grid grid-cols-3 gap-4 font-sans text-xs select-none">
-              {/* Sidebar */}
-              <div className="space-y-4 border-r border-zinc-150 dark:border-white/5 pr-4 hidden sm:block">
-                <div className="font-bold text-zinc-400 dark:text-white tracking-wider text-[11px] uppercase dark:opacity-40">Main Menu</div>
-                <div className="space-y-1">
-                  <div className="bg-zinc-100 dark:bg-white/5 text-zinc-900 dark:text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Dashboard
-                  </div>
-                  <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Broadcasts
-                  </div>
-                  <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Channels
-                  </div>
-                  <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Billing
-                  </div>
-                </div>
+                <span className="text-[10px] text-zinc-400 dark:text-white/30 ml-2 font-mono truncate max-w-[150px] sm:max-w-none">
+                  demo-dashboard.autoin.id
+                </span>
               </div>
               
-              {/* Content Panel */}
-              <div className="col-span-3 sm:col-span-2 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-zinc-800 dark:text-white">Broadcast Overview</h3>
-                    <p className="text-[10px] text-zinc-400 dark:text-white/40">Real-time status of WhatsApp logs</p>
-                  </div>
-                  <span className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">
-                    v1.2 Active
-                  </span>
-                </div>
-                
-                {/* Micro Widgets */}
-                <div className="grid grid-cols-3 gap-2.5">
-                  <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
-                    <div className="text-[10px] text-zinc-400 dark:text-white/40">Total Broadcast</div>
-                    <div className="text-base font-bold mt-1 text-zinc-800 dark:text-white">1,482</div>
-                    <div className="text-[8px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">↑ 12% vs last week</div>
-                  </div>
-                  <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
-                    <div className="text-[10px] text-zinc-400 dark:text-white/40">Delivery Rate</div>
-                    <div className="text-base font-bold mt-1 text-zinc-800 dark:text-white">99.2%</div>
-                    <div className="text-[8px] text-blue-600 dark:text-blue-400 mt-0.5 font-medium">Optimal health</div>
-                  </div>
-                  <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
-                    <div className="text-[10px] text-zinc-400 dark:text-white/40">Active Channels</div>
-                    <div className="text-base font-bold mt-1 text-zinc-800 dark:text-white">8 / 8</div>
-                    <div className="text-[8px] text-purple-600 dark:text-purple-400 mt-0.5 font-medium">All connected</div>
-                  </div>
-                </div>
-                
-                {/* Micro Chart Mockup */}
-                <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-zinc-500 dark:text-white/50">Delivery Analytics (Last 7 Days)</span>
-                    <span className="text-[8px] text-zinc-450 dark:text-white/30">Updated just now</span>
-                  </div>
-                  <div className="h-16 flex items-end gap-1.5 pt-4">
-                    {[35, 45, 30, 60, 85, 70, 95].map((val, idx) => (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                        <div className="w-full bg-gradient-to-t from-blue-600 to-purple-500 rounded-t-sm" style={{ height: `${val}%` }} />
-                        <span className="text-[8px] text-zinc-400 dark:text-white/30 scale-75">H-{6-idx}</span>
+              {/* Tabs Switcher */}
+              <div className="flex bg-zinc-200/60 dark:bg-white/5 p-0.5 rounded-xl border border-zinc-250 dark:border-white/5 text-[10px] font-bold">
+                <button
+                  onClick={() => setActiveTab('simulator')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'simulator'
+                      ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Live Simulator WA</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                    activeTab === 'dashboard'
+                      ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-xs'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  <LayoutDashboard className="w-3.5 h-3.5" />
+                  <span>Dashboard Preview</span>
+                </button>
+              </div>
+            </div>
+
+            {/* TAB CONTENT: SIMULATOR */}
+            {activeTab === 'simulator' && (
+              <div className="p-4 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch font-sans animate-fadeIn">
+                {/* Control Panel */}
+                <div className="space-y-5 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    <div>
+                      <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full mb-2">
+                        Langkah 1
+                      </span>
+                      <h3 className="text-sm font-bold text-zinc-800 dark:text-white">Pilih Lampiran Media</h3>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mb-3">
+                        Kirim pesan dengan gambar promosi, invoice PDF, atau tanpa berkas media sama sekali.
+                      </p>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] font-bold">
+                        <button
+                          onClick={() => selectPreset('none', 'none')}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all cursor-pointer ${
+                            simMediaType === 'none'
+                              ? 'bg-blue-650/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          Teks Saja
+                        </button>
+                        <button
+                          onClick={() => selectPreset('image', 'promo')}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all cursor-pointer ${
+                            simMediaType === 'image'
+                              ? 'bg-blue-650/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          <ImageIcon className="w-3 h-3" />
+                          Gambar Banner
+                        </button>
+                        <button
+                          onClick={() => selectPreset('pdf', 'invoice')}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all cursor-pointer ${
+                            simMediaType === 'pdf'
+                              ? 'bg-blue-650/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          <FileText className="w-3 h-3" />
+                          Invoice PDF
+                        </button>
+                        <button
+                          onClick={() => selectPreset('video', 'tutorial')}
+                          className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl border transition-all cursor-pointer ${
+                            simMediaType === 'video'
+                              ? 'bg-blue-650/10 border-blue-500/30 text-blue-600 dark:text-blue-400'
+                              : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-850 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          <Play className="w-3 h-3" />
+                          Video Tutorial
+                        </button>
                       </div>
-                    ))}
+                    </div>
+
+                    <div>
+                      <span className="inline-flex items-center gap-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full mb-2">
+                        Langkah 2
+                      </span>
+                      <h3 className="text-sm font-bold text-zinc-800 dark:text-white mb-2">Tulis Teks Pesan</h3>
+                      <textarea
+                        value={simMessage}
+                        onChange={(e) => setSimMessage(e.target.value)}
+                        placeholder="Ketik sesuatu..."
+                        className="w-full h-28 p-3 rounded-xl border border-zinc-200 dark:border-zinc-850 bg-white dark:bg-zinc-950 text-xs text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-650 focus:outline-none focus:border-blue-500 transition-all font-sans resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 p-3 bg-emerald-50 dark:bg-emerald-500/5 border border-emerald-100 dark:border-emerald-500/10 rounded-xl text-[10.5px] text-emerald-800 dark:text-emerald-400 font-medium">
+                    <span>💡</span>
+                    <span>Tipe pesan di samping akan terkirim secara otomatis melalui device WA kamu!</span>
+                  </div>
+                </div>
+
+                {/* WhatsApp Mobile Mockup */}
+                <div className="flex items-center justify-center">
+                  <div className="w-[280px] h-[480px] rounded-[36px] border-8 border-zinc-800 dark:border-zinc-900 bg-zinc-100 dark:bg-[#070b14] shadow-2xl relative overflow-hidden flex flex-col font-sans">
+                    
+                    {/* Mockup Camera notch */}
+                    <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-20 h-4 rounded-full bg-zinc-800 dark:bg-zinc-900 z-50 flex items-center justify-center">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-700/80 mr-3" />
+                      <span className="w-1 h-1 rounded-full bg-zinc-700/80" />
+                    </div>
+
+                    {/* WA Header */}
+                    <div className="bg-[#075e54] dark:bg-[#128c7e]/80 pt-6 pb-2.5 px-3 flex items-center justify-between text-white shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-white/20 overflow-hidden flex items-center justify-center border border-white/10">
+                          <img src="/autoin-logo.webp" alt="AUTOIN" className="w-full h-full object-cover" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-[10px] leading-tight">AUTOIN API</p>
+                          <p className="text-[7.5px] text-white/70 leading-none">Online</p>
+                        </div>
+                      </div>
+                      <div className="text-[9px] font-bold opacity-60">10:45 AM</div>
+                    </div>
+
+                    {/* WA Chat Wallpaper Area */}
+                    <div className="flex-1 p-3 overflow-y-auto space-y-3 flex flex-col justify-end bg-[#efeae2] dark:bg-[#0b101c]/90 relative">
+                      
+                      {/* Incoming Message Bubble */}
+                      <div className="max-w-[85%] bg-white dark:bg-[#1f2c34] text-zinc-950 dark:text-zinc-100 p-2 rounded-xl rounded-tl-none shadow-xs border border-zinc-200/50 dark:border-transparent text-[10px] leading-relaxed self-start">
+                        <p>Bagaimana cara integrasi media di AUTOIN?</p>
+                        <span className="block text-right text-[7px] text-zinc-400 dark:text-zinc-500 mt-1">10:44 AM</span>
+                      </div>
+
+                      {/* Outgoing Message Bubble (Generated by simulator) */}
+                      <div className="max-w-[85%] bg-[#dcf8c6] dark:bg-[#005c4b] text-zinc-950 dark:text-zinc-100 p-2 rounded-xl rounded-tr-none shadow-sm text-[10px] leading-relaxed self-end space-y-2 border border-emerald-100/40 dark:border-transparent animate-fadeIn">
+                        
+                        {/* Media Preview Box */}
+                        {simMediaType === 'image' && (
+                          <div className="rounded-lg overflow-hidden border border-emerald-200/20 bg-zinc-150/40 dark:bg-black/20 aspect-video relative flex items-center justify-center">
+                            <img src="/autoin-logo.webp" alt="Media Preview" className="w-full h-full object-cover" />
+                          </div>
+                        )}
+
+                        {simMediaType === 'pdf' && (
+                          <div className="rounded-lg p-2 bg-[#bfeab3] dark:bg-[#025041] flex items-center gap-2 font-semibold">
+                            <FileText className="w-7 h-7 text-red-500" />
+                            <div className="min-w-0">
+                              <p className="text-[8.5px] font-bold truncate">Invoice_Receipt_1092.pdf</p>
+                              <p className="text-[7.5px] text-zinc-550 dark:text-zinc-400">124 KB · PDF Document</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {simMediaType === 'video' && (
+                          <div className="rounded-lg overflow-hidden bg-black/40 aspect-video relative flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center text-white border border-white/20">
+                              <Play className="w-3.5 h-3.5 fill-current ml-0.5" />
+                            </div>
+                            <span className="absolute bottom-1 right-1 text-[7.5px] bg-black/60 px-1 py-0.2 rounded text-white font-mono">0:45</span>
+                          </div>
+                        )}
+
+                        {/* Text */}
+                        <p className="whitespace-pre-wrap">{simMessage || ' '}</p>
+                        
+                        {/* Time & Read Tick */}
+                        <div className="flex items-center justify-end gap-0.5 text-[7px] text-zinc-500 dark:text-white/40 mt-1">
+                          <span>10:45 AM</span>
+                          <span className="text-blue-500">✓✓</span>
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* WA Input Bar */}
+                    <div className="bg-zinc-100 dark:bg-[#1f2c34] p-1.5 flex items-center gap-1 border-t border-zinc-200 dark:border-zinc-800 shrink-0">
+                      <div className="flex-1 bg-white dark:bg-[#2a3942] rounded-full px-2.5 py-1 text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">
+                        Ketik pesan...
+                      </div>
+                      <div className="w-6 h-6 rounded-full bg-[#128c7e] flex items-center justify-center text-white cursor-default">
+                        <Send className="w-2.5 h-2.5 fill-current ml-0.5" />
+                      </div>
+                    </div>
+
                   </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* TAB CONTENT: ANALYTICS DASHBOARD */}
+            {activeTab === 'dashboard' && (
+              <div className="p-4 sm:p-6 grid grid-cols-3 gap-4 font-sans text-xs select-none animate-fadeIn">
+                {/* Sidebar */}
+                <div className="space-y-4 border-r border-zinc-150 dark:border-white/5 pr-4 hidden sm:block">
+                  <div className="font-bold text-zinc-400 dark:text-white tracking-wider text-[10px] uppercase dark:opacity-40">Main Menu</div>
+                  <div className="space-y-1">
+                    <div className="bg-zinc-100 dark:bg-white/5 text-zinc-900 dark:text-white px-3 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Dashboard
+                    </div>
+                    <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Broadcasts
+                    </div>
+                    <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Channels
+                    </div>
+                    <div className="text-zinc-500 dark:text-white/50 px-3 py-2 rounded-lg flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-transparent" /> Billing
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Content Panel */}
+                <div className="col-span-3 sm:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-sm text-zinc-800 dark:text-white">Broadcast Overview</h3>
+                      <p className="text-[10px] text-zinc-400 dark:text-white/40">Real-time status of WhatsApp logs</p>
+                    </div>
+                    <span className="bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 text-[10px] px-2.5 py-0.5 rounded-full font-semibold">
+                      v1.2 Active
+                    </span>
+                  </div>
+                  
+                  {/* Micro Widgets */}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
+                      <div className="text-[9px] text-zinc-400 dark:text-white/40">Total Broadcast</div>
+                      <div className="text-sm sm:text-base font-bold mt-1 text-zinc-800 dark:text-white">1,482</div>
+                      <div className="text-[8px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">↑ 12% vs last week</div>
+                    </div>
+                    <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
+                      <div className="text-[9px] text-zinc-400 dark:text-white/40">Delivery Rate</div>
+                      <div className="text-sm sm:text-base font-bold mt-1 text-zinc-800 dark:text-white">99.2%</div>
+                      <div className="text-[8px] text-blue-600 dark:text-blue-400 mt-0.5 font-medium">Optimal health</div>
+                    </div>
+                    <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
+                      <div className="text-[9px] text-zinc-400 dark:text-white/40">Active Channels</div>
+                      <div className="text-sm sm:text-base font-bold mt-1 text-zinc-800 dark:text-white">8 / 8</div>
+                      <div className="text-[8px] text-purple-600 dark:text-purple-400 mt-0.5 font-medium">All connected</div>
+                    </div>
+                  </div>
+                  
+                  {/* Micro Chart Mockup */}
+                  <div className="bg-zinc-50 dark:bg-[#111827]/60 border border-zinc-150 dark:border-white/5 rounded-xl p-3 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] text-zinc-550 dark:text-white/55">Delivery Analytics (Last 7 Days)</span>
+                      <span className="text-[8px] text-zinc-400 dark:text-white/30">Updated just now</span>
+                    </div>
+                    <div className="h-16 flex items-end gap-1.5 pt-4">
+                      {[35, 45, 30, 60, 85, 70, 95].map((val, idx) => (
+                        <div key={idx} className="flex-1 flex flex-col items-center gap-1">
+                          <div className="w-full bg-gradient-to-t from-blue-600 to-purple-500 rounded-t-sm transition-all duration-300" style={{ height: `${val}%` }} />
+                          <span className="text-[8px] text-zinc-400 dark:text-white/30 scale-75">H-{6-idx}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       </div>

@@ -7,12 +7,43 @@ use Illuminate\Support\Facades\Http;
 
 class AIController extends Controller
 {
+    private string $apiUrl   = 'https://api.yrizzz.my.id/api/execute/v1/ai/chatGpt';
+    private string $apiKey   = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';
+
     /**
-     * Helper to get OpenAI API key.
+     * Call yrizzz ChatGPT proxy.
+     * Returns the response text, or null on failure.
      */
-    private function getApiKey(): ?string
+    private function callAI(string $prompt, int $timeoutSeconds = 20): ?string
     {
-        return config('services.openai.key') ?: env('OPENAI_API_KEY');
+        try {
+            $response = Http::timeout($timeoutSeconds)
+                ->withHeader('x-api-key', $this->apiKey)
+                ->get($this->apiUrl, ['prompt' => $prompt]);
+
+            if ($response->failed()) {
+                return null;
+            }
+
+            $body = $response->json();
+
+            // Support various response shapes
+            $val = $body['response']
+                ?? $body['result']
+                ?? $body['data']
+                ?? $body['text']
+                ?? $body['message']
+                ?? (is_string($body) ? $body : null);
+
+            if (is_array($val)) {
+                return json_encode($val);
+            }
+
+            return $val;
+
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     /**
@@ -26,70 +57,37 @@ class AIController extends Controller
         ]);
 
         $content = $request->input('content');
-        $tone = $request->input('tone');
-        $apiKey = $this->getApiKey();
-
-        if (!$apiKey) {
-            // Return simulation mode response
-            $simulated = $this->simulateRewrite($content, $tone);
-            return response()->json([
-                'original'     => $content,
-                'rewritten'    => $simulated,
-                'is_simulated' => true,
-            ]);
-        }
+        $tone    = $request->input('tone');
 
         $toneDescriptions = [
-            'formal'       => 'formal and polite (menggunakan bahasa baku/resmi Indonesia, Yth., Dengan hormat)',
-            'santai'       => 'casual and friendly (menggunakan bahasa gaul/santai perkotaan, halo guys, yuk, pake emoji)',
-            'marketing'    => 'persuasive and hype marketing (menggunakan teknik penawaran, huruf kapital menarik, emoji api, promo)',
-            'professional' => 'clear business professional (menggunakan bahasa bisnis profesional Indonesia, berorientasi hasil, ringkas)',
-            'urgent'       => 'highly urgent (menggunakan penanda penting/segera, batas waktu, emoji lonceng/peringatan)',
-            'friendly'     => 'warm and friendly (menggunakan sapaan ramah sahabat, hangat, emoji senyum/pelukan)',
+            'formal'       => 'formal dan sopan (bahasa baku/resmi Indonesia, Yth., Dengan hormat)',
+            'santai'       => 'santai dan ramah (bahasa gaul perkotaan, halo guys, yuk, gunakan emoji)',
+            'marketing'    => 'persuasif dan bersemangat (teknik penawaran, huruf kapital menarik, emoji api, promo)',
+            'professional' => 'profesional bisnis (bahasa bisnis Indonesia, berorientasi hasil, ringkas)',
+            'urgent'       => 'sangat mendesak (tanda penting/segera, batas waktu, emoji lonceng/peringatan)',
+            'friendly'     => 'hangat dan bersahabat (sapaan ramah, hangat, emoji senyum)',
         ];
 
         $desc = $toneDescriptions[$tone] ?? $tone;
 
-        $prompt = "You are a copywriter expert in writing broadcast messages and chats (e.g. WhatsApp, Telegram). Rewrite the following text to sound more {$desc} in Indonesian. Keep any placeholders (like {name}, {invoice}, {link}, etc.) exactly as they are. Output only the rewritten text, without quotes, without greeting card headers or footers unless appropriate, and no additional remarks.\n\nText: {$content}";
+        $prompt = "Kamu adalah copywriter ahli pesan broadcast (WhatsApp/Telegram). Tulis ulang teks berikut agar terdengar lebih {$desc}. Pertahankan semua placeholder seperti {{nama}}, {{tagihan}}, {{link}} persis apa adanya. Strukturkan pesan dengan baik menggunakan baris baru (newline / \\n) di antara poin, langkah, atau paragraf agar rapi dan mudah dibaca di WhatsApp. Output hanya teks hasil penulisan ulang, tanpa tanda kutip, tanpa penjelasan tambahan.\n\nTeks asli:\n{$content}";
 
-        try {
-            $response = Http::timeout(10)->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
-                'Content-Type'  => 'application/json',
-            ])->post('https://api.openai.com/1/chat/completions', [
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.75,
-            ]);
+        $rewritten = $this->callAI($prompt);
 
-            if ($response->failed()) {
-                $errMsg = $response->json('error.message') ?? 'Unknown OpenAI error';
-                return response()->json([
-                    'error' => "OpenAI Error: {$errMsg}. Fallback to simulated response.",
-                    'original' => $content,
-                    'rewritten' => $this->simulateRewrite($content, $tone),
-                    'is_simulated' => true,
-                ]);
-            }
-
-            $rewritten = trim($response->json('choices.0.message.content'));
-
+        if (!$rewritten) {
             return response()->json([
                 'original'     => $content,
-                'rewritten'    => $rewritten,
-                'is_simulated' => false,
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => "Connection Error: {$e->getMessage()}. Fallback to simulated response.",
-                'original' => $content,
-                'rewritten' => $this->simulateRewrite($content, $tone),
+                'rewritten'    => $this->simulateRewrite($content, $tone),
                 'is_simulated' => true,
+                'error'        => 'AI tidak merespons, menggunakan template fallback.',
             ]);
         }
+
+        return response()->json([
+            'original'     => $content,
+            'rewritten'    => trim($rewritten),
+            'is_simulated' => false,
+        ]);
     }
 
     /**
@@ -102,61 +100,34 @@ class AIController extends Controller
             'context' => 'required|string',
         ]);
 
-        $type = $request->input('type');
+        $type    = $request->input('type');
         $context = $request->input('context');
-        $apiKey = $this->getApiKey();
-
-        if (!$apiKey) {
-            $simulated = $this->simulateGenerate($context, $type);
-            return response()->json([
-                'generated'    => $simulated,
-                'is_simulated' => true,
-            ]);
-        }
 
         $typePrompts = [
-            'promo'        => 'engaging promotional broadcast message (marketing promo, discounts, Call to Action, rich emojis)',
-            'announcement' => 'official announcement broadcast (clear structure, announcement header, informative, professional)',
-            'reminder'     => 'gentle and clear payment/event reminder (polite notification, call to action/complete payment, friendly tone)',
-            'caption'      => 'social media caption/post update (engaging hook, summary details, hashtags list)',
+            'promo'        => 'pesan broadcast promosi yang menarik (promo, diskon, Call to Action, emoji beragam)',
+            'announcement' => 'pengumuman resmi (struktur jelas, header pengumuman, informatif, profesional)',
+            'reminder'     => 'pengingat ramah (pemberitahuan sopan, ajakan tindakan, nada bersahabat)',
+            'caption'      => 'caption media sosial (hook menarik, ringkasan, hashtag relevan)',
         ];
 
         $desc = $typePrompts[$type] ?? $type;
 
-        $prompt = "Write a broadcast message of type '{$desc}' in Indonesian, based on this user context description: '{$context}'. Make it highly engaging, readable with emojis, use bold markdown sparingly for key points, and keep it ready to copy and send. You can use standard placeholders like {name} if relevant. Output only the generated message content, with no introductory explanation, no quotes, and no closing notes.";
+        $prompt = "Buat pesan broadcast bertipe '{$desc}' dalam bahasa Indonesia, berdasarkan konteks berikut: '{$context}'. Buat semenarik mungkin, mudah dibaca, gunakan baris baru (newline / \\n) secara terstruktur untuk memisahkan paragraf, poin-poin penting, atau langkah-langkah agar rapi di WhatsApp. Gunakan emoji secukupnya, gunakan teks tebal markdown (*bold*) untuk poin penting. Output hanya isi pesan, tanpa penjelasan atau catatan tambahan.";
 
-        try {
-            $response = Http::timeout(10)->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
-                'Content-Type'  => 'application/json',
-            ])->post('https://api.openai.com/1/chat/completions', [
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.8,
-            ]);
+        $generated = $this->callAI($prompt);
 
-            if ($response->failed()) {
-                return response()->json([
-                    'generated'    => $this->simulateGenerate($context, $type),
-                    'is_simulated' => true,
-                ]);
-            }
-
-            $generated = trim($response->json('choices.0.message.content'));
-
-            return response()->json([
-                'generated'    => $generated,
-                'is_simulated' => false,
-            ]);
-
-        } catch (\Exception $e) {
+        if (!$generated) {
             return response()->json([
                 'generated'    => $this->simulateGenerate($context, $type),
                 'is_simulated' => true,
+                'error'        => 'AI tidak merespons, menggunakan template fallback.',
             ]);
         }
+
+        return response()->json([
+            'generated'    => trim($generated),
+            'is_simulated' => false,
+        ]);
     }
 
     /**
@@ -169,74 +140,49 @@ class AIController extends Controller
         ]);
 
         $content = $request->input('content');
-        $apiKey = $this->getApiKey();
 
-        if (!$apiKey) {
-            $simulated = $this->simulateOptimize($content);
-            return response()->json(array_merge($simulated, ['is_simulated' => true]));
+        $prompt = "Analisis pesan broadcast/chat WhatsApp berikut dan berikan respons HANYA dalam format JSON murni (tanpa markdown, tanpa backtick, tanpa penjelasan).\n\nJSON yang diharapkan:\n{\"suggestions\":[\"saran 1\",\"saran 2\",\"saran 3\"],\"optimized\":\"versi pesan yang dioptimalkan\"}\n\nPastikan:\n- 'suggestions' berisi 2-3 poin saran konkret dalam bahasa Indonesia\n- 'optimized' berisi versi pesan yang lebih baik, terstruktur rapi dengan baris baru (newline / \\n) untuk memisahkan poin penting atau langkah-langkah agar pesan mudah dibaca oleh pelanggan di WhatsApp\n\nPesan yang dianalisis:\n{$content}";
+
+        $resultText = $this->callAI($prompt, 25);
+
+        if ($resultText) {
+            // Strip markdown code blocks if any
+            $cleaned = preg_replace('/^```(?:json)?\s*/i', '', trim($resultText));
+            $cleaned = preg_replace('/```\s*$/', '', $cleaned);
+            $cleaned = trim($cleaned);
+
+            $data = json_decode($cleaned, true);
+
+            if (json_last_error() === JSON_ERROR_NONE && isset($data['optimized'])) {
+                return response()->json(array_merge($data, ['is_simulated' => false]));
+            }
         }
 
-        $prompt = "Analyze the following broadcast/chat message. Provide constructive, brief suggestions in Indonesian to improve its conversion rate, clarity, and engagement. Specifically:
-1. Highlight any issues (e.g. too wordy, missing call to action, hard to read).
-2. Give a list of 2-3 specific improvements.
-3. Provide an optimized version of the message.
-Format the output as a clean JSON object with keys: 'suggestions' (array of strings) and 'optimized' (string). Output only the raw JSON, no markdown formatting blocks, no backticks, no comments.";
-
-        try {
-            $response = Http::timeout(10)->withHeaders([
-                'Authorization' => "Bearer {$apiKey}",
-                'Content-Type'  => 'application/json',
-            ])->post('https://api.openai.com/1/chat/completions', [
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt]
-                ],
-                'temperature' => 0.6,
-            ]);
-
-            if ($response->failed()) {
-                return response()->json(array_merge($this->simulateOptimize($content), ['is_simulated' => true]));
-            }
-
-            $resultText = trim($response->json('choices.0.message.content'));
-            
-            // Clean markdown wrapper if any
-            $resultText = preg_replace('/^```json\s*/i', '', $resultText);
-            $resultText = preg_replace('/```$/', '', $resultText);
-            $resultText = trim($resultText);
-
-            $data = json_decode($resultText, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE || !isset($data['optimized'])) {
-                return response()->json(array_merge($this->simulateOptimize($content), ['is_simulated' => true]));
-            }
-
-            return response()->json(array_merge($data, ['is_simulated' => false]));
-
-        } catch (\Exception $e) {
-            return response()->json(array_merge($this->simulateOptimize($content), ['is_simulated' => true]));
-        }
+        return response()->json(array_merge($this->simulateOptimize($content), [
+            'is_simulated' => true,
+            'error'        => 'AI tidak merespons dengan format yang tepat, menggunakan template fallback.',
+        ]));
     }
 
-    // ── Local Simulation Engines ──────────────────────────────────────────────
+    // ── Local Simulation Engines (fallback) ───────────────────────────────────
 
     private function simulateRewrite(string $text, string $tone): string
     {
         $cleaned = trim($text);
-        
+
         switch ($tone) {
             case 'formal':
-                return "Yth. Pelanggan,\n\nDengan hormat, kami ingin menyampaikan informasi berikut:\n\n{$cleaned}\n\nTerima kasih atas perhatian dan kerja sama Bapak/Ibu sekalian.\n\nHormat kami,\nManagement Autoin";
+                return "Yth. Pelanggan,\n\nDengan hormat, kami ingin menyampaikan informasi berikut:\n\n{$cleaned}\n\nTerima kasih atas perhatian dan kerja sama Bapak/Ibu sekalian.\n\nHormat kami,\nManagement";
             case 'santai':
-                return "Halo guys! 👋\n\nAda info seru nih buat kamu: \n\n{$cleaned}\n\nJangan sampai kelewatan ya! Have a great day! ✨";
+                return "Halo guys! 👋\n\nAda info seru nih buat kamu:\n\n{$cleaned}\n\nJangan sampai kelewatan ya! Have a great day! ✨";
             case 'marketing':
-                return "🔥 PENGUMUMAN SPESIAL UNTUKMU! 🔥\n\nKabar gembira! \n\n⚡ *{$cleaned}* ⚡\n\nSlot terbatas & penawaran spesial ini hanya berlaku singkat! Jangan sampai kehabisan, klik link hubungi kami sekarang juga! 🚀";
+                return "🔥 PENGUMUMAN SPESIAL UNTUKMU! 🔥\n\n⚡ *{$cleaned}* ⚡\n\nSlot terbatas & penawaran ini hanya berlaku singkat! Hubungi kami sekarang! 🚀";
             case 'professional':
-                return "Rekan Bisnis,\n\nKami menginformasikan detail penting berikut untuk perhatian Anda:\n\n- {$cleaned}\n\nSilakan hubungi Customer Success kami jika memerlukan klarifikasi tambahan.\n\nSalam,\nAutoin Operations";
+                return "Rekan Bisnis,\n\nKami menginformasikan hal berikut:\n\n- {$cleaned}\n\nSilakan hubungi kami jika memerlukan klarifikasi.\n\nSalam,\nTeam";
             case 'urgent':
-                return "🚨 PERINGATAN PENTING & SEGERA! 🚨\n\nHarap diperhatikan:\n\n👉 *{$cleaned}*\n\nTindakan segera diperlukan agar transaksi Anda tetap berjalan lancar. Terima kasih.";
+                return "🚨 PERINGATAN PENTING & SEGERA! 🚨\n\nHarap diperhatikan:\n\n👉 *{$cleaned}*\n\nTindakan segera diperlukan. Terima kasih.";
             case 'friendly':
-                return "Halo Sahabat Autoin! 🤗\n\nKami senang sekali mengabarkan bahwa:\n\n{$cleaned}\n\nSemoga hari kamu menyenangkan dan lancar selalu ya! Kami selalu ada di sini untuk membantumu. 💕";
+                return "Halo Sahabat! 🤗\n\nKami senang mengabarkan:\n\n{$cleaned}\n\nSemoga hari kamu menyenangkan! 💕";
             default:
                 return $text;
         }
@@ -246,15 +192,15 @@ Format the output as a clean JSON object with keys: 'suggestions' (array of stri
     {
         switch ($type) {
             case 'promo':
-                return "🎉 PROMO SPESIAL AUTOIN! 🎉\n\nApakah kamu siap untuk penawaran terbaik bulan ini?\n\n📢 *Kabar Baik:* {$context}\n\nJangan lewatkan promo istimewa ini! \n\n👇 *Dapatkan sekarang sebelum kehabisan:* \n📲 Hubungi admin atau klik link di profil kami!\n\n⚡ *Penawaran Terbatas!*";
+                return "🎉 PROMO SPESIAL! 🎉\n\n📢 *{$context}*\n\nJangan lewatkan penawaran istimewa ini!\n\n👇 Hubungi admin sekarang!\n\n⚡ *Penawaran Terbatas!*";
             case 'announcement':
-                return "📢 PENGUMUMAN RESMI 📢\n\nHalo Pelanggan Setia,\n\nKami ingin menginformasikan pengumuman penting terkait:\n\n👉 {$context}\n\nKami berkomitmen untuk terus memberikan layanan terbaik untuk Anda. Terima kasih atas pengertian dan kerja samanya! 🙏";
+                return "📢 PENGUMUMAN RESMI 📢\n\nHalo Pelanggan Setia,\n\nKami menginformasikan:\n\n👉 {$context}\n\nTerima kasih atas pengertian Anda! 🙏";
             case 'reminder':
-                return "⏰ PENGINGAT RAMAH (REMINDER) ⏰\n\nHalo kak,\n\nIni adalah pengingat ramah untuk jadwal/transaksi Anda:\n\n📌 *Detail:* {$context}\n\nMohon segera diselesaikan agar dapat diproses ke tahap selanjutnya ya. Jika butuh bantuan, jangan ragu untuk chat admin! 😊";
+                return "⏰ PENGINGAT 📌\n\nHalo kak,\n\n*Detail:* {$context}\n\nMohon segera diselesaikan ya. Hubungi admin jika butuh bantuan! 😊";
             case 'caption':
-                return "✨ Special Update Hari Ini ✨\n\n{$context}\n\nBagaimana menurut kamu tentang info di atas? Share di kolom komentar ya! 👇\n\n---\n#autoin #broadcastplatform #digitalmarketing #businessowner #automation";
+                return "✨ Update Hari Ini ✨\n\n{$context}\n\nShare pendapat kamu di kolom komentar! 👇\n\n---\n#update #info";
             default:
-                return "Hasil generate untuk konteks: {$context}";
+                return "Pesan untuk: {$context}";
         }
     }
 
@@ -263,10 +209,10 @@ Format the output as a clean JSON object with keys: 'suggestions' (array of stri
         return [
             'suggestions' => [
                 'Tambahkan Call to Action (CTA) berupa link atau petunjuk tindakan di akhir pesan.',
-                'Gunakan pembatas baris / newline lebih banyak agar pesan tidak terasa menumpuk saat dibaca di layar HP.',
-                'Tambahkan emoji yang relevan untuk menarik perhatian dan meningkatkan keterbacaan pesan.',
+                'Gunakan baris baru lebih banyak agar pesan tidak terasa menumpuk di layar HP.',
+                'Tambahkan emoji relevan untuk meningkatkan keterbacaan.',
             ],
-            'optimized' => "🔥 *INFO PENTING UNTUK ANDA!* 🔥\n\nHalo,\n\n{$text}\n\n👇 *Segera lakukan tindakan berikut:* \n🔗 Klik link: http://autoin.dev/action\n\n_Hubungi CS kami jika ada kendala._"
+            'optimized' => "🔥 *INFO PENTING!* 🔥\n\nHalo,\n\n{$text}\n\n👇 *Segera ambil tindakan:*\n📲 Hubungi kami sekarang!\n\n_CS kami siap membantu._",
         ];
     }
 }

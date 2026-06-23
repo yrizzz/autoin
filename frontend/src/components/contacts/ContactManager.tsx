@@ -30,7 +30,10 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function formatWaPhone(jid: string) { return `+${jid.split('@')[0]}`; }
+function formatWaPhone(jid: string) {
+  if (jid.endsWith('@lid')) return '';
+  return `+${jid.split('@')[0]}`;
+}
 
 function contactsToCsv(contacts: NormalContact[]): string {
   const rows = contacts.map(c => {

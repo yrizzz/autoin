@@ -13,6 +13,42 @@ class AuthController extends Controller
         return Socialite::driver('google')->stateless()->redirect();
     }
 
+    public function localBypass()
+    {
+        if (config('app.env') !== 'local') {
+            abort(404);
+        }
+
+        $user = \App\Models\User::first();
+        if (!$user) {
+            $user = \App\Models\User::create([
+                'name'      => 'Admin AutoIn',
+                'email'     => 'arisedyhandoko@gmail.com',
+                'google_id' => '123456789',
+                'avatar'    => null,
+            ]);
+        }
+
+        auth('web')->login($user);
+        $token       = auth('api')->login($user);
+        $frontendUrl = config('app.frontend_url', 'http://localhost:4322');
+
+        $cookie = cookie(
+            name:     'autoin_token',
+            value:    $token,
+            minutes:  60 * 24 * 7,   // 7 days
+            path:     '/',
+            domain:   null,
+            secure:   false,
+            httpOnly: true,
+            raw:      false,
+            sameSite: 'Lax'
+        );
+
+        return redirect("{$frontendUrl}/dashboard?token={$token}")
+            ->withCookie($cookie);
+    }
+
     public function callback()
     {
         $googleUser = Socialite::driver('google')->stateless()->user();
@@ -22,33 +58,33 @@ class AuthController extends Controller
         if ($user) {
             $user->update([
                 'google_id' => $googleUser->getId(),
-                'name'      => $googleUser->getName(),
-                'avatar'    => $googleUser->getAvatar(),
+                'name' => $googleUser->getName(),
+                'avatar' => $googleUser->getAvatar(),
             ]);
         } else {
             $user = User::create([
                 'google_id' => $googleUser->getId(),
-                'name'      => $googleUser->getName(),
-                'email'     => $googleUser->getEmail(),
-                'avatar'    => $googleUser->getAvatar(),
+                'name' => $googleUser->getName(),
+                'email' => $googleUser->getEmail(),
+                'avatar' => $googleUser->getAvatar(),
             ]);
         }
 
         auth('web')->login($user);
-        $token       = auth('api')->login($user);
-        $frontendUrl = config('app.frontend_url', 'http://localhost:4321');
-        $isProd      = config('app.env') === 'production';
+        $token = auth('api')->login($user);
+        $frontendUrl = config('app.frontend_url', 'http://localhost:4322');
+        $isProd = config('app.env') === 'production';
 
         // HTTP-only cookie: Secure flag only when running over HTTPS in production
         $cookie = cookie(
-            name:     'autoin_token',
-            value:    $token,
-            minutes:  60 * 24 * 7,   // 7 days
-            path:     '/',
-            domain:   null,
-            secure:   $isProd,        // true = HTTPS only in prod
+            name: 'autoin_token',
+            value: $token,
+            minutes: 60 * 24 * 7,   // 7 days
+            path: '/',
+            domain: null,
+            secure: $isProd,        // true = HTTPS only in prod
             httpOnly: true,
-            raw:      false,
+            raw: false,
             sameSite: $isProd ? 'Strict' : 'Lax'
         );
 
@@ -67,14 +103,13 @@ class AuthController extends Controller
     {
         // Clear the HttpOnly cookie
         $expired = cookie(
-            name:     'autoin_token',
-            value:    '',
-            minutes:  -1,
-            path:     '/',
+            name: 'autoin_token',
+            value: '',
+            minutes: -1,
+            path: '/',
             httpOnly: true
         );
 
         return response()->json(['message' => 'Logged out'])->withCookie($expired);
     }
 }
-

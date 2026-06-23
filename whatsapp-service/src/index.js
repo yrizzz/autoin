@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import 'dotenv/config'; // Trigger reload
 import express from 'express';
 import { sessionManager } from './sessions.js';
 
@@ -36,8 +36,16 @@ app.post('/sessions/:sessionId', auth, async (req, res) => {
   const { sessionId } = req.params;
   const { usePairingCode, phoneNumber } = req.body || {};
 
+  // If the session is already fully connected, return that status
+  if (sessionManager.isConnected(sessionId)) {
+    return res.json({ status: 'connected' });
+  }
+
+  // If session exists but is not connected (e.g. connecting, qr_pending, pairing_pending, disconnected),
+  // clean it up first before creating a fresh one to avoid stuck/conflicting states.
   if (sessionManager.has(sessionId)) {
-    return res.json({ status: 'already_connected' });
+    console.log(`[index] Session ${sessionId} exists but not connected. Deleting old session before reconnecting...`);
+    await sessionManager.delete(sessionId);
   }
 
   try {
@@ -143,8 +151,10 @@ app.post('/sessions/:sessionId/sync', auth, async (req, res) => {
 });
 
 // Delete/logout session
-app.delete('/sessions/:sessionId', auth, async (req, res) => {
-  await sessionManager.delete(req.params.sessionId);
+app.delete('/sessions/:sessionId', auth, (req, res) => {
+  sessionManager.delete(req.params.sessionId).catch(err => {
+    console.error('[index] Failed to delete session:', err);
+  });
   res.json({ status: 'deleted' });
 });
 
@@ -152,15 +162,19 @@ app.delete('/sessions/:sessionId', auth, async (req, res) => {
 app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   const { sessionId } = req.params;
   const { to, message, mediaUrl, mediaType } = req.body;
+  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType}`);
 
   if (!sessionManager.isConnected(sessionId)) {
+    console.warn(`[index] Session ${sessionId} not connected`);
     return res.status(400).json({ error: 'Session not connected' });
   }
 
   try {
     const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType);
+    console.log(`[index] Send success for ${sessionId}`);
     res.json({ ok: true, result });
   } catch (err) {
+    console.error(`[index] Send error for ${sessionId}:`, err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

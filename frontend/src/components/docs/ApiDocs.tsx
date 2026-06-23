@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import AdminLayout from '../layout/AdminLayout';
-import { BookOpen, Key, Globe, Send, RefreshCw, Check, Copy, Code, Terminal, Server } from 'lucide-react';
+import { BookOpen, Key, Globe, Send, RefreshCw, Check, Copy, Code, Terminal, Server, Upload } from 'lucide-react';
 
 type Lang = 'curl' | 'javascript' | 'php' | 'python';
+
+const API_BASE = ((import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001');
 
 export default function ApiDocs() {
   const [activeLang, setActiveLang] = useState<Lang>('curl');
@@ -16,9 +18,9 @@ export default function ApiDocs() {
 
   const codeBlocks = {
     auth: {
-      curl: `curl -X GET http://localhost:8001/api/me \\
+      curl: `curl -X GET ${API_BASE}/api/me \\
   -H "Authorization: Bearer YOUR_API_KEY"`,
-      javascript: `fetch('http://localhost:8001/api/me', {
+      javascript: `fetch('${API_BASE}/api/me', {
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
@@ -27,7 +29,7 @@ export default function ApiDocs() {
 .then(res => res.json())
 .then(data => console.log(data));`,
       php: `<?php
-$ch = curl_init('http://localhost:8001/api/me');
+$ch = curl_init('${API_BASE}/api/me');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY',
@@ -41,68 +43,85 @@ headers = {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 }
-response = requests.get('http://localhost:8001/api/me', headers=headers)
+response = requests.get('${API_BASE}/api/me', headers=headers)
 print(response.json())`
     },
-    channels: {
-      curl: `curl -X GET http://localhost:8001/api/channels \\
-  -H "Authorization: Bearer YOUR_API_KEY"`,
-      javascript: `fetch('http://localhost:8001/api/channels', {
-  headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
+    upload: {
+      curl: `curl -X POST ${API_BASE}/api/upload \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -F "file=@/path/to/your/image.jpg"`,
+      javascript: `const formData = new FormData();
+// fileInput adalah HTML input type="file"
+formData.append('file', fileInput.files[0]);
+
+fetch('${API_BASE}/api/upload', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY'
+  },
+  body: formData
 })
 .then(res => res.json())
-.then(channels => console.log(channels));`,
+.then(data => {
+  console.log('URL Lampiran:', data.url);
+  console.log('Tipe Media:', data.mediaType); // image, video, pdf, document
+});`,
       php: `<?php
-$ch = curl_init('http://localhost:8001/api/channels');
+$cfile = new CURLFile('/path/to/your/image.jpg', 'image/jpeg', 'file');
+$payload = ['file' => $cfile];
+
+$ch = curl_init('${API_BASE}/api/upload');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'Authorization: Bearer YOUR_API_KEY'
 ]);
 $response = curl_exec($ch);
-$channels = json_decode($response, true);`,
+$result = json_decode($response, true);
+echo "URL: " . $result['url'];`,
       python: `import requests
 
+files = {'file': open('/path/to/your/image.jpg', 'rb')}
 headers = {'Authorization': 'Bearer YOUR_API_KEY'}
-response = requests.get('http://localhost:8001/api/channels', headers=headers)
+
+response = requests.post('${API_BASE}/api/upload', files=files, headers=headers)
 print(response.json())`
     },
-    send: {
-      curl: `curl -X POST http://localhost:8001/api/broadcasts \\
+    send_direct: {
+      curl: `curl -X POST ${API_BASE}/api/whatsapp/CHANNEL_ID/send \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
-    "title": "Promo Weekend",
-    "content": "Diskon 50% khusus hari ini!",
-    "channel_ids": [1, 2],
-    "media_url": "https://example.com/image.jpg",
-    "media_type": "image"
+    "to": "628123456789",
+    "message": "Halo, ini pesan langsung dengan gambar!",
+    "mediaUrl": "https://example.com/image.jpg",
+    "mediaType": "image"
   }'`,
-      javascript: `fetch('http://localhost:8001/api/broadcasts', {
+      javascript: `fetch('${API_BASE}/api/whatsapp/CHANNEL_ID/send', {
   method: 'POST',
   headers: {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    title: 'Promo Weekend',
-    content: 'Diskon 50% khusus hari ini!',
-    channel_ids: [1, 2],
-    media_url: 'https://example.com/image.jpg',
-    media_type: 'image'
+    to: '628123456789',
+    message: 'Halo, ini pesan langsung dengan gambar!',
+    mediaUrl: 'https://example.com/image.jpg',
+    mediaType: 'image'
   })
 })
 .then(res => res.json())
 .then(result => console.log(result));`,
       php: `<?php
 $payload = [
-    'title' => 'Promo Weekend',
-    'content' => 'Diskon 50% khusus hari ini!',
-    'channel_ids' => [1, 2],
-    'media_url' => 'https://example.com/image.jpg',
-    'media_type' => 'image'
+    'to' => '628123456789',
+    'message' => 'Halo, ini pesan langsung dengan gambar!',
+    'mediaUrl' => 'https://example.com/image.jpg',
+    'mediaType' => 'image'
 ];
 
-$ch = curl_init('http://localhost:8001/api/broadcasts');
+$ch = curl_init('${API_BASE}/api/whatsapp/CHANNEL_ID/send');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
@@ -115,8 +134,69 @@ $result = json_decode($response, true);`,
       python: `import requests
 
 payload = {
-    'title': 'Promo Weekend',
-    'content': 'Diskon 50% khusus hari ini!',
+    'to': '628123456789',
+    'message': 'Halo, ini pesan langsung dengan gambar!',
+    'mediaUrl': 'https://example.com/image.jpg',
+    'mediaType': 'image'
+}
+headers = {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+}
+response = requests.post('${API_BASE}/api/whatsapp/CHANNEL_ID/send', json=payload, headers=headers)
+print(response.json())`
+    },
+    broadcast: {
+      curl: `curl -X POST ${API_BASE}/api/broadcasts \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "title": "Promo Campaign",
+    "content": "Halo, diskon 50% khusus hari ini!",
+    "channel_ids": [1, 2],
+    "media_url": "https://example.com/image.jpg",
+    "media_type": "image"
+  }'`,
+      javascript: `fetch('${API_BASE}/api/broadcasts', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    title: 'Promo Campaign',
+    content: 'Halo, diskon 50% khusus hari ini!',
+    channel_ids: [1, 2],
+    media_url: 'https://example.com/image.jpg',
+    media_type: 'image'
+  })
+})
+.then(res => res.json())
+.then(result => console.log(result));`,
+      php: `<?php
+$payload = [
+    'title' => 'Promo Campaign',
+    'content' => 'Halo, diskon 50% khusus hari ini!',
+    'channel_ids' => [1, 2],
+    'media_url' => 'https://example.com/image.jpg',
+    'media_type' => 'image'
+];
+
+$ch = curl_init('${API_BASE}/api/broadcasts');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+$response = curl_exec($ch);
+$result = json_decode($response, true);`,
+      python: `import requests
+
+payload = {
+    'title': 'Promo Campaign',
+    'content': 'Halo, diskon 50% khusus hari ini!',
     'channel_ids': [1, 2],
     'media_url': 'https://example.com/image.jpg',
     'media_type': 'image'
@@ -125,23 +205,23 @@ headers = {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
 }
-response = requests.post('http://localhost:8001/api/broadcasts', json=payload, headers=headers)
+response = requests.post('${API_BASE}/api/broadcasts', json=payload, headers=headers)
 print(response.json())`
     }
   };
 
   return (
     <AdminLayout activePage="api_docs" title="Dokumentasi API">
-      <div className="flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col xl:flex-row gap-8">
         
         {/* Left Side: API Documentation Text */}
-        <div className="flex-1 space-y-8 max-w-3xl">
+        <div className="flex-1 space-y-8 max-w-4xl">
           <div>
             <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
               Dokumentasi Developer API
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Gunakan REST API AUTOIN untuk mengirim pesan broadcast secara otomatis langsung dari program atau website backend Anda.
+              Gunakan REST API AUTOIN untuk mengirim pesan WhatsApp (Pesan Instan maupun Campaign) secara otomatis langsung dari program atau website backend Anda.
             </p>
           </div>
 
@@ -157,35 +237,100 @@ print(response.json())`
             </p>
           </div>
 
-          {/* Section 2: Get Channels */}
+          {/* Section 2: Upload File / Media */}
           <div className="space-y-3">
             <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <span className="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">2</span>
-              Mendapatkan ID Channel Broadcast
+              Upload File / Media (Lampiran Pesan)
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Sebelum mengirimkan pesan broadcast, Anda perlu mengetahui list device atau channel sosial media yang aktif di akun Anda. Gunakan endpoint ini untuk list channel beserta parameter ID-nya.
+              Sebelum mengirimkan pesan bergambar, video, atau dokumen PDF, Anda harus mengupload file tersebut ke server AUTOIN terlebih dahulu melalui endpoint upload ini untuk mendapatkan <code className="font-mono text-[10px] text-zinc-700 dark:text-zinc-300">url</code> dan <code className="font-mono text-[10px] text-zinc-700 dark:text-zinc-300">mediaType</code>.
             </p>
 
-            <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-2">
+            <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-extrabold uppercase">GET</span>
-                <span className="font-mono text-xs text-zinc-700 dark:text-zinc-350">/api/channels</span>
+                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[9px] font-extrabold uppercase">POST</span>
+                <span className="font-mono text-xs text-zinc-700 dark:text-zinc-350">/api/upload</span>
               </div>
-              <div className="text-[10px] text-zinc-400 font-mono">
-                Response format: Array of Channel objects.
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                Kirim data menggunakan format <code className="font-mono text-[10px]">multipart/form-data</code> dengan parameter field <code className="font-bold font-mono text-[10px]">file</code> (Maksimal ukuran file: 64MB).
+              </p>
+              <div className="border-t border-zinc-205/40 dark:border-zinc-800/40 pt-3">
+                <span className="block text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Struktur Response Sukses (JSON)</span>
+                <pre className="bg-white dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-150 dark:border-zinc-900 text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
+{`{
+  "url": "${API_BASE}/uploads/abc123xyz.jpg",
+  "mediaType": "image", // Nilai: image, video, audio, pdf, document
+  "mime": "image/jpeg",
+  "name": "nama_file_asli.jpg",
+  "size": 1048576
+}`}
+                </pre>
               </div>
             </div>
           </div>
 
-          {/* Section 3: Send Broadcast */}
+          {/* Section 3: Send Direct WhatsApp Message */}
           <div className="space-y-3">
             <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <span className="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">3</span>
-              Mengirimkan Broadcast Campaign
+              Kirim Pesan Instan (Direct WhatsApp)
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Kirim request POST ke endpoint ini dengan payload JSON untuk membuat draf broadcast. Lanjutkan dengan trigger pengiriman untuk mendistribusikan pesan ke seluruh channel.
+              Gunakan endpoint ini untuk mengirimkan satu pesan WhatsApp secara langsung (real-time) tanpa harus membuat campaign broadcast terlebih dahulu. Sangat cocok untuk notifikasi sistem, OTP, atau auto-response.
+            </p>
+
+            <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[9px] font-extrabold uppercase">POST</span>
+                <span className="font-mono text-xs text-zinc-700 dark:text-zinc-350">/api/whatsapp/{"{channel_id}"}/send</span>
+              </div>
+              
+              <div className="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-3 space-y-1.5">
+                <span className="block text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Parameter Body (JSON)</span>
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200/40 dark:border-zinc-800/40">
+                      <th className="pb-1.5 font-bold">Field</th>
+                      <th className="pb-1.5 font-bold">Tipe</th>
+                      <th className="pb-1.5 font-bold">Deskripsi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200/20 dark:divide-zinc-800/20 text-[11px] text-zinc-500 dark:text-zinc-400 font-sans">
+                    <tr>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">to</td>
+                      <td className="py-2 text-blue-500 font-mono">string</td>
+                      <td className="py-2">Nomor telepon tujuan dengan kode negara (contoh: <code className="font-mono">628123456789</code>). *Wajib</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">message</td>
+                      <td className="py-2 text-blue-500 font-mono">string</td>
+                      <td className="py-2">Pesan teks utama (Opsional jika mediaUrl disertakan).</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">mediaUrl</td>
+                      <td className="py-2 text-blue-500 font-mono">string</td>
+                      <td className="py-2">URL lampiran media yang didapatkan dari POST /api/upload. (Opsional)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">mediaType</td>
+                      <td className="py-2 text-blue-500 font-mono">string</td>
+                      <td className="py-2">Tipe file lampiran: <code className="px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px]">image, video, audio, pdf, document</code>. (Opsional)</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Send Campaign / Broadcast */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">4</span>
+              Kirim Campaign Broadcast (Massal / Multi-Channel)
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Gunakan endpoint ini untuk membuat campaign massal yang dapat dikirimkan ke banyak nomor penerima sekaligus melalui satu atau lebih device / channel terhubung secara paralel.
             </p>
 
             <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-3">
@@ -208,37 +353,60 @@ print(response.json())`
                     <tr>
                       <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">content</td>
                       <td className="py-2 text-blue-500 font-mono">string</td>
-                      <td className="py-2">Pesan teks utama (Mendukung HTML tags). *Wajib</td>
+                      <td className="py-2">Isi pesan broadcast utama. *Wajib</td>
                     </tr>
                     <tr>
                       <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">channel_ids</td>
                       <td className="py-2 text-blue-500 font-mono">array</td>
-                      <td className="py-2">List ID target channel dari endpoint GET /api/channels. *Wajib</td>
+                      <td className="py-2">Array integer dari list ID target channel (contoh: <code className="font-mono">[1, 2]</code>). *Wajib</td>
                     </tr>
                     <tr>
-                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">title</td>
-                      <td className="py-2 text-blue-500 font-mono">string</td>
-                      <td className="py-2">Judul kampanye broadcast (Opsional).</td>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">recipients</td>
+                      <td className="py-2 text-blue-500 font-mono">array</td>
+                      <td className="py-2">Array nomor penerima (contoh: <code className="font-mono">["62812xxx", "62877xxx"]</code>). (Opsional)</td>
                     </tr>
                     <tr>
                       <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">media_url</td>
                       <td className="py-2 text-blue-500 font-mono">string</td>
-                      <td className="py-2">URL lampiran file/gambar (Opsional).</td>
+                      <td className="py-2">URL lampiran media hasil upload. (Opsional)</td>
                     </tr>
                     <tr>
                       <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">media_type</td>
                       <td className="py-2 text-blue-500 font-mono">string</td>
-                      <td className="py-2">Tipe lampiran: <code className="px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px]">image, video, pdf, document</code>.</td>
+                      <td className="py-2">Tipe file lampiran: <code className="px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px]">image, video, pdf, document</code>. (Opsional)</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 font-mono text-zinc-700 dark:text-zinc-300">scheduled_at</td>
+                      <td className="py-2 text-blue-500 font-mono">string</td>
+                      <td className="py-2">Format ISO Date jika ingin dijadwalkan (contoh: <code className="font-mono">"2026-06-30T10:00:00"</code>). (Opsional)</td>
                     </tr>
                   </tbody>
                 </table>
               </div>
             </div>
           </div>
+
+          {/* Section 5: Get Channels */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">5</span>
+              Mendapatkan ID Channel Broadcast
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Gunakan endpoint ini untuk mengambil list channel WhatsApp yang aktif pada akun Anda beserta data ID-nya guna dimasukkan ke parameter target pengiriman.
+            </p>
+
+            <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-500 text-[9px] font-extrabold uppercase">GET</span>
+                <span className="font-mono text-xs text-zinc-700 dark:text-zinc-350">/api/channels</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right Side: Code Playground Box */}
-        <div className="w-full md:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+        <div className="w-full xl:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Terminal className="w-4 h-4 text-blue-500" />
@@ -275,40 +443,56 @@ print(response.json())`
                   {copiedId === 'auth' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-605 dark:text-zinc-350 overflow-x-auto">
+              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
                 {codeBlocks.auth[activeLang]}
               </pre>
             </div>
 
-            {/* List Channels Snippet */}
+            {/* Upload Media Snippet */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                <span>2. List Channels</span>
+                <span>2. Upload Media</span>
                 <button
-                  onClick={() => copyToClipboard('channels', codeBlocks.channels[activeLang])}
+                  onClick={() => copyToClipboard('upload', codeBlocks.upload[activeLang])}
                   className="text-blue-500 hover:underline flex items-center gap-0.5 cursor-pointer"
                 >
-                  {copiedId === 'channels' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
+                  {copiedId === 'upload' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-605 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.channels[activeLang]}
+              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
+                {codeBlocks.upload[activeLang]}
+              </pre>
+            </div>
+
+            {/* Send Direct Message Snippet */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                <span>3. Kirim Pesan Instan</span>
+                <button
+                  onClick={() => copyToClipboard('send_direct', codeBlocks.send_direct[activeLang])}
+                  className="text-blue-500 hover:underline flex items-center gap-0.5 cursor-pointer"
+                >
+                  {copiedId === 'send_direct' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
+                </button>
+              </div>
+              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
+                {codeBlocks.send_direct[activeLang]}
               </pre>
             </div>
 
             {/* Create Broadcast Snippet */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                <span>3. Kirim Broadcast</span>
+                <span>4. Kirim Campaign Broadcast</span>
                 <button
-                  onClick={() => copyToClipboard('send', codeBlocks.send[activeLang])}
+                  onClick={() => copyToClipboard('broadcast', codeBlocks.broadcast[activeLang])}
                   className="text-blue-500 hover:underline flex items-center gap-0.5 cursor-pointer"
                 >
-                  {copiedId === 'send' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
+                  {copiedId === 'broadcast' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
               <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-605 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.send[activeLang]}
+                {codeBlocks.broadcast[activeLang]}
               </pre>
             </div>
           </div>

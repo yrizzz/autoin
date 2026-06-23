@@ -4,7 +4,7 @@ import type { User } from '../../types';
 import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
-  MessageSquare, Users, Smartphone, FileText, Rocket,
+  Users, Smartphone, FileText, Rocket,
   Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket
 } from 'lucide-react';
 
@@ -215,6 +215,7 @@ const getAvatarUrl = (user: User | null) => {
 
 export default function AdminLayout({ children, activePage, title, noPadding, onRefresh, refreshing }: AdminLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [notifOpen, setNotifOpen] = useState(false);
@@ -235,15 +236,20 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
 
     const token = localStorage.getItem('autoin_token');
     if (!token) {
-      window.location.href = GOOGLE_AUTH_URL;
+      setLoading(false);
       return;
     }
 
     api.get<User>('/api/me')
-      .then(setUser)
-      .catch(() => {
-        localStorage.removeItem('autoin_token');
-        window.location.href = GOOGLE_AUTH_URL;
+      .then(res => {
+        setUser(res);
+        setLoading(false);
+      })
+      .catch((err: any) => {
+        if (err && (err.status === 401 || err.status === 403)) {
+          localStorage.removeItem('autoin_token');
+        }
+        setLoading(false);
       });
 
     api.get<any>('/api/announcement')
@@ -297,7 +303,6 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'templates', label: 'Template Pesan', icon: FileText, href: '/templates' },
         { id: 'broadcast', label: 'Broadcast Pesan', icon: Rocket, href: '/broadcast' },
         { id: 'schedule', label: 'Jadwal Broadcast', icon: Calendar, href: '/schedule' },
-        { id: 'chats', label: 'Obrolan Aktif', icon: MessageSquare, href: '/chats' },
       ]
     },
     {
@@ -306,7 +311,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '/quick-send' },
         { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '/chatbot' },
         { id: 'webhook', label: 'Webhook App', icon: Link, href: '/webhook' },
-        { id: 'history', label: 'History Pesan', icon: History, href: '/broadcast/history' },
+        { id: 'history', label: 'Riwayat Broadcast', icon: History, href: '/broadcast/history' },
       ]
     },
     { title: 'PENGATURAN', items: settingsItems }
@@ -315,7 +320,6 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
   const mobileNav = [
     { id: 'dashboard', icon: LayoutDashboard, href: '/dashboard', label: 'Home' },
     { id: 'broadcast', icon: Rocket, href: '/broadcast', label: 'Broadcast' },
-    { id: 'chats', icon: MessageSquare, href: '/chats', label: 'Chat' },
     { id: 'channels', icon: Smartphone, href: '/channels', label: 'Device' },
     { id: 'sidebar', icon: Menu, href: '#', label: 'Menu' },
   ];

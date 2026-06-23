@@ -179,3 +179,66 @@ body {
   color: #fb7185 !important;
   border: 1px solid rgba(251, 113, 133, 0.2) !important;
 }
+
+/* Aurora Background Animations */
+@keyframes aurora-wave-1 {
+  0% {
+    background-position: 0% 0%;
+  }
+  50% {
+    background-position: 100% 100%;
+  }
+  100% {
+    background-position: 0% 0%;
+  }
+}
+
+@keyframes aurora-wave-2 {
+  0% {
+    background-position: 100% 100%;
+  }
+  50% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+.aurora-bg-wave-1 {
+  background-image: repeating-linear-gradient(
+    115deg,
+    rgba(59, 130, 246, 0.55) 0%,
+    rgba(6, 182, 212, 0.6) 10%,
+    transparent 20%,
+    transparent 35%,
+    rgba(99, 102, 241, 0.5) 45%,
+    rgba(167, 139, 250, 0.45) 55%,
+    transparent 65%,
+    transparent 80%
+  );
+  background-size: 250% 250%;
+  animation: aurora-wave-1 25s infinite ease-in-out;
+  filter: blur(50px);
+}
+
+.aurora-bg-wave-2 {
+  background-image: repeating-linear-gradient(
+    65deg,
+    rgba(6, 182, 212, 0.55) 0%,
+    rgba(99, 102, 241, 0.45) 15%,
+    transparent 25%,
+    transparent 40%,
+    rgba(59, 130, 246, 0.55) 50%,
+    rgba(167, 139, 250, 0.5) 65%,
+    transparent 75%,
+    transparent 90%
+  );
+  background-size: 250% 250%;
+  animation: aurora-wave-2 20s infinite ease-in-out;
+  filter: blur(55px);
+}
+
+
+
+

@@ -18,11 +18,11 @@ class AnalyticsController extends Controller
         $channels   = Channel::where('user_id', $userId);
 
         return response()->json([
-            'total_broadcasts'    => $broadcasts->count(),
-            'sent_broadcasts'     => $broadcasts->where('status', 'sent')->count(),
+            'total_broadcasts'    => (clone $broadcasts)->count(),
+            'sent_broadcasts'     => (clone $broadcasts)->where('status', 'sent')->count(),
             'failed_broadcasts'   => (clone $broadcasts)->where('status', 'failed')->count(),
             'scheduled_broadcasts'=> (clone $broadcasts)->where('status', 'scheduled')->count(),
-            'total_channels'      => $channels->count(),
+            'total_channels'      => (clone $channels)->count(),
             'active_channels'     => (clone $channels)->where('status', 'active')->count(),
         ]);
     }
