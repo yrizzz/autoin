@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
+import { api, getApiUrl } from '../../lib/api';
 import type { User } from '../../types';
 import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
@@ -17,7 +17,7 @@ interface AdminLayoutProps {
   refreshing?: boolean;
 }
 
-const GOOGLE_AUTH_URL = 'http://localhost:8001/auth/google';
+function getGoogleAuthUrl() { return `${getApiUrl()}/auth/google`; }
 
 
 function md5(string: string) {
@@ -400,7 +400,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         ) : (
           <div className="p-3">
             <a
-              href={GOOGLE_AUTH_URL}
+              href={getGoogleAuthUrl()}
               className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-xl transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
             >
               <svg className="w-3.5 h-3.5 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>
@@ -534,7 +534,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
                 </div>
               ) : (
                 <a
-                  href={GOOGLE_AUTH_URL}
+                  href={getGoogleAuthUrl()}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 border border-zinc-250 dark:border-zinc-800 rounded-lg transition-all shadow-xs cursor-pointer bg-white dark:bg-zinc-950"
                 >
                   <svg className="w-3 h-3 fill-current shrink-0" viewBox="0 0 24 24"><path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" /></svg>

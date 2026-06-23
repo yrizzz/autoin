@@ -1,4 +1,14 @@
-const API_URL = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
+export function getApiUrl(): string {
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      return `${window.location.protocol}//${hostname}:8001`;
+    }
+  }
+  return import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
+}
+
+const API_URL = getApiUrl();
 
 function getToken(): string | null {
   if (typeof window === 'undefined') return null;

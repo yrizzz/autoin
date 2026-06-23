@@ -1,6 +1,6 @@
 import { atom, computed } from 'nanostores';
 import type { User } from '../types';
-import { api, clearToken, setToken } from '../lib/api';
+import { api, clearToken, setToken, getApiUrl } from '../lib/api';
 
 export const $user = atom<User | null>(null);
 export const $token = atom<string | null>(null);
@@ -42,6 +42,5 @@ export function logout(): void {
 }
 
 export function loginWithGoogle(): void {
-  const apiUrl = import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001';
-  window.location.href = `${apiUrl}/auth/google`;
+  window.location.href = `${getApiUrl()}/auth/google`;
 }
