@@ -837,9 +837,18 @@ class SessionManager extends EventEmitter {
 
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
     let options = {};
+    let senderJid = null;
     if (quoted) {
       console.log(`[sessions] send quoted message: targetJid=${jid}, quotedRemoteJid=${quoted.key?.remoteJid}, quotedId=${quoted.key?.id}`);
       options.quoted = quoted;
+      senderJid = quoted.key?.participant || quoted.participant || quoted.key?.remoteJid;
+      if (senderJid) {
+        const cleanNumber = senderJid.split('@')[0].split(':')[0];
+        const mentionPrefix = `@${cleanNumber} `;
+        if (message && typeof message === 'string' && !message.startsWith(mentionPrefix)) {
+          message = mentionPrefix + message;
+        }
+      }
     }
 
     let isTextStatusColor = false;
@@ -907,43 +916,50 @@ class SessionManager extends EventEmitter {
     }
 
     if (!result) {
-    if (mediaUrl) {
-      let resolvedUrl = mediaUrl;
-      if (mediaUrl.includes('/uploads/')) {
-        const filename = mediaUrl.split('/').pop();
-        const localPath = `/media/yr/DATA/Web/autoin/backend/public/uploads/${filename}`;
-        if (fs.existsSync(localPath)) {
-          resolvedUrl = localPath;
-          console.log(`[sessions] Resolved local media URL to filesystem path: ${resolvedUrl}`);
+      let content = {};
+      if (mediaUrl) {
+        let resolvedUrl = mediaUrl;
+        if (mediaUrl.includes('/uploads/')) {
+          const filename = mediaUrl.split('/').pop();
+          const localPath = `/media/yr/DATA/Web/autoin/backend/public/uploads/${filename}`;
+          if (fs.existsSync(localPath)) {
+            resolvedUrl = localPath;
+            console.log(`[sessions] Resolved local media URL to filesystem path: ${resolvedUrl}`);
+          }
         }
+
+        switch (mediaType) {
+          case 'image':
+            content = { image: { url: resolvedUrl }, caption: message || '' };
+            break;
+          case 'video':
+            content = { video: { url: resolvedUrl }, caption: message || '' };
+            break;
+          case 'audio':
+            content = { audio: { url: resolvedUrl }, mimetype: 'audio/mp4', ptt: false };
+            break;
+          case 'document':
+          case 'pdf':
+            content = {
+              document: { url: resolvedUrl },
+              mimetype: mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+              fileName: mediaUrl.split('/').pop() || 'file',
+              caption: message || '',
+            };
+            break;
+          default:
+            content = { image: { url: resolvedUrl }, caption: message || '' };
+            break;
+        }
+      } else {
+        content = { text: message || '' };
       }
 
-      switch (mediaType) {
-        case 'image':
-          result = await sock.sendMessage(jid, { image: { url: resolvedUrl }, caption: message || '' }, options);
-          break;
-        case 'video':
-          result = await sock.sendMessage(jid, { video: { url: resolvedUrl }, caption: message || '' }, options);
-          break;
-        case 'audio':
-          result = await sock.sendMessage(jid, { audio: { url: resolvedUrl }, mimetype: 'audio/mp4', ptt: false }, options);
-          break;
-        case 'document':
-        case 'pdf':
-          result = await sock.sendMessage(jid, {
-            document: { url: resolvedUrl },
-            mimetype: mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream',
-            fileName: mediaUrl.split('/').pop() || 'file',
-            caption: message || '',
-          }, options);
-          break;
-        default:
-          result = await sock.sendMessage(jid, { image: { url: resolvedUrl }, caption: message || '' }, options);
-          break;
+      if (senderJid) {
+        content.mentions = [senderJid];
       }
-    } else {
-      result = await sock.sendMessage(jid, { text: message || '' }, options);
-    }
+
+      result = await sock.sendMessage(jid, content, options);
     }
 
     if (result) {
