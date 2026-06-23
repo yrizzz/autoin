@@ -65,7 +65,7 @@ class BroadcastController extends Controller
 
         $data = $request->validate([
             'title'            => 'nullable|string|max:255',
-            'content'          => 'required|string',
+            'content'          => 'required_without:media_url|nullable|string',
             'media_url'        => 'nullable|string',
             'media_type'       => 'nullable|in:image,video,pdf,document',
             'channel_ids'      => 'required|array|min:1',
@@ -97,7 +97,7 @@ class BroadcastController extends Controller
 
         $broadcast = $request->user()->broadcasts()->create([
             'title'           => $data['title'] ?? null,
-            'content'         => $data['content'],
+            'content'         => $data['content'] ?? '',
             'media_url'       => $mediaUrl,
             'media_type'      => $mediaType,
             'scheduled_at'    => $data['scheduled_at'] ?? null,
@@ -240,7 +240,7 @@ class BroadcastController extends Controller
 
         $rules = [
             'title'        => 'nullable|string|max:255',
-            'content'      => 'sometimes|string',
+            'content'      => 'sometimes|nullable|string',
             'recurring'    => 'nullable|in:none,daily,weekly,monthly',
         ];
 
@@ -264,6 +264,10 @@ class BroadcastController extends Controller
             $data['status'] = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
         } elseif ($broadcast->scheduled_at && $broadcast->scheduled_at->isFuture()) {
             $data['status'] = 'scheduled';
+        }
+
+        if (array_key_exists('content', $data) && is_null($data['content'])) {
+            $data['content'] = '';
         }
 
         $broadcast->update($data);

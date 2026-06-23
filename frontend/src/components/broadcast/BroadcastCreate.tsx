@@ -493,7 +493,7 @@ export default function BroadcastCreate() {
   const isScheduled = Boolean(scheduledAt);
 
   async function handleSend() {
-    if (!content.trim() || selectedChannels.length === 0) return;
+    if ((!content.trim() && mediaUrls.length === 0) || selectedChannels.length === 0) return;
     setSending(true);
     setResult(null);
     try {
@@ -1280,7 +1280,7 @@ export default function BroadcastCreate() {
 
             {/* Submit Button */}
             <button type="button" onClick={handleSend}
-              disabled={sending || !content.trim() || selectedChannels.length === 0}
+              disabled={sending || (!content.trim() && mediaUrls.length === 0) || selectedChannels.length === 0}
               className="w-full btn-primary py-3.5 font-bold rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer text-xs">
               {sending ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /><span>Memproses antrean...</span></>

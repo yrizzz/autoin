@@ -150,17 +150,18 @@ export default function QuickSend() {
       el.setSelectionRange(start + prefix.length, start + prefix.length + selectedText.length);
     }, 0);
   }
-  const [logs, setLogs] = useState<LogEntry[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('autoin_quick_send_logs');
-        return stored ? JSON.parse(stored) : [];
-      } catch (e) {
-        return [];
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('autoin_quick_send_logs');
+      if (stored) {
+        setLogs(JSON.parse(stored));
       }
+    } catch (e) {
+      console.error(e);
     }
-    return [];
-  });
+  }, []);
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'pdf' | 'document'>('image');
   const [uploading, setUploading] = useState<boolean>(false);
@@ -546,7 +547,7 @@ export default function QuickSend() {
                     onChange={e => setMessage(e.target.value)}
                     rows={6}
                     className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 resize-y min-h-[120px] leading-relaxed"
-                    required
+                    required={!mediaUrl}
                     disabled={sending || quickAiLoading}
                   />
                   {quickAiLoading && (

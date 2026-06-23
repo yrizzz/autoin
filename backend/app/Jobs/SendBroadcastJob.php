@@ -122,7 +122,7 @@ class SendBroadcastJob implements ShouldQueue
 
     private function sendToChannel($channel, ?string $recipientId): array
     {
-        $content   = $this->broadcast->content;
+        $content   = $this->broadcast->content ?? '';
         $mediaUrl  = $this->broadcast->media_url;
         $mediaType = $this->broadcast->media_type;
 
@@ -133,8 +133,9 @@ class SendBroadcastJob implements ShouldQueue
         };
     }
 
-    private function sendTelegram($channel, string $content): array
+    private function sendTelegram($channel, ?string $content = ''): array
     {
+        $content = $content ?? '';
         $token = $channel->credentials['bot_token'] ?? '';
         $chatId = $channel->target_id;
 
