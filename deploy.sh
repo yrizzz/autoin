@@ -112,6 +112,15 @@ ok "Code up to date"
 # 2. Backend — auto-configure production .env
 log "Backend — install & migrate..."
 cd "$ROOT/backend"
+
+# Ensure all required Laravel storage subdirectories exist
+mkdir -p storage/framework/sessions
+mkdir -p storage/framework/views
+mkdir -p storage/framework/cache
+mkdir -p storage/app/public
+mkdir -p storage/logs
+chmod -R 775 storage bootstrap/cache 2>/dev/null || true
+
 composer install --no-dev --optimize-autoloader --no-interaction --quiet
 php artisan migrate --force --quiet
 
