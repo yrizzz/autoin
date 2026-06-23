@@ -836,7 +836,17 @@ class SessionManager extends EventEmitter {
     if (!message && !mediaUrl) throw new Error('Message or media required');
 
     const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
-    let options = quoted ? { quoted } : {};
+    let options = {};
+    if (quoted) {
+      console.log(`[sessions] send quoted message: targetJid=${jid}, quotedRemoteJid=${quoted.key?.remoteJid}, quotedId=${quoted.key?.id}`);
+      options.quoted = {
+        ...quoted,
+        key: quoted.key ? {
+          ...quoted.key,
+          remoteJid: jid
+        } : undefined
+      };
+    }
 
     let isTextStatusColor = false;
     let textStatusColor = '#075E54';
