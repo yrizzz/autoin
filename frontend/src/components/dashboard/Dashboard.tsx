@@ -56,6 +56,13 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [copiedPromo, setCopiedPromo] = useState(false);
+
+  const handleCopyPromo = () => {
+    navigator.clipboard.writeText('AUTOIN1MINGGU');
+    setCopiedPromo(true);
+    setTimeout(() => setCopiedPromo(false), 2000);
+  };
 
   const fetchData = async () => {
     try {
@@ -248,6 +255,37 @@ export default function Dashboard() {
 
   return (
     <AdminLayout activePage="dashboard" title="Dashboard" onRefresh={handleRefresh} refreshing={refreshing}>
+      {/* Promo Banner */}
+      <div className="mb-6 relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600/10 via-indigo-600/5 to-transparent border border-blue-500/20 dark:border-blue-500/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.02] rounded-full blur-xl pointer-events-none" />
+        <div className="flex items-center gap-3">
+          <span className="text-2xl sm:text-3xl shrink-0 select-none">🎉</span>
+          <div>
+            <h4 className="font-extrabold text-sm text-zinc-900 dark:text-white uppercase tracking-wider">
+              Free 7 Hari Langganan
+            </h4>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Gunakan kode promo berikut untuk mendapatkan gratis 7 hari akses premium. Klik kode untuk menyalin.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleCopyPromo}
+            title="Klik untuk menyalin kode"
+            className="group relative flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-950 border-2 border-dashed border-blue-500/40 dark:border-blue-500/30 hover:border-blue-500 rounded-xl transition-all duration-300 cursor-pointer shadow-sm active:scale-95"
+          >
+            <span className="font-mono font-black text-sm tracking-widest text-blue-600 dark:text-blue-450 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+              AUTOIN1MINGGU
+            </span>
+            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
+            <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 group-hover:text-zinc-700 dark:group-hover:text-zinc-300 transition-colors uppercase">
+              {copiedPromo ? 'Tersalin! ✓' : 'Salin'}
+            </span>
+          </button>
+        </div>
+      </div>
+
       {/* Welcome Section */}
       <div className="flex flex-col gap-4 mb-8">
         <div>

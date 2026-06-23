@@ -278,8 +278,8 @@ export default function BroadcastHistory() {
               onClick={() => { setStatusFilter(chip.id); setCurrentPage(1); }}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
                 statusFilter === chip.id 
-                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-450 shadow-sm' 
-                  : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-555 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                  ? 'bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30 text-blue-600 dark:text-blue-400 shadow-sm' 
+                  : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800'
               }`}
             >
               {chip.label}
@@ -309,7 +309,7 @@ export default function BroadcastHistory() {
         /* Empty State */
         <div className="text-center py-20 bg-zinc-50/50 dark:bg-zinc-950/20 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 max-w-lg mx-auto">
           <div className="w-12 h-12 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <History className="w-5 h-5 text-zinc-400 dark:text-zinc-550" />
+            <History className="w-5 h-5 text-zinc-400 dark:text-zinc-500" />
           </div>
           <h3 className="font-extrabold text-xs text-zinc-800 dark:text-zinc-200 uppercase tracking-wide">Data Kosong</h3>
           <p className="text-zinc-500 dark:text-zinc-400 text-xs mt-1.5 mb-6 max-w-xs mx-auto leading-relaxed">
@@ -327,7 +327,7 @@ export default function BroadcastHistory() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-zinc-50/50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800/80 text-xs font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
+                  <tr className="bg-zinc-50/50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800/80 text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
                     <th className="px-5 py-3.5 font-bold">Campaign ID</th>
                     <th className="px-5 py-3.5 font-bold">Tanggal Kirim</th>
                     <th className="px-5 py-3.5 font-bold">Judul & Pesan</th>
@@ -339,7 +339,7 @@ export default function BroadcastHistory() {
                   {filteredBroadcasts.map((bc) => (
                     <tr key={bc.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-colors">
                       {/* ID */}
-                      <td className="px-5 py-4 whitespace-nowrap font-mono font-bold text-blue-600 dark:text-blue-450">
+                      <td className="px-5 py-4 whitespace-nowrap font-mono font-bold text-blue-600 dark:text-blue-400">
                         #{bc.id}
                       </td>
 
@@ -367,10 +367,10 @@ export default function BroadcastHistory() {
 
                       {/* Campaign details */}
                       <td className="px-5 py-4 max-w-xs md:max-w-md">
-                        <div className="font-bold text-zinc-800 dark:text-zinc-250 truncate">
+                        <div className="font-bold text-zinc-850 dark:text-zinc-200 truncate">
                           {bc.title || 'Broadcast Tanpa Judul'}
                         </div>
-                        <div className="text-zinc-400 dark:text-zinc-550 truncate mt-0.5 max-w-sm font-normal">
+                        <div className="text-zinc-500 dark:text-zinc-400 truncate mt-0.5 max-w-sm font-normal">
                           {bc.content}
                         </div>
                       </td>
@@ -504,14 +504,14 @@ export default function BroadcastHistory() {
                 <p className="text-xs text-zinc-500 mt-0.5">Aksi ini tidak dapat dibatalkan.</p>
               </div>
             </div>
-            <p className="text-xs text-zinc-650 dark:text-zinc-400 leading-relaxed font-normal">
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
               Apakah Anda yakin ingin menghapus data campaign broadcast ini beserta seluruh log pengiriman penerima di dalamnya?
             </p>
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 py-2.5 border border-zinc-250 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer"
+                className="flex-1 py-2.5 border border-zinc-200 dark:border-zinc-800 text-xs font-bold text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer"
               >
                 Kembali
               </button>
@@ -542,7 +542,7 @@ export default function BroadcastHistory() {
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
               <div>
-                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-450 uppercase tracking-widest font-mono">
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest font-mono">
                   LOG DETAIL PENERIMA
                 </span>
                 <h2 className="font-extrabold text-sm text-zinc-900 dark:text-white uppercase mt-0.5 truncate max-w-md">
@@ -562,23 +562,23 @@ export default function BroadcastHistory() {
               {detailLoading ? (
                 <div className="h-full flex flex-col items-center justify-center py-20 gap-3">
                   <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-                  <span className="text-xs text-zinc-555 font-bold">Memuat data penerima...</span>
+                  <span className="text-xs text-zinc-650 font-bold">Memuat data penerima...</span>
                 </div>
               ) : selectedBroadcast ? (
                 <>
                   {/* Message Detail preview */}
                   <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-zinc-450 uppercase tracking-wider">Isi Pesan Broadcast</span>
+                      <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Isi Pesan Broadcast</span>
                       <button 
                         type="button" 
                         onClick={() => copyToClipboard(selectedBroadcast.content)}
-                        className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-650 dark:hover:text-zinc-300 rounded-lg cursor-pointer transition-all"
+                        className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg cursor-pointer transition-all"
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <div className="text-xs text-zinc-800 dark:text-zinc-250 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto pr-2 font-normal">
+                    <div className="text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto pr-2 font-normal">
                       {selectedBroadcast.content}
                     </div>
                   </div>
@@ -593,15 +593,15 @@ export default function BroadcastHistory() {
                           <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">{stats.total}</span>
                         </div>
                         <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-emerald-600 dark:text-emerald-450 uppercase">Sukses</span>
+                          <span className="block text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Sukses</span>
                           <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{stats.sent}</span>
                         </div>
                         <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-red-600 dark:text-red-455 uppercase">Gagal</span>
-                          <span className="text-sm font-extrabold text-red-650 dark:text-red-400">{stats.failed}</span>
+                          <span className="block text-[11px] font-extrabold text-red-650 dark:text-red-400 uppercase">Gagal</span>
+                          <span className="text-sm font-extrabold text-red-600 dark:text-red-450">{stats.failed}</span>
                         </div>
                         <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-blue-600 dark:text-blue-450 uppercase">Antrean</span>
+                          <span className="block text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Antrean</span>
                           <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">{stats.pending}</span>
                         </div>
                       </div>
@@ -623,7 +623,7 @@ export default function BroadcastHistory() {
                           value={logSearchTerm}
                           onChange={(e) => setLogSearchTerm(e.target.value)}
                           placeholder="Cari nama atau nomor..."
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-450"
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-400"
                         />
                       </div>
                     </div>
@@ -681,7 +681,7 @@ export default function BroadcastHistory() {
                                     </td>
 
                                     {/* Number / ID without JID suffix */}
-                                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-550 dark:text-zinc-400">
+                                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
                                       {formatPhoneOrJid(log.recipient_id)}
                                     </td>
 
@@ -689,10 +689,10 @@ export default function BroadcastHistory() {
                                     <td className="px-4 py-3">
                                       <span className={`inline-block text-[8px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${
                                         log.status === 'sent' 
-                                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-500/25'
+                                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/25'
                                           : log.status === 'failed'
-                                            ? 'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-455 border-red-100 dark:border-red-500/20'
-                                            : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-450 border-blue-100 dark:border-blue-500/20'
+                                            ? 'bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400 border-red-100 dark:border-red-500/20'
+                                            : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20'
                                       }`}>
                                         {log.status === 'sent' ? 'Sukses' : log.status === 'failed' ? 'Gagal' : log.status}
                                       </span>
@@ -726,11 +726,11 @@ export default function BroadcastHistory() {
 
 function statusColor(s: string): string {
   const m: Record<string, string> = {
-    sent:      'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border-emerald-100 dark:border-emerald-500/20 shadow-sm',
-    failed:    'bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 border-red-100 dark:border-red-500/20 shadow-sm',
-    scheduled: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-550 border-yellow-100 dark:border-yellow-500/20',
-    queued:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-455 border-blue-100 dark:border-blue-500/20',
-    sending:   'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-455 border-blue-100 dark:border-blue-500/20 animate-pulse',
+    sent:      'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20 shadow-sm',
+    failed:    'bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400 border-red-100 dark:border-red-500/20 shadow-sm',
+    scheduled: 'bg-yellow-50 dark:bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border-yellow-100 dark:border-yellow-500/20',
+    queued:    'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20',
+    sending:   'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20 animate-pulse',
     draft:     'bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800',
   };
   return m[s] ?? 'bg-zinc-100 dark:bg-zinc-950 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800';

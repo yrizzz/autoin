@@ -29,9 +29,12 @@ class ChatbotRuleController extends Controller
             'trigger'    => 'required|string|max:255',
             'match_type' => 'required|in:exact,contains,starts_with',
             'reply'      => 'required|string',
+            'media_url'  => 'nullable|string',
+            'media_type' => 'nullable|string',
             'platform'   => 'required|in:all,whatsapp',
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
+            'is_ai'      => 'sometimes|boolean',
         ]);
 
         $rule = $user->chatbotRules()->create($data);
@@ -47,8 +50,11 @@ class ChatbotRuleController extends Controller
             'trigger'    => 'sometimes|string|max:255',
             'match_type' => 'sometimes|in:exact,contains,starts_with',
             'reply'      => 'sometimes|string',
+            'media_url'  => 'nullable|string',
+            'media_type' => 'nullable|string',
             'platform'   => 'sometimes|in:all,whatsapp',
             'is_active'  => 'sometimes|boolean',
+            'is_ai'      => 'sometimes|boolean',
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
         ]);
@@ -100,9 +106,46 @@ class ChatbotRuleController extends Controller
 
         foreach ($rules as $rule) {
             if ($rule->matches($text)) {
+                $finalReply = $rule->reply;
+
+                if ($rule->is_ai) {
+                    $prompt = "Kamu adalah asisten chat otomatis (chatbot). Gunakan panduan berikut untuk menjawab pesan pelanggan:\n"
+                            . "--- PANDUAN ---\n"
+                            . $rule->reply . "\n"
+                            . "---------------\n\n"
+                            . "Pesan pelanggan: \"{$text}\"\n\n"
+                            . "Berikan jawaban langsung, ramah, profesional, dan dalam bahasa Indonesia. HANYA berikan isi jawaban tanpa penjelasan tambahan.";
+                    
+                    try {
+                        $apiUrl = 'https://api.yrizzz.my.id/api/execute/v1/ai/chatGpt';
+                        $apiKey = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';
+                        $response = \Illuminate\Support\Facades\Http::timeout(20)
+                            ->withHeader('x-api-key', $apiKey)
+                            ->get($apiUrl, ['prompt' => $prompt]);
+
+                        if ($response->successful()) {
+                            $body = $response->json();
+                            $val = $body['response']
+                                ?? $body['result']
+                                ?? $body['data']
+                                ?? $body['text']
+                                ?? $body['message']
+                                ?? (is_string($body) ? $body : null);
+
+                            if ($val) {
+                                $finalReply = trim($val);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // Fallback to static rule reply
+                    }
+                }
+
                 return response()->json([
-                    'reply' => $rule->reply,
-                    'reply_type' => $rule->reply_type ?? 'normal'
+                    'reply'      => $finalReply,
+                    'reply_type' => $rule->reply_type ?? 'normal',
+                    'media_url'  => $rule->media_url,
+                    'media_type' => $rule->media_type,
                 ]);
             }
         }

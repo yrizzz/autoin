@@ -818,11 +818,11 @@ class SessionManager extends EventEmitter {
       }
       const data = await res.json();
       console.log(`[Chatbot] Match API response data:`, data);
-      if (data.reply) {
-        console.log(`[Chatbot] Matching rule found! Replying with: "${data.reply}", type: ${data.reply_type || 'normal'}`);
+      if (data.reply || data.media_url) {
+        console.log(`[Chatbot] Matching rule found! Replying with: "${data.reply}", type: ${data.reply_type || 'normal'}, media: ${data.media_url || 'none'}`);
         await new Promise(r => setTimeout(r, 800));
         const quoted = data.reply_type === 'quote' ? rawMessage : null;
-        await this.send(sessionId, chatId, data.reply, null, null, quoted);
+        await this.send(sessionId, chatId, data.reply || '', data.media_url || null, data.media_type || null, quoted);
         console.log(`[Chatbot] Reply sent successfully.`);
       } else {
         console.log(`[Chatbot] No matching rule found.`);
@@ -1011,7 +1011,37 @@ class SessionManager extends EventEmitter {
           }
         }
 
-        switch (mediaType) {
+        let actualMediaType = mediaType;
+        if (!actualMediaType && detectedMime) {
+          if (detectedMime.startsWith('image/')) {
+            actualMediaType = 'image';
+          } else if (detectedMime.startsWith('video/')) {
+            actualMediaType = 'video';
+          } else if (detectedMime.startsWith('audio/')) {
+            actualMediaType = 'audio';
+          } else if (detectedMime.startsWith('application/pdf')) {
+            actualMediaType = 'pdf';
+          } else if (detectedMime.startsWith('application/')) {
+            actualMediaType = 'document';
+          }
+        }
+
+        if (!actualMediaType) {
+          const lowerUrl = resolvedUrl.toLowerCase();
+          if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(lowerUrl)) {
+            actualMediaType = 'image';
+          } else if (/\.(mp4|avi|mov|mkv|webm|3gp)$/.test(lowerUrl)) {
+            actualMediaType = 'video';
+          } else if (/\.(mp3|ogg|wav|m4a|aac)$/.test(lowerUrl)) {
+            actualMediaType = 'audio';
+          } else if (lowerUrl.endsWith('.pdf')) {
+            actualMediaType = 'pdf';
+          } else {
+            actualMediaType = 'document';
+          }
+        }
+
+        switch (actualMediaType) {
           case 'image':
             content = { image: mediaSource };
             if (detectedMime) content.mimetype = detectedMime;
@@ -1036,7 +1066,7 @@ class SessionManager extends EventEmitter {
           case 'pdf':
             content = {
               document: mediaSource,
-              mimetype: detectedMime || (mediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
+              mimetype: detectedMime || (actualMediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
               fileName: mediaUrl.split('/').pop() || 'file',
             };
             if (message) content.caption = message;
@@ -1055,7 +1085,21 @@ class SessionManager extends EventEmitter {
         content.mentions = [senderJid];
       }
 
-      result = await sock.sendMessage(jid, content, options);
+      try {
+        result = await sock.sendMessage(jid, content, options);
+      } catch (err) {
+        console.error(`[sessions] Failed to send message to ${jid} with media. Error:`, err);
+        if (err.message && err.message.includes('unsupported image format')) {
+          console.warn(`[sessions] Sharp thumbnail generation failed. Retrying with jpegThumbnail set to null in options...`);
+          try {
+            result = await sock.sendMessage(jid, content, { ...options, jpegThumbnail: null });
+          } catch (retryErr) {
+            throw new Error(`Media transmission failed (Sharp retry also failed): ${retryErr.message}`);
+          }
+        } else {
+          throw err;
+        }
+      }
     }
 
     if (result) {

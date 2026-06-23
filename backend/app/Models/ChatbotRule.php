@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChatbotRule extends Model
 {
-    protected $fillable = ['user_id', 'trigger', 'match_type', 'reply', 'platform', 'is_active', 'reply_type', 'prefix'];
+    protected $fillable = ['user_id', 'trigger', 'match_type', 'reply', 'media_url', 'media_type', 'platform', 'is_active', 'is_ai', 'reply_type', 'prefix'];
 
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'is_ai' => 'boolean',
+        ];
     }
 
     public function matches(string $text): bool
@@ -19,6 +22,11 @@ class ChatbotRule extends Model
 
         $t = mb_strtolower(trim($text));
         $k = mb_strtolower(trim($this->trigger));
+
+        // Wildcard trigger '*' matches any incoming message
+        if ($k === '*') {
+            return true;
+        }
         $rulePrefix = $this->prefix ?? 'any';
 
         // 1. If prefix is 'none' (Strictly no prefix)

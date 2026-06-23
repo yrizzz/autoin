@@ -4,7 +4,8 @@ import AdminLayout from '../layout/AdminLayout';
 import { 
   Plus, Search, Cpu, ToggleLeft, ToggleRight, Trash2, Edit3, 
   MessageSquare, Loader2, MessageCircle, Settings, Settings2,
-  HelpCircle, Sparkles, Check, X, ShieldAlert, ArrowRight, CornerDownRight
+  HelpCircle, Sparkles, Check, X, ShieldAlert, ArrowRight, CornerDownRight,
+  Upload, Video, FileText
 } from 'lucide-react';
 
 interface ChatbotRule {
@@ -12,8 +13,11 @@ interface ChatbotRule {
   trigger: string;
   match_type: 'exact' | 'contains' | 'starts_with';
   reply: string;
+  media_url?: string | null;
+  media_type?: string | null;
   platform: 'all' | 'whatsapp';
   is_active: boolean;
+  is_ai?: boolean;
   reply_type?: 'normal' | 'quote';
   prefix?: 'any' | 'none' | '.' | '/' | '!' | '#';
   created_at: string;
@@ -40,6 +44,11 @@ export default function ChatbotRules() {
   const [platform, setPlatform]   = useState<ChatbotRule['platform']>('all');
   const [replyType, setReplyType] = useState<'normal' | 'quote'>('normal');
   const [prefix, setPrefix]       = useState<string>('any');
+  const [mediaUrl, setMediaUrl]   = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<string | null>(null);
+  const [isAi, setIsAi]           = useState<boolean>(false);
+  const [uploading, setUploading] = useState<boolean>(false);
+  const [optimizing, setOptimizing] = useState<boolean>(false);
 
   // Custom delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -77,6 +86,9 @@ export default function ChatbotRules() {
     setPlatform('all');
     setReplyType('normal');
     setPrefix('any');
+    setMediaUrl(null);
+    setMediaType(null);
+    setIsAi(false);
     setModalOpen(true);
   }
 
@@ -88,6 +100,9 @@ export default function ChatbotRules() {
     setPlatform(rule.platform);
     setReplyType(rule.reply_type || 'normal');
     setPrefix(rule.prefix || 'any');
+    setMediaUrl(rule.media_url || null);
+    setMediaType(rule.media_type || null);
+    setIsAi(!!rule.is_ai);
     setModalOpen(true);
   }
 
@@ -109,20 +124,74 @@ export default function ChatbotRules() {
     }
   }
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('autoin_token');
+      const formData = new FormData();
+      formData.append('file', files[0]);
+
+      const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8001';
+      const res = await fetch(`${apiUrl}/api/upload`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error('Upload failed');
+      const data = await res.json();
+      setMediaUrl(data.url);
+      setMediaType(data.mediaType || 'document');
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal mengunggah file.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  async function handleOptimizeWithAI() {
+    if (!reply.trim()) {
+      alert('Tulis pesan balasan terlebih dahulu untuk dioptimalkan.');
+      return;
+    }
+    setOptimizing(true);
+    try {
+      const res = await api.post<{ optimized: string; suggestions: string[]; is_simulated: boolean }>('/api/ai/optimize', {
+        content: reply
+      });
+      if (res && res.optimized) {
+        setReply(res.optimized);
+      }
+    } catch (e: any) {
+      alert(e.message ?? 'Gagal mengoptimalkan pesan dengan AI.');
+    } finally {
+      setOptimizing(false);
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!trigger.trim() || !reply.trim()) return;
     setSaving(true);
     try {
+      const payload = {
+        trigger,
+        match_type: matchType,
+        reply,
+        platform,
+        reply_type: replyType,
+        prefix,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        is_ai: isAi,
+      };
       if (editingRule) {
-        const updated = await api.put<ChatbotRule>(`/api/chatbot-rules/${editingRule.id}`, {
-          trigger, match_type: matchType, reply, platform, reply_type: replyType, prefix,
-        });
+        const updated = await api.put<ChatbotRule>(`/api/chatbot-rules/${editingRule.id}`, payload);
         setRules(prev => prev.map(r => r.id === editingRule.id ? updated : r));
       } else {
-        const created = await api.post<ChatbotRule>('/api/chatbot-rules', {
-          trigger, match_type: matchType, reply, platform, reply_type: replyType, prefix,
-        });
+        const created = await api.post<ChatbotRule>('/api/chatbot-rules', payload);
         setRules(prev => [created, ...prev]);
       }
       setModalOpen(false);
@@ -254,6 +323,12 @@ export default function ChatbotRules() {
 
                 {/* Metadata Badges */}
                 <div className="flex items-center gap-1.5 flex-wrap">
+                  {rule.is_ai && (
+                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-purple-500/10 text-purple-650 dark:text-purple-400 border-purple-500/20 flex items-center gap-0.5">
+                      <Sparkles className="w-2.5 h-2.5 text-purple-500" />
+                      AI Autopilot
+                    </span>
+                  )}
                   <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-blue-500/5 text-blue-600 dark:text-blue-450 border-blue-500/10">
                     {MATCH_LABELS[rule.match_type] ?? rule.match_type}
                   </span>
@@ -278,10 +353,30 @@ export default function ChatbotRules() {
                   )}
                 </div>
 
+                {/* Media Preview block */}
+                {rule.media_url && (
+                  <div className="rounded-xl border border-zinc-100 dark:border-zinc-900/60 bg-zinc-50 dark:bg-zinc-950/20 p-2 flex items-center gap-2">
+                    {rule.media_type === 'image' ? (
+                      <img src={rule.media_url} className="w-8 h-8 object-cover rounded border border-zinc-200 dark:border-zinc-850" />
+                    ) : rule.media_type === 'video' ? (
+                      <div className="w-8 h-8 rounded bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                        <Video className="w-3.5 h-3.5" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20">
+                        <FileText className="w-3.5 h-3.5" />
+                      </div>
+                    )}
+                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 truncate max-w-[180px]">
+                      {rule.media_url.split('/').pop()}
+                    </span>
+                  </div>
+                )}
+
                 {/* Response Preview block */}
                 <div className="bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-900/60 px-3 py-2.5 rounded-xl relative">
                   <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap line-clamp-3 font-medium">
-                    <span className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase mr-1.5">Reply:</span>
+                    <span className="text-[10px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase mr-1.5">{rule.is_ai ? 'Instruksi AI:' : 'Reply:'}</span>
                     {rule.reply}
                   </p>
                 </div>
@@ -387,15 +482,125 @@ export default function ChatbotRules() {
                 </select>
               </div>
 
+              {/* AI Autopilot Toggle */}
+              <div className="flex items-center justify-between p-3.5 bg-purple-500/5 border border-purple-500/10 rounded-2xl">
+                <div>
+                  <span className="block text-xs font-bold text-purple-700 dark:text-purple-400 flex items-center gap-1">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-500" />
+                    Mode AI Autopilot
+                  </span>
+                  <span className="text-[10px] text-zinc-500">
+                    Gunakan kecerdasan buatan untuk menjawab secara dinamis berdasarkan instruksi.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAi(!isAi)}
+                  className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer shrink-0 ${
+                    isAi ? 'bg-purple-600' : 'bg-zinc-250 dark:bg-zinc-800'
+                  }`}
+                >
+                  <div
+                    className={`bg-white w-3.5 h-3.5 rounded-full shadow transform transition-transform duration-250 ${
+                      isAi ? 'translate-x-3.5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Reply Textarea with AI Optimization */}
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                    {isAi ? 'Instruksi / Panduan AI' : 'Isi Pesan Balasan (Reply)'}
+                  </label>
+                  {!isAi && (
+                    <button
+                      type="button"
+                      onClick={handleOptimizeWithAI}
+                      disabled={optimizing}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-extrabold bg-purple-500/10 hover:bg-purple-500/15 text-purple-650 dark:text-purple-400 rounded-lg cursor-pointer transition-all disabled:opacity-50"
+                    >
+                      {optimizing ? (
+                        <Loader2 className="w-3 h-3 animate-spin animate-pulse" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      Optimalkan dengan AI
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  placeholder={
+                    isAi
+                      ? "Contoh: Jawab pelanggan bahwa jam operasional kami jam 9-18. Beri tahu harga paket PRO Rp 100rb/bln. Bersikaplah ramah dan gunakan emoji."
+                      : "Tulis pesan auto-reply di sini..."
+                  }
+                  value={reply}
+                  onChange={e => setReply(e.target.value)}
+                  rows={4}
+                  className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 resize-none font-sans"
+                  required
+                />
+              </div>
+
+              {/* Media Upload */}
               <div>
                 <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
-                  Isi Pesan Balasan (Reply)
+                  Lampiran Media (Opsional)
                 </label>
-                <textarea placeholder="Tulis pesan auto-reply di sini..."
-                  value={reply} onChange={e => setReply(e.target.value)}
-                  rows={5}
-                  className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:border-blue-500 transition-all text-zinc-800 dark:text-zinc-100 resize-none font-sans"
-                  required />
+                {mediaUrl ? (
+                  <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-2 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {mediaType === 'image' ? (
+                        <img src={mediaUrl} className="w-10 h-10 object-cover rounded border border-zinc-200 dark:border-zinc-850" />
+                      ) : mediaType === 'video' ? (
+                        <div className="w-10 h-10 rounded bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
+                          <Video className="w-5 h-5" />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                      )}
+                      <span className="text-[11px] font-bold text-zinc-650 dark:text-zinc-350 truncate max-w-[150px]">
+                        {mediaUrl.split('/').pop()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setMediaUrl(null); setMediaType(null); }}
+                      className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-all relative">
+                    <input
+                      type="file"
+                      onChange={handleFileUpload}
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                      disabled={uploading}
+                    />
+                    {uploading ? (
+                      <div className="flex flex-col items-center justify-center">
+                        <Loader2 className="w-5 h-5 text-blue-500 animate-spin mb-1" />
+                        <span className="text-[10px] font-bold text-zinc-500">Mengupload media...</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center">
+                        <Upload className="w-5 h-5 text-zinc-300 dark:text-zinc-600 mb-1" />
+                        <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300">
+                          Klik untuk Upload File (Foto, Video, PDF)
+                        </span>
+                        <span className="text-[8px] text-zinc-400 dark:text-zinc-500">
+                          File akan dikirim otomatis bersama balasan chat.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Modal Footer */}
@@ -404,7 +609,7 @@ export default function ChatbotRules() {
                   className="px-4 py-2.5 bg-zinc-50 hover:bg-zinc-150 dark:bg-zinc-900 dark:hover:bg-zinc-850 text-zinc-600 dark:text-zinc-300 font-bold text-xs rounded-xl transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800">
                   Batal
                 </button>
-                <button type="submit" disabled={saving}
+                <button type="submit" disabled={saving || uploading}
                   className="btn-primary flex items-center gap-1.5 px-5 py-2.5 font-bold text-xs rounded-xl shadow-md cursor-pointer disabled:opacity-60">
                   {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Simpan Aturan
