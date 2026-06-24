@@ -5,8 +5,10 @@ import CodeEditor from '../ui/CodeEditor';
 import {
   Plus, Search, Puzzle, ToggleLeft, ToggleRight, Trash2, Edit3,
   Loader2, Play, Terminal, AlertTriangle, Check, X, Image as ImageIcon,
-  BookOpen, Sparkles, Clock,
+  BookOpen, Sparkles, Clock, LayoutGrid, Table as TableIcon,
 } from 'lucide-react';
+
+type ViewMode = 'card' | 'table';
 
 interface Plugin {
   id: number;
@@ -68,6 +70,10 @@ export default function Plugins() {
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<ViewMode>(
+    () => (typeof localStorage !== 'undefined' && localStorage.getItem('plugins:view') === 'table') ? 'table' : 'card'
+  );
+  useEffect(() => { try { localStorage.setItem('plugins:view', view); } catch { /* ignore */ } }, [view]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Plugin | null>(null);
   const [saving, setSaving] = useState(false);
@@ -249,11 +255,23 @@ export default function Plugins() {
         </div>
       </div>
 
-      {/* ── Search ─────────────────────────────────────────────────────────── */}
-      <div className="relative mb-4 max-w-md">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari plugin…"
-          className="w-full pl-9 pr-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 transition" />
+      {/* ── Search + view toggle ───────────────────────────────────────────── */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari plugin…"
+            className="w-full pl-9 pr-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/60 focus:border-blue-500 transition" />
+        </div>
+        <div className="ml-auto inline-flex items-center gap-0.5 rounded-lg border border-zinc-200 dark:border-zinc-700 p-0.5 bg-white dark:bg-zinc-900 shrink-0">
+          <button onClick={() => setView('card')} title="Tampilan kartu" aria-pressed={view === 'card'}
+            className={`p-1.5 rounded-md transition ${view === 'card' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button onClick={() => setView('table')} title="Tampilan tabel" aria-pressed={view === 'table'}
+            className={`p-1.5 rounded-md transition ${view === 'table' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+            <TableIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* ── List ───────────────────────────────────────────────────────────── */}
@@ -268,6 +286,63 @@ export default function Plugins() {
           </div>
           <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Belum ada plugin</p>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Klik <b>Tambah Plugin</b> untuk membuat script pertamamu.</p>
+        </div>
+      ) : view === 'table' ? (
+        <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-[10.5px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <th className="text-left font-bold px-4 py-2.5">Nama</th>
+                <th className="text-left font-bold px-4 py-2.5 hidden md:table-cell">Deskripsi</th>
+                <th className="text-left font-bold px-4 py-2.5 hidden sm:table-cell">Timeout</th>
+                <th className="text-left font-bold px-4 py-2.5">Status</th>
+                <th className="text-right font-bold px-4 py-2.5">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {filtered.map(p => (
+                <tr key={p.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition">
+                  <td className="px-4 py-2.5 align-top">
+                    <div className="font-bold text-zinc-900 dark:text-white truncate max-w-[220px]">{p.name}</div>
+                    {p.last_error && (
+                      <div title={p.last_error} className="mt-0.5 flex items-center gap-1 text-[10.5px] text-amber-600 dark:text-amber-400">
+                        <AlertTriangle className="w-2.5 h-2.5 shrink-0" /><span className="truncate max-w-[200px]">{friendlyError(p.last_error)}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 align-top hidden md:table-cell text-zinc-500 dark:text-zinc-400">
+                    <span className="block truncate max-w-[320px]">{p.description || <span className="italic text-zinc-400 dark:text-zinc-600">—</span>}</span>
+                  </td>
+                  <td className="px-4 py-2.5 align-top hidden sm:table-cell text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+                    <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {(p.timeout_ms / 1000).toFixed(0)}s</span>
+                  </td>
+                  <td className="px-4 py-2.5 align-top">
+                    <button onClick={() => handleToggle(p)} title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                      className="inline-flex items-center gap-1.5">
+                      {p.is_active
+                        ? <ToggleRight className="w-6 h-6 text-blue-500" />
+                        : <ToggleLeft className="w-6 h-6 text-zinc-300 dark:text-zinc-600" />}
+                      <span className={`text-[11px] font-semibold ${p.is_active ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400'}`}>
+                        {p.is_active ? 'Aktif' : 'Nonaktif'}
+                      </span>
+                    </button>
+                  </td>
+                  <td className="px-4 py-2.5 align-top">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => openEdit(p)} title="Edit & Tes"
+                        className="p-1.5 rounded-lg text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => setToDelete(p)} title="Hapus"
+                        className="p-1.5 rounded-lg text-zinc-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

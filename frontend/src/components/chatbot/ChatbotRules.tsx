@@ -4,7 +4,10 @@ import AdminLayout from '../layout/AdminLayout';
 import {
   Plus, Search, Cpu, Trash2, Edit3, MessageSquare, Loader2,
   Sparkles, X, Upload, Video, FileText, Puzzle, Check, ArrowRight, Quote,
+  LayoutGrid, Table as TableIcon,
 } from 'lucide-react';
+
+type ViewMode = 'card' | 'table';
 
 interface ChatbotRule {
   id: number;
@@ -49,6 +52,10 @@ export default function ChatbotRules() {
   const [plugins, setPlugins] = useState<PluginLite[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<ViewMode>(
+    () => (typeof localStorage !== 'undefined' && localStorage.getItem('chatbot:view') === 'table') ? 'table' : 'card'
+  );
+  useEffect(() => { try { localStorage.setItem('chatbot:view', view); } catch { /* ignore */ } }, [view]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ChatbotRule | null>(null);
   const [saving, setSaving] = useState(false);
@@ -286,6 +293,16 @@ export default function ChatbotRules() {
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+          <div className="inline-flex items-center gap-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700 p-0.5 bg-white dark:bg-zinc-900">
+            <button onClick={() => setView('card')} title="Tampilan kartu" aria-pressed={view === 'card'}
+              className={`p-1.5 rounded-lg transition ${view === 'card' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button onClick={() => setView('table')} title="Tampilan tabel" aria-pressed={view === 'table'}
+              className={`p-1.5 rounded-lg transition ${view === 'table' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}>
+              <TableIcon className="w-4 h-4" />
+            </button>
+          </div>
           <a href="/plugins" className="inline-flex items-center gap-1.5 text-xs font-bold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 px-3.5 py-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800">
             <Puzzle className="w-3.5 h-3.5" /> Kelola Plugin
           </a>
@@ -313,6 +330,62 @@ export default function ChatbotRules() {
           <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">{search ? 'Tidak ada aturan yang cocok' : 'Belum ada aturan chatbot'}</h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-xs">{search ? 'Coba kata kunci lain.' : 'Buat auto-reply agar bot merespon otomatis.'}</p>
           {!search && <button onClick={handleOpenCreate} className="mt-4 btn-primary px-4 py-2 text-white text-xs font-bold rounded-xl">Mulai Buat Aturan</button>}
+        </div>
+      ) : view === 'table' ? (
+        <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-[10.5px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <th className="text-left font-bold px-4 py-2.5">Pemicu</th>
+                <th className="text-left font-bold px-4 py-2.5">Mode</th>
+                <th className="text-left font-bold px-4 py-2.5 hidden md:table-cell">Balasan / Plugin</th>
+                <th className="text-left font-bold px-4 py-2.5 hidden sm:table-cell">Match</th>
+                <th className="text-left font-bold px-4 py-2.5">Status</th>
+                <th className="text-right font-bold px-4 py-2.5">Aksi</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {filtered.map(rule => {
+                const plg = pluginById(rule.plugin_id);
+                const prefixStr = rule.prefix && !['any', 'none'].includes(rule.prefix) ? rule.prefix : '';
+                return (
+                  <tr key={rule.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition ${rule.is_active ? '' : 'opacity-60'}`}>
+                    <td className="px-4 py-2.5 align-top">
+                      <code className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{prefixStr}{rule.trigger}</code>
+                    </td>
+                    <td className="px-4 py-2.5 align-top"><ModeBadge rule={rule} /></td>
+                    <td className="px-4 py-2.5 align-top hidden md:table-cell text-zinc-500 dark:text-zinc-400">
+                      <span className="block truncate max-w-[340px]">
+                        {rule.plugin_id
+                          ? (plg ? plg.name : `Plugin #${rule.plugin_id}`)
+                          : (rule.reply || <span className="italic text-zinc-400 dark:text-zinc-600">—</span>)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 align-top hidden sm:table-cell text-zinc-500 dark:text-zinc-400 whitespace-nowrap text-[11px]">
+                      {MATCH_LABELS[rule.match_type] ?? rule.match_type}
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      <button onClick={() => handleToggle(rule)} title={rule.is_active ? 'Nonaktifkan' : 'Aktifkan'}
+                        className="inline-flex items-center gap-1.5">
+                        <span className={`w-8 h-4.5 flex items-center rounded-full p-0.5 transition-colors shrink-0 ${rule.is_active ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
+                          <span className={`bg-white w-3.5 h-3.5 rounded-full shadow transform transition-transform ${rule.is_active ? 'translate-x-3.5' : 'translate-x-0'}`} />
+                        </span>
+                        <span className={`text-[11px] font-semibold ${rule.is_active ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-400'}`}>{rule.is_active ? 'Aktif' : 'Nonaktif'}</span>
+                      </button>
+                    </td>
+                    <td className="px-4 py-2.5 align-top">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => handleOpenEdit(rule)} title="Edit"
+                          className="p-1.5 text-zinc-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-lg transition"><Edit3 className="w-4 h-4" /></button>
+                        <button onClick={() => handleDelete(rule)} title="Hapus"
+                          className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

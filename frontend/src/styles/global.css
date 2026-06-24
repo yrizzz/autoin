@@ -16,6 +16,16 @@
   --color-bg-dark: #030712;
   --color-card-dark: #0a0f1d;
   --color-border-dark: rgba(255, 255, 255, 0.06);
+  /* Intermediate zinc shades (bukan bawaan Tailwind). Tanpa ini, util seperti
+     `dark:text-zinc-150` tidak menghasilkan warna → teks mewarisi warna induk
+     (jadi gelap/tak terlihat di dark mode, baru muncul saat hover). */
+  --color-zinc-150: #ECECEE;
+  --color-zinc-250: #DCDCE0;
+  --color-zinc-350: #BBBBC1;
+  --color-zinc-450: #898992;
+  --color-zinc-550: #62626B;
+  --color-zinc-650: #494951;
+  --color-zinc-750: #333338;
   --color-zinc-850: #202024;
 }
 
