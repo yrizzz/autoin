@@ -1009,6 +1009,7 @@ class SessionManager extends EventEmitter {
 
     if (!result) {
       let content = {};
+      let actualMediaType = null;
       if (mediaUrl) {
         await saveRemoteDebugLog('last_media_info', {
           time: new Date().toISOString(),
@@ -1116,7 +1117,7 @@ class SessionManager extends EventEmitter {
           mediaSource = { url: resolvedUrl };
         }
 
-        let actualMediaType = mediaType;
+        actualMediaType = mediaType;
         if (!actualMediaType && detectedMime) {
           if (detectedMime.startsWith('image/')) {
             actualMediaType = 'image';
