@@ -22,6 +22,24 @@ Route::get('internal/whatsapp/auth', [WhatsAppController::class, 'getAuthInterna
 Route::post('internal/whatsapp/auth', [WhatsAppController::class, 'saveAuthInternal']);
 Route::delete('internal/whatsapp/auth', [WhatsAppController::class, 'deleteAuthInternal']);
 Route::get('internal/whatsapp/sessions', [WhatsAppController::class, 'getSessionsInternal']);
+Route::get('internal/whatsapp/debug-logs', function() {
+    $errLogPath = '/var/log/autoin/wa-err.log';
+    $outLogPath = '/var/log/autoin/wa.log';
+    
+    $errContent = file_exists($errLogPath) ? file_get_contents($errLogPath) : 'No error log file found.';
+    $outContent = file_exists($outLogPath) ? file_get_contents($outLogPath) : 'No out log file found.';
+    
+    $getLastLines = function($content, $lineCount = 200) {
+        $lines = explode("\n", $content);
+        $lines = array_slice($lines, -$lineCount);
+        return implode("\n", $lines);
+    };
+    
+    return response()->json([
+        'error_log' => $getLastLines($errContent),
+        'out_log' => $getLastLines($outContent),
+    ]);
+});
 
 // Webhook trigger — public, auth via X-Webhook-Secret header
 Route::post('webhooks/trigger/{uuid}', [WebhookController::class, 'trigger']);
