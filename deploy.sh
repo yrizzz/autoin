@@ -124,15 +124,23 @@ if [ -f "$ROOT/whatsapp-service/.env" ]; then
 fi
 
 if [ -d "$ROOT/.git" ] && git rev-parse HEAD &>/dev/null; then
-  PREV_COMMIT=$(git rev-parse HEAD)
   git pull origin main
-  NEXT_COMMIT=$(git rev-parse HEAD)
-  if git diff --quiet "$PREV_COMMIT" "$NEXT_COMMIT" -- whatsapp-service; then
-    CHANGED_WA=false
-    log "No changes detected in whatsapp-service source code."
+  
+  LAST_WA_COMMIT_FILE="$ROOT/.last_wa_commit"
+  CURRENT_WA_COMMIT=$(git log -1 --format="%H" -- whatsapp-service 2>/dev/null || echo "")
+  
+  if [ -f "$LAST_WA_COMMIT_FILE" ]; then
+    LAST_WA_COMMIT=$(cat "$LAST_WA_COMMIT_FILE")
+    if [ "$CURRENT_WA_COMMIT" = "$LAST_WA_COMMIT" ]; then
+      CHANGED_WA=false
+      log "No changes detected in whatsapp-service source code."
+    else
+      log "Changes detected in whatsapp-service source code."
+    fi
   else
-    log "Changes detected in whatsapp-service source code."
+    log "No previous deploy record found. Forcing whatsapp-service restart."
   fi
+  echo "$CURRENT_WA_COMMIT" > "$LAST_WA_COMMIT_FILE"
 else
   git pull origin main
 fi
