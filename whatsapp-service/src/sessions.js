@@ -9,6 +9,10 @@ import makeWASocket, {
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
