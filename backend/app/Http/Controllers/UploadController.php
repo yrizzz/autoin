@@ -51,10 +51,12 @@ class UploadController extends Controller
 
         $disk = env('FILESYSTEM_DISK', 'public');
         
-        $path = $file->storeAs('uploads', $filename, [
-            'disk'       => $disk,
-            'visibility' => 'public',
-        ]);
+        $options = ['disk' => $disk];
+        if ($disk !== 's3') {
+            $options['visibility'] = 'public';
+        }
+        
+        $path = $file->storeAs('uploads', $filename, $options);
 
         $url = \Illuminate\Support\Facades\Storage::disk($disk)->url($path);
 

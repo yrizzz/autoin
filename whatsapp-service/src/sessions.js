@@ -971,6 +971,10 @@ class SessionManager extends EventEmitter {
     if (!result) {
       let content = {};
       if (mediaUrl) {
+        // Handle relative URLs by prepending the backend URL
+        if (mediaUrl.startsWith('/')) {
+          mediaUrl = `${BACKEND_URL}${mediaUrl}`;
+        }
         let resolvedUrl = mediaUrl;
         let localFileBuffer = null;
         let detectedMime = null;

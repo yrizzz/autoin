@@ -29,6 +29,13 @@ const MATCH_LABELS: Record<string, string> = {
   starts_with: 'Diawali dengan',
 };
 
+const getAbsoluteMediaUrl = (url: string | null) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  const base = import.meta.env.PUBLIC_API_URL || 'http://localhost:8001';
+  return `${base.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+};
+
 export default function ChatbotRules() {
   const [rules, setRules]       = useState<ChatbotRule[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -354,24 +361,42 @@ export default function ChatbotRules() {
                 </div>
 
                 {/* Media Preview block */}
-                {rule.media_url && (
-                  <div className="rounded-xl border border-zinc-100 dark:border-zinc-900/60 bg-zinc-50 dark:bg-zinc-950/20 p-2 flex items-center gap-2">
-                    {rule.media_type === 'image' ? (
-                      <img src={rule.media_url} className="w-8 h-8 object-cover rounded border border-zinc-200 dark:border-zinc-850" />
-                    ) : rule.media_type === 'video' ? (
-                      <div className="w-8 h-8 rounded bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
-                        <Video className="w-3.5 h-3.5" />
+                {rule.media_url && (() => {
+                  const fullUrl = getAbsoluteMediaUrl(rule.media_url);
+                  const filename = rule.media_url.split('/').pop();
+                  return (
+                    <div className="rounded-xl border border-zinc-150 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/30 p-2.5 flex flex-col gap-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 truncate max-w-[180px]" title={filename}>
+                          {filename}
+                        </span>
+                        <a href={fullUrl} target="_blank" rel="noopener noreferrer" 
+                          className="text-[9px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline shrink-0">
+                          Buka Media ↗
+                        </a>
                       </div>
-                    ) : (
-                      <div className="w-8 h-8 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20">
-                        <FileText className="w-3.5 h-3.5" />
-                      </div>
-                    )}
-                    <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 truncate max-w-[180px]">
-                      {rule.media_url.split('/').pop()}
-                    </span>
-                  </div>
-                )}
+                      
+                      {rule.media_type === 'image' && (
+                        <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950 group/img">
+                          <img src={fullUrl} className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105" alt={filename} />
+                        </div>
+                      )}
+
+                      {rule.media_type === 'video' && (
+                        <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950">
+                          <video src={fullUrl} className="w-full h-full object-cover" controls preload="metadata" muted />
+                        </div>
+                      )}
+
+                      {rule.media_type !== 'image' && rule.media_type !== 'video' && (
+                        <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/5 border border-blue-500/10 text-blue-650 dark:text-blue-400">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="text-[10px] font-medium truncate">Dokumen Lampiran</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Response Preview block */}
                 <div className="bg-zinc-50 dark:bg-zinc-950/40 border border-zinc-100 dark:border-zinc-900/60 px-3 py-2.5 rounded-xl relative">
@@ -549,33 +574,53 @@ export default function ChatbotRules() {
                 <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
                   Lampiran Media (Opsional)
                 </label>
-                {mediaUrl ? (
-                  <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      {mediaType === 'image' ? (
-                        <img src={mediaUrl} className="w-10 h-10 object-cover rounded border border-zinc-200 dark:border-zinc-850" />
-                      ) : mediaType === 'video' ? (
-                        <div className="w-10 h-10 rounded bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20">
-                          <Video className="w-5 h-5" />
+                {mediaUrl ? (() => {
+                  const fullUrl = getAbsoluteMediaUrl(mediaUrl);
+                  const filename = mediaUrl.split('/').pop();
+                  return (
+                    <div className="relative rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-zinc-50 dark:bg-zinc-900/40 p-3 flex flex-col gap-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {mediaType === 'image' ? (
+                            <div className="w-8 h-8 rounded overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-100 shrink-0">
+                              <img src={fullUrl} className="w-full h-full object-cover" />
+                            </div>
+                          ) : mediaType === 'video' ? (
+                            <div className="w-8 h-8 rounded bg-purple-500/10 text-purple-600 flex items-center justify-center border border-purple-500/20 shrink-0">
+                              <Video className="w-4 h-4" />
+                            </div>
+                          ) : (
+                            <div className="w-8 h-8 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20 shrink-0">
+                              <FileText className="w-4 h-4" />
+                            </div>
+                          )}
+                          <span className="text-[11px] font-bold text-zinc-650 dark:text-zinc-330 truncate max-w-[150px]" title={filename}>
+                            {filename}
+                          </span>
                         </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded bg-blue-500/10 text-blue-600 flex items-center justify-center border border-blue-500/20">
-                          <FileText className="w-5 h-5" />
+                        <button
+                          type="button"
+                          onClick={() => { setMediaUrl(null); setMediaType(null); }}
+                          className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {mediaType === 'image' && (
+                        <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950">
+                          <img src={fullUrl} className="w-full h-full object-cover" />
                         </div>
                       )}
-                      <span className="text-[11px] font-bold text-zinc-650 dark:text-zinc-350 truncate max-w-[150px]">
-                        {mediaUrl.split('/').pop()}
-                      </span>
+
+                      {mediaType === 'video' && (
+                        <div className="relative aspect-video w-full rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-950">
+                          <video src={fullUrl} className="w-full h-full object-cover" controls preload="metadata" muted />
+                        </div>
+                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setMediaUrl(null); setMediaType(null); }}
-                      className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
+                  );
+                })() : (
                   <div className="border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-all relative">
                     <input
                       type="file"
