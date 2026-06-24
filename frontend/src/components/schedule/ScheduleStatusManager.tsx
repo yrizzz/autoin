@@ -341,7 +341,7 @@ export default function ScheduleStatusManager() {
   });
 
   return (
-    <AdminLayout activePage="schedule_status" title="Jadwal Status WA">
+    <AdminLayout activePage="schedule_status" title="Jadwal Status WA" fullWidth>
       {/* Title Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
