@@ -56,16 +56,33 @@ const KEY_MAP = {
 async function useMySQLAuthState(sessionId) {
   const getUrl = `${BACKEND_URL}/api/internal/whatsapp/auth?session_id=${sessionId}`;
   let dbData = {};
-  try {
-    const res = await fetch(getUrl, {
-      headers: { 'X-Internal-Secret': INTERNAL_SECRET },
-      signal: AbortSignal.timeout(15000)
-    });
-    if (res.ok) {
-      dbData = await res.json();
+  let success = false;
+  
+  // Try up to 3 times to load auth state from database to avoid transient errors on restart
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`[useMySQLAuthState] Loading auth state for ${sessionId} (attempt ${attempt})...`);
+      const res = await fetch(getUrl, {
+        headers: { 'X-Internal-Secret': INTERNAL_SECRET },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (res.ok) {
+        dbData = await res.json();
+        success = true;
+        break;
+      } else {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+    } catch (err) {
+      console.error(`[useMySQLAuthState] Failed to load auth state (attempt ${attempt}):`, err.message || err);
+      if (attempt < 3) {
+        await new Promise(r => setTimeout(r, 3000));
+      }
     }
-  } catch (err) {
-    console.error('Failed to load auth state from database:', err);
+  }
+
+  if (!success) {
+    throw new Error(`Failed to load auth state for session ${sessionId} after 3 attempts. Aborting connection to prevent session reset.`);
   }
 
   const authCache = {};
@@ -1296,7 +1313,7 @@ class SessionManager extends EventEmitter {
     }).catch(err => console.error('Failed to delete auth state from database:', err));
   }
 
-  async restoreSessions() {
+  async restoreSessions(attempt = 1) {
     try {
       const url = `${BACKEND_URL}/api/internal/whatsapp/sessions`;
       const res = await fetch(url, {
@@ -1311,9 +1328,15 @@ class SessionManager extends EventEmitter {
             console.error(`Failed to restore session ${sessionId}:`, err.message);
           });
         }
+      } else {
+        throw new Error(`Server returned status ${res.status}`);
       }
     } catch (err) {
-      console.error('Failed to restore sessions from database:', err);
+      console.error(`Failed to restore sessions from database (attempt ${attempt}):`, err.message || err);
+      if (attempt < 5) {
+        console.log(`Retrying session restoration in 5 seconds (attempt ${attempt + 1})...`);
+        setTimeout(() => this.restoreSessions(attempt + 1), 5000);
+      }
     }
   }
 

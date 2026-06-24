@@ -390,16 +390,18 @@ class WhatsAppController extends Controller
         ]);
 
         $sessionId = $data['session_id'];
-        foreach ($data['data'] as $key => $value) {
-            if (is_null($value)) {
-                WhatsAppAuth::where('session_id', $sessionId)->where('key', $key)->delete();
-            } else {
-                WhatsAppAuth::updateOrCreate(
-                    ['session_id' => $sessionId, 'key' => $key],
-                    ['value' => $value]
-                );
+        \Illuminate\Support\Facades\DB::transaction(function() use ($sessionId, $data) {
+            foreach ($data['data'] as $key => $value) {
+                if (is_null($value)) {
+                    WhatsAppAuth::where('session_id', $sessionId)->where('key', $key)->delete();
+                } else {
+                    WhatsAppAuth::updateOrCreate(
+                        ['session_id' => $sessionId, 'key' => $key],
+                        ['value' => $value]
+                    );
+                }
             }
-        }
+        });
 
         return response()->json(['status' => 'success']);
     }
