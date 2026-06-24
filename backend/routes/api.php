@@ -22,6 +22,7 @@ Route::get('internal/whatsapp/auth', [WhatsAppController::class, 'getAuthInterna
 Route::post('internal/whatsapp/auth', [WhatsAppController::class, 'saveAuthInternal']);
 Route::delete('internal/whatsapp/auth', [WhatsAppController::class, 'deleteAuthInternal']);
 Route::get('internal/whatsapp/sessions', [WhatsAppController::class, 'getSessionsInternal']);
+Route::get('internal/whatsapp/media', [WhatsAppController::class, 'getMediaInternal']);
 Route::get('internal/whatsapp/debug-logs', function() {
     $errLogPath = '/var/log/autoin/wa-err.log';
     $outLogPath = '/var/log/autoin/wa.log';

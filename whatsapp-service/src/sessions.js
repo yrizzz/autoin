@@ -1026,7 +1026,27 @@ class SessionManager extends EventEmitter {
             }
           }
 
-          // 2. If not found on disk, try internal loopback URLs
+          // 2. Try fetching from direct backend media proxy (for S3/R2 storage)
+          if (!localFileBuffer) {
+            const proxyUrl = `${BACKEND_URL}/api/internal/whatsapp/media?path=uploads/${filename}`;
+            try {
+              console.log(`[sessions] Trying backend media proxy: ${proxyUrl}`);
+              const res = await fetch(proxyUrl, {
+                headers: { 'X-Internal-Secret': INTERNAL_SECRET },
+                signal: AbortSignal.timeout(15000)
+              });
+              if (res.ok) {
+                const ab = await res.arrayBuffer();
+                localFileBuffer = Buffer.from(ab);
+                detectedMime = res.headers.get('content-type');
+                console.log(`[sessions] Successfully fetched from backend media proxy: size=${localFileBuffer.length} bytes, mime=${detectedMime}`);
+              }
+            } catch (e) {
+              console.log(`[sessions] Backend media proxy fetch failed:`, e.message || e);
+            }
+          }
+
+          // 3. If still not found, try internal loopback URLs
           if (!localFileBuffer) {
             const internalUrls = [
               `${BACKEND_URL}/storage/uploads/${filename}`,

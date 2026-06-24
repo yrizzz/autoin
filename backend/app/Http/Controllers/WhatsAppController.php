@@ -336,6 +336,34 @@ class WhatsAppController extends Controller
         ]);
     }
 
+    public function getMediaInternal(Request $request)
+    {
+        $secret = $request->header('X-Internal-Secret');
+        if ($secret !== config('services.whatsapp.secret', 'autoin-wa-secret') && $secret !== 'autoin-internal-secret') {
+            return response()->json(['message' => 'Unauthorized.'], 401);
+        }
+
+        $path = $request->query('path');
+        if (!$path) {
+            return response()->json(['message' => 'Path parameter is required.'], 422);
+        }
+
+        $disk = env('FILESYSTEM_DISK', 'public');
+        $storage = \Illuminate\Support\Facades\Storage::disk($disk);
+
+        if (!$storage->exists($path)) {
+            return response()->json(['message' => 'File not found.'], 404);
+        }
+
+        try {
+            $file = $storage->get($path);
+            $mime = $storage->mimeType($path);
+            return response($file, 200)->header('Content-Type', $mime);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Failed to retrieve media: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function getAuthInternal(Request $request)
     {
         $secret = $request->header('X-Internal-Secret');
