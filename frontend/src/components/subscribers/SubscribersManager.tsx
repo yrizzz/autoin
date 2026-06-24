@@ -657,10 +657,10 @@ export default function SubscribersManager() {
                     }}
                     className="w-full px-3.5 py-2.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 transition-all"
                   >
-                    <option value="free">Free Trial</option>
+                    <option value="free">Free Plan</option>
                     <option value="daily">Daily Pass</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
+                    <option value="weekly">Weekly Pass</option>
+                    <option value="monthly">Monthly Pass</option>
                   </select>
                 </div>
 

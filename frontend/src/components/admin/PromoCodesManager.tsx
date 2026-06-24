@@ -238,8 +238,8 @@ export default function PromoCodesManager() {
                 >
                   <option value="">Berlaku untuk semua paket</option>
                   <option value="daily">Daily Pass</option>
+                  <option value="weekly">Weekly Pass</option>
                   <option value="monthly">Monthly Pass</option>
-                  <option value="yearly">Yearly Pass</option>
                 </select>
               </div>
 

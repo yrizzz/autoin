@@ -1,22 +1,25 @@
 import { Check } from 'lucide-react';
 
+const plainTheme = 'bg-white dark:bg-[#0a0f1d]/40 border-zinc-200 dark:border-zinc-800/60 text-zinc-900 dark:text-white hover:border-zinc-300 dark:hover:border-zinc-700';
+
 const plans = [
   {
     name: 'Free Plan',
     price: 'Gratis',
     period: 'Selamanya',
-    description: 'Bisa pairing device untuk uji coba performa Autoin.',
+    description: 'Coba semua fitur inti — termasuk 1 chatbot & 1 plugin.',
     features: [
       { text: 'Koneksi 1 Device WhatsApp', included: true },
-      { text: 'Maksimal 3 Campaign Broadcast', included: true },
-      { text: 'Maksimal 1 Template Pesan', included: true },
-      { text: 'Limit 10 Pesan / Broadcast', included: true },
+      { text: '3 Campaign Broadcast', included: true },
+      { text: '50 Pesan / hari', included: true },
+      { text: '1 Auto-Reply Chatbot', included: true },
+      { text: '1 Plugin / Extension', included: true },
+      { text: '1 Template & 1 Webhook', included: true },
       { text: 'Akses Terbatas Asisten AI', included: true },
-      { text: 'Laporan Pengiriman Dasar', included: true },
     ],
     cta: 'Mulai Gratis',
     highlight: false,
-    themeClass: 'bg-white dark:bg-[#0a0f1d]/40 border-zinc-200 dark:border-zinc-800/60 text-zinc-900 dark:text-white hover:border-zinc-300 dark:hover:border-zinc-700'
+    themeClass: plainTheme
   },
   {
     name: 'Daily Pass',
@@ -24,34 +27,52 @@ const plans = [
     period: '/ hari',
     description: 'Sangat fleksibel. Aktifkan fitur premium hanya saat dibutuhkan.',
     features: [
-      { text: 'Koneksi 3 Device WhatsApp', included: true, highlight: true },
-      { text: 'Broadcast Tanpa Batas', included: true, highlight: true },
-      { text: 'Template Pesan Tanpa Batas', included: true, highlight: true },
-      { text: 'Pesan Terkirim Tanpa Limit', included: true, highlight: true },
-      { text: 'Akses Penuh Asisten AI', included: true, highlight: true },
-      { text: 'Analisis Detail & Logs', included: true },
+      { text: 'Koneksi 1 Device WhatsApp', included: true, highlight: true },
+      { text: 'Broadcast & Pesan Tanpa Batas', included: true, highlight: true },
+      { text: 'Template Pesan Tanpa Batas', included: true },
+      { text: '5 Auto-Reply Chatbot', included: true, highlight: true },
+      { text: '5 Plugin / Extension', included: true, highlight: true },
+      { text: '3 Webhook', included: true },
+      { text: 'Akses Penuh Asisten AI', included: true },
     ],
     cta: 'Aktifkan Daily Pass',
     highlight: true,
-    themeClass: 'bg-gradient-to-b from-blue-50/50 via-white to-white dark:from-[#141b35]/80 dark:via-[#0b1022]/80 dark:to-[#0b1022]/80 border-blue-500/50 dark:border-blue-500/40 shadow-[0_15px_40px_rgba(37,99,235,0.08)] dark:shadow-[0_20px_50px_rgba(37,99,235,0.15)] scale-[1.03] z-10 text-zinc-900 dark:text-white'
+    themeClass: 'bg-gradient-to-b from-blue-50/50 via-white to-white dark:from-[#141b35]/80 dark:via-[#0b1022]/80 dark:to-[#0b1022]/80 border-blue-500/50 dark:border-blue-500/40 shadow-[0_15px_40px_rgba(37,99,235,0.08)] dark:shadow-[0_20px_50px_rgba(37,99,235,0.15)] lg:scale-[1.03] z-10 text-zinc-900 dark:text-white'
+  },
+  {
+    name: 'Weekly Pass',
+    price: 'Rp 5.000',
+    period: '/ minggu',
+    description: 'Hemat untuk pemakaian rutin mingguan.',
+    features: [
+      { text: 'Koneksi 1 Device WhatsApp', included: true, highlight: true },
+      { text: 'Broadcast & Pesan Tanpa Batas', included: true, highlight: true },
+      { text: 'Template Pesan Tanpa Batas', included: true },
+      { text: '10 Auto-Reply Chatbot', included: true, highlight: true },
+      { text: '10 Plugin / Extension', included: true, highlight: true },
+      { text: '5 Webhook', included: true },
+      { text: 'Akses Penuh Asisten AI', included: true },
+    ],
+    cta: 'Aktifkan Weekly Pass',
+    highlight: false,
+    themeClass: plainTheme
   },
   {
     name: 'Monthly Pass',
     price: 'Rp 25.000',
     period: '/ bulan',
-    description: 'Pilihan hemat untuk UMKM dan bisnis skala menengah.',
+    description: 'Pilihan hemat untuk UMKM. Chatbot & plugin tanpa batas.',
     features: [
       { text: 'Koneksi 5 Device WhatsApp', included: true, highlight: true },
+      { text: 'Chatbot, Plugin & Webhook Tanpa Batas', included: true, highlight: true, badge: 'Unlimited' },
       { text: 'Semua Fitur Daily Pass', included: true },
-      { text: 'Akses Penuh Asisten AI', included: true },
       { text: 'Developer API & Webhook', included: true },
       { text: 'Sistem Antrean Prioritas', included: true },
-      { text: 'Hemat 20% dibanding Harian', included: true, badge: 'Hemat' },
       { text: 'Support Prioritas 24/7', included: true },
     ],
     cta: 'Berlangganan Bulanan',
     highlight: false,
-    themeClass: 'bg-white dark:bg-[#0a0f1d]/40 border-zinc-200 dark:border-zinc-800/60 text-zinc-900 dark:text-white hover:border-zinc-300 dark:hover:border-zinc-700'
+    themeClass: plainTheme
   },
 ];
 
@@ -62,7 +83,7 @@ export default function LandingPricing() {
       <div className="absolute top-[20%] left-[-10%] w-[400px] h-[400px] bg-blue-900/5 rounded-full blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[20%] right-[-10%] w-[400px] h-[400px] bg-purple-900/5 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-5xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-20">
           <h2 className="text-3xl md:text-5xl font-bold mb-4 font-display text-zinc-900 dark:text-white">
             Harga yang Sangat Hemat
@@ -73,7 +94,7 @@ export default function LandingPricing() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-stretch">
           {plans.map((plan) => (
             <div
               key={plan.name}

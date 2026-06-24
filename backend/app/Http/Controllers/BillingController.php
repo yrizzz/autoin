@@ -7,34 +7,36 @@ use Illuminate\Http\Request;
 
 class BillingController extends Controller
 {
+    // Catatan: daftar fitur disinkronkan dengan App\Services\PlanLimits & landing page.
+    // 'yearly' sengaja tidak ditampilkan di sini (backend tetap menerimanya bila dipanggil langsung).
     private static array $PLANS = [
         [
             'id'       => 'free',
-            'name'     => 'Free Trial',
+            'name'     => 'Free Plan',
             'price'    => 0,
             'period'   => null,
-            'features' => ['5 Broadcast Trial', 'Semua Channel', 'Analytics Dasar'],
+            'features' => ['1 Device WhatsApp', '3 Broadcast', '50 Pesan / hari', '1 Chatbot & 1 Plugin', '1 Template & 1 Webhook'],
         ],
         [
             'id'       => 'daily',
             'name'     => 'Daily Pass',
             'price'    => 1000,
             'period'   => 'day',
-            'features' => ['Unlimited Campaign', 'Unlimited Channel', 'Full Features', 'Fair Usage Policy'],
+            'features' => ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '5 Chatbot & 5 Plugin', '3 Webhook', 'Akses Penuh Asisten AI'],
+        ],
+        [
+            'id'       => 'weekly',
+            'name'     => 'Weekly Pass',
+            'price'    => 5000,
+            'period'   => 'week',
+            'features' => ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '10 Chatbot & 10 Plugin', '5 Webhook', 'Akses Penuh Asisten AI'],
         ],
         [
             'id'       => 'monthly',
-            'name'     => 'Monthly',
+            'name'     => 'Monthly Pass',
             'price'    => 25000,
             'period'   => 'month',
-            'features' => ['Semua Fitur Daily', 'Priority Queue', 'Advanced Analytics'],
-        ],
-        [
-            'id'       => 'yearly',
-            'name'     => 'Yearly',
-            'price'    => 199000,
-            'period'   => 'year',
-            'features' => ['Semua Fitur Premium', 'Harga Lebih Hemat'],
+            'features' => ['5 Device WhatsApp', 'Chatbot, Plugin & Webhook Tanpa Batas', 'Semua Fitur Daily Pass', 'Antrean Prioritas', 'Support Prioritas 24/7'],
         ],
     ];
 
@@ -61,12 +63,13 @@ class BillingController extends Controller
     public function purchase(Request $request)
     {
         $data = $request->validate([
-            'plan'       => 'required|in:daily,monthly,yearly',
+            'plan'       => 'required|in:daily,weekly,monthly,yearly',
             'promo_code' => 'nullable|string',
         ]);
 
         $plans = [
             'daily' => ['price' => 1000, 'name' => 'Daily Pass'],
+            'weekly' => ['price' => 5000, 'name' => 'Weekly Pass'],
             'monthly' => ['price' => 25000, 'name' => 'Monthly Pass'],
             'yearly' => ['price' => 199000, 'name' => 'Yearly Pass'],
         ];
@@ -308,6 +311,7 @@ class BillingController extends Controller
                 if ($user) {
                     $expiresAt = match($plan) {
                         'daily'   => now()->addDay(),
+                        'weekly'  => now()->addWeek(),
                         'monthly' => now()->addMonth(),
                         'yearly'  => now()->addYear(),
                         default   => now()->addMonth()
@@ -315,6 +319,7 @@ class BillingController extends Controller
 
                     $planPrices = [
                         'daily' => 1000,
+                        'weekly' => 5000,
                         'monthly' => 25000,
                         'yearly' => 199000,
                     ];

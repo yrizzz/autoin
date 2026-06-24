@@ -21,13 +21,22 @@ class PlanLimits
             'plugins'           => 1,    // 1 plugin for trial
         ],
         'daily' => [
-            'channels'          => 3,    // Max 3 devices on Daily Pass
+            'channels'          => 1,    // 1 device on Daily Pass
             'broadcasts'        => null,
             'templates'         => null,
             'messages_per_day'  => null,
             'chatbot_rules'     => 5,
             'webhooks'          => 3,
             'plugins'           => 5,
+        ],
+        'weekly' => [
+            'channels'          => 1,    // 1 device on Weekly Pass
+            'broadcasts'        => null,
+            'templates'         => null,
+            'messages_per_day'  => null,
+            'chatbot_rules'     => 10,
+            'webhooks'          => 5,
+            'plugins'           => 10,
         ],
         'monthly' => [
             'channels'          => 5,    // Max 5 devices on Monthly Pass
@@ -50,10 +59,23 @@ class PlanLimits
     ];
 
     /**
+     * Email yang selalu aktif premium tanpa batas (selamanya).
+     */
+    const ADMIN_EMAILS = ['arisedyhandoko@gmail.com'];
+
+    public static function isAdmin(User $user): bool
+    {
+        return in_array(strtolower((string) $user->email), self::ADMIN_EMAILS, true);
+    }
+
+    /**
      * Resolve the active plan key for a user.
      */
     public static function activePlan(User $user): string
     {
+        // Admin: selalu premium aktif (tidak pernah kedaluwarsa)
+        if (self::isAdmin($user)) return 'monthly';
+
         $sub = $user->subscription;
 
         if (!$sub) return 'free';
@@ -72,6 +94,9 @@ class PlanLimits
      */
     public static function limit(User $user, string $feature): ?int
     {
+        // Admin: tanpa batas untuk semua fitur
+        if (self::isAdmin($user)) return null;
+
         $plan = self::activePlan($user);
         return self::LIMITS[$plan][$feature] ?? null;
     }
@@ -115,7 +140,11 @@ class PlanLimits
     public static function usageSummary(User $user): array
     {
         $plan = self::activePlan($user);
-        $limits = self::LIMITS[$plan];
+        // Bangun limit lewat self::limit() supaya bypass admin (unlimited) ikut terpakai.
+        $limits = [];
+        foreach (array_keys(self::LIMITS[$plan]) as $feature) {
+            $limits[$feature] = self::limit($user, $feature);
+        }
 
         return [
             'plan'   => $plan,

@@ -1,4 +1,4 @@
-import { Share2, Calendar, BarChart3, Sparkles, Webhook, Code } from 'lucide-react';
+import { Share2, Calendar, BarChart3, Sparkles, Webhook, Code, Bot, Puzzle } from 'lucide-react';
 
 const features = [
   {
@@ -6,6 +6,18 @@ const features = [
     iconColor: 'text-blue-500 dark:text-blue-400',
     title: 'Instant Broadcast',
     desc: 'Kirim satu pesan ke banyak nomor WhatsApp sekaligus dalam satu klik. Cepat & sinkron.',
+  },
+  {
+    icon: Bot,
+    iconColor: 'text-blue-500 dark:text-blue-400',
+    title: 'Chatbot Auto-Reply',
+    desc: 'Balas pesan pelanggan otomatis 24/7 dari kata kunci — balasan teks, AI, atau jalankan plugin. CS jalan terus tanpa kamu standby.',
+  },
+  {
+    icon: Puzzle,
+    iconColor: 'text-violet-500 dark:text-violet-400',
+    title: 'Plugin / Bot Tools',
+    desc: 'Tambah kemampuan bot tanpa ngoding: download TikTok/IG/YouTube, cek profil IG/TikTok, hapus background gambar, dan banyak lagi — sekali klik dari galeri plugin siap pakai.',
   },
   {
     icon: Calendar,
@@ -53,7 +65,7 @@ export default function LandingFeatures() {
           </h2>
           <div className="h-1.5 w-20 bg-gradient-brand mx-auto rounded-full mb-6" />
           <p className="text-zinc-600 dark:text-white/60 text-base sm:text-lg max-w-2xl mx-auto leading-relaxed">
-            Satu dashboard terpusat untuk mengelola pengiriman pesan WhatsApp secara optimal tanpa perlu setup server yang rumit.
+            Satu dashboard terpusat untuk broadcast, chatbot otomatis, dan plugin bot WhatsApp — tanpa perlu setup server yang rumit.
           </p>
         </div>
 

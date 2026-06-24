@@ -83,7 +83,7 @@ class AdminController extends Controller
         abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
 
         $data = $request->validate([
-            'plan'      => 'required|in:free,daily,monthly,yearly',
+            'plan'      => 'required|in:free,daily,weekly,monthly,yearly',
             'days'      => 'required|integer|min:1',
             'overwrite' => 'nullable|boolean',
         ]);

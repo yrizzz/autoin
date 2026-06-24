@@ -56,6 +56,11 @@ export default function ChatbotRules() {
     () => (typeof localStorage !== 'undefined' && localStorage.getItem('chatbot:view') === 'table') ? 'table' : 'card'
   );
   useEffect(() => { try { localStorage.setItem('chatbot:view', view); } catch { /* ignore */ } }, [view]);
+
+  // Pilih-banyak (hanya di mode tabel)
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  useEffect(() => { if (view !== 'table') setSelected(new Set()); }, [view]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<ChatbotRule | null>(null);
   const [saving, setSaving] = useState(false);
@@ -237,6 +242,43 @@ export default function ChatbotRules() {
 
   const pluginById = (id?: number | null) => plugins.find(p => p.id === id);
 
+  // ── Bulk select helpers ─────────────────────────────────────────────────
+  const filteredIds = filtered.map(r => r.id);
+  const allSelected = filteredIds.length > 0 && filteredIds.every(id => selected.has(id));
+  const selectedList = filtered.filter(r => selected.has(r.id));
+  const toggleSel = (id: number) => setSelected(prev => {
+    const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n;
+  });
+  const toggleSelAll = () => setSelected(prev => {
+    if (filteredIds.every(id => prev.has(id))) { const n = new Set(prev); filteredIds.forEach(id => n.delete(id)); return n; }
+    return new Set([...prev, ...filteredIds]);
+  });
+
+  async function bulkSetActive(active: boolean) {
+    const ids = selectedList.map(r => r.id);
+    if (ids.length === 0) return;
+    setBulkBusy(true);
+    const results = await Promise.allSettled(ids.map(id => api.put<ChatbotRule>(`/api/chatbot-rules/${id}`, { is_active: active })));
+    setRules(prev => prev.map(r => {
+      const i = ids.indexOf(r.id);
+      return (i >= 0 && results[i].status === 'fulfilled') ? (results[i] as PromiseFulfilledResult<ChatbotRule>).value : r;
+    }));
+    setBulkBusy(false);
+    setSelected(new Set());
+  }
+
+  async function bulkDelete() {
+    const ids = selectedList.map(r => r.id);
+    if (ids.length === 0) return;
+    if (!confirm(`Hapus ${ids.length} aturan terpilih? Tindakan ini tidak bisa dibatalkan.`)) return;
+    setBulkBusy(true);
+    const results = await Promise.allSettled(ids.map(id => api.delete(`/api/chatbot-rules/${id}`)));
+    const deleted = ids.filter((_, i) => results[i].status === 'fulfilled');
+    setRules(prev => prev.filter(r => !deleted.includes(r.id)));
+    setBulkBusy(false);
+    setSelected(new Set());
+  }
+
   const MODES: { id: ReplyMode; label: string; icon: any; desc: string }[] = [
     { id: 'text', label: 'Teks / Media', icon: MessageSquare, desc: 'Balasan teks tetap, bisa dengan lampiran.' },
     { id: 'ai', label: 'AI Autopilot', icon: Sparkles, desc: 'Jawaban dinamis dari AI sesuai panduan.' },
@@ -332,10 +374,38 @@ export default function ChatbotRules() {
           {!search && <button onClick={handleOpenCreate} className="mt-4 btn-primary px-4 py-2 text-white text-xs font-bold rounded-xl">Mulai Buat Aturan</button>}
         </div>
       ) : view === 'table' ? (
-        <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="space-y-3">
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 rounded-xl border border-blue-200 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10">
+              <span className="text-xs font-bold text-blue-700 dark:text-blue-300">{selected.size} dipilih</span>
+              <div className="flex items-center gap-1.5 ml-auto">
+                <button disabled={bulkBusy} onClick={() => bulkSetActive(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-500/30 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition disabled:opacity-50">
+                  <Check className="w-3.5 h-3.5" /> Aktifkan
+                </button>
+                <button disabled={bulkBusy} onClick={() => bulkSetActive(false)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-50">
+                  Nonaktifkan
+                </button>
+                <button disabled={bulkBusy} onClick={bulkDelete}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/30 hover:bg-red-50 dark:hover:bg-red-500/10 transition disabled:opacity-50">
+                  {bulkBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />} Hapus
+                </button>
+                <button disabled={bulkBusy} onClick={() => setSelected(new Set())} title="Batal pilih"
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+          <div className="overflow-x-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-zinc-50 dark:bg-zinc-800/50 text-[10.5px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                <th className="w-10 px-3 py-2.5">
+                  <input type="checkbox" checked={allSelected} onChange={toggleSelAll}
+                    aria-label="Pilih semua" className="w-4 h-4 rounded accent-blue-600 cursor-pointer align-middle" />
+                </th>
                 <th className="text-left font-bold px-4 py-2.5">Pemicu</th>
                 <th className="text-left font-bold px-4 py-2.5">Mode</th>
                 <th className="text-left font-bold px-4 py-2.5 hidden md:table-cell">Balasan / Plugin</th>
@@ -349,7 +419,11 @@ export default function ChatbotRules() {
                 const plg = pluginById(rule.plugin_id);
                 const prefixStr = rule.prefix && !['any', 'none'].includes(rule.prefix) ? rule.prefix : '';
                 return (
-                  <tr key={rule.id} className={`hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition ${rule.is_active ? '' : 'opacity-60'}`}>
+                  <tr key={rule.id} className={`transition ${selected.has(rule.id) ? 'bg-blue-50/60 dark:bg-blue-500/5' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/40'} ${rule.is_active ? '' : 'opacity-60'}`}>
+                    <td className="px-3 py-2.5 align-top">
+                      <input type="checkbox" checked={selected.has(rule.id)} onChange={() => toggleSel(rule.id)}
+                        aria-label={`Pilih ${rule.trigger}`} className="w-4 h-4 rounded accent-blue-600 cursor-pointer mt-0.5" />
+                    </td>
                     <td className="px-4 py-2.5 align-top">
                       <code className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{prefixStr}{rule.trigger}</code>
                     </td>
@@ -386,6 +460,7 @@ export default function ChatbotRules() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

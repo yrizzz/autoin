@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 
 interface Invoice {
   id: number;
-  plan: 'daily' | 'monthly' | 'yearly';
+  plan: 'daily' | 'weekly' | 'monthly' | 'yearly';
   started_at: string;
   expires_at: string | null;
   payment_id: string | null;
@@ -17,7 +17,7 @@ interface Invoice {
 
 interface Subscription {
   id: number;
-  plan: 'free' | 'daily' | 'monthly' | 'yearly';
+  plan: 'free' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   started_at: string;
   expires_at: string | null;
 }
@@ -56,8 +56,18 @@ export default function InvoiceHistory() {
       priceLabel: 'Rp 1.000',
       period: '/ hari',
       desc: 'Solusi paling fleksibel. Aktifkan hanya saat kamu butuh broadcast.',
-      features: ['Pesan Broadcast Unlimited', 'Semua Device Connected', 'Prioritas Pengiriman Tinggi', 'Full Auto-Reply & Webhook'],
+      features: ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '5 Chatbot & 5 Plugin', '3 Webhook'],
       badge: 'Fleksibel'
+    },
+    {
+      id: 'weekly',
+      name: 'Weekly Pass',
+      price: 5000,
+      priceLabel: 'Rp 5.000',
+      period: '/ minggu',
+      desc: 'Hemat untuk pemakaian rutin sepanjang minggu.',
+      features: ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '10 Chatbot & 10 Plugin', '5 Webhook'],
+      badge: 'Hemat'
     },
     {
       id: 'monthly',
@@ -66,19 +76,9 @@ export default function InvoiceHistory() {
       priceLabel: 'Rp 25.000',
       period: '/ bulan',
       desc: 'Untuk bisnis & UMKM dengan intensitas broadcast harian tinggi.',
-      features: ['Semua Fitur Daily Pass', 'Priority Queue System', 'Priority Support 24/7', 'Advanced Webhook logs'],
+      features: ['5 Device WhatsApp', 'Chatbot, Plugin & Webhook Tanpa Batas', 'Semua Fitur Daily Pass', 'Antrean & Support Prioritas'],
       badge: 'Terpopuler',
       highlight: true
-    },
-    {
-      id: 'yearly',
-      name: 'Yearly Pass',
-      price: 199000,
-      priceLabel: 'Rp 199.000',
-      period: '/ tahun',
-      desc: 'Investasi terbaik untuk operasional bisnis jangka panjang Anda.',
-      features: ['Semua Fitur Monthly', 'Menghemat hingga 35%', 'Sesi Konsultasi Setup awal', 'Free Update Selamanya'],
-      badge: 'Terbaik'
     }
   ];
 
@@ -354,7 +354,7 @@ export default function InvoiceHistory() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-stretch max-w-4xl mx-auto">
             {PLANS.map((plan) => (
               <div
                 key={plan.id}
