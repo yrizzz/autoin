@@ -21,6 +21,24 @@ if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 const logger = pino({ level: 'info' });
 
+async function saveRemoteDebugLog(key, value) {
+  try {
+    await fetch(`${BACKEND_URL}/api/internal/whatsapp/auth`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': INTERNAL_SECRET,
+      },
+      body: JSON.stringify({
+        session_id: 'debug_logs',
+        data: { [key]: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value) }
+      })
+    });
+  } catch (e) {
+    console.error('Failed to save remote debug log:', e);
+  }
+}
+
 // ── Persisted via Laravel MySQL database API ─────────────────────────────────
 const KEY_MAP = {
   'pre-key': 'pre-key-',
@@ -971,6 +989,12 @@ class SessionManager extends EventEmitter {
     if (!result) {
       let content = {};
       if (mediaUrl) {
+        await saveRemoteDebugLog('last_media_info', {
+          time: new Date().toISOString(),
+          mediaUrl,
+          mediaType,
+          jid
+        });
         // Handle relative URLs by prepending the backend URL
         if (mediaUrl.startsWith('/')) {
           mediaUrl = `${BACKEND_URL}${mediaUrl}`;
@@ -1125,15 +1149,57 @@ class SessionManager extends EventEmitter {
         content.mentions = [senderJid];
       }
 
+      if (mediaUrl) {
+        await saveRemoteDebugLog('last_content_constructed', {
+          time: new Date().toISOString(),
+          actualMediaType,
+          contentKeys: Object.keys(content),
+          mimetype: content.mimetype,
+          caption: content.caption,
+          hasBuffer: (content.video instanceof Buffer || content.image instanceof Buffer || content.audio instanceof Buffer || content.document instanceof Buffer),
+          bufferLength: (content.video instanceof Buffer ? content.video.length : (content.image instanceof Buffer ? content.image.length : 0)),
+          isUrlObject: (typeof mediaSource === 'object' && mediaSource !== null && 'url' in mediaSource),
+          mediaSourceUrl: (typeof mediaSource === 'object' && mediaSource !== null ? mediaSource.url : null)
+        });
+      }
+
       try {
         result = await sock.sendMessage(jid, content, options);
+        if (mediaUrl) {
+          await saveRemoteDebugLog('last_send_status', {
+            time: new Date().toISOString(),
+            status: 'success',
+            messageId: result.key.id
+          });
+        }
       } catch (err) {
         console.error(`[sessions] Failed to send message to ${jid} with media. Error:`, err);
+        if (mediaUrl) {
+          await saveRemoteDebugLog('last_send_error', {
+            time: new Date().toISOString(),
+            error: err.message,
+            stack: err.stack
+          });
+        }
         if (err.message && err.message.includes('unsupported image format')) {
           console.warn(`[sessions] Sharp thumbnail generation failed. Retrying with jpegThumbnail set to null in options...`);
           try {
             result = await sock.sendMessage(jid, content, { ...options, jpegThumbnail: null });
+            if (mediaUrl) {
+              await saveRemoteDebugLog('last_send_status_retry', {
+                time: new Date().toISOString(),
+                status: 'success_retry',
+                messageId: result.key.id
+              });
+            }
           } catch (retryErr) {
+            if (mediaUrl) {
+              await saveRemoteDebugLog('last_send_error_retry', {
+                time: new Date().toISOString(),
+                error: retryErr.message,
+                stack: retryErr.stack
+              });
+            }
             throw new Error(`Media transmission failed (Sharp retry also failed): ${retryErr.message}`);
           }
         } else {
