@@ -74,8 +74,8 @@ function Section({ n, title, icon, children }: { n: string; title: string; icon?
 
 export default function PluginDocs() {
   return (
-    <AdminLayout>
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+    <AdminLayout activePage="plugins" title="Dokumentasi Plugin">
+      <div className="space-y-8">
         {/* Header */}
         <div>
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">

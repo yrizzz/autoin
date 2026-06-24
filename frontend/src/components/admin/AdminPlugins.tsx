@@ -121,7 +121,7 @@ export default function AdminPlugins() {
 
   if (denied) {
     return (
-      <AdminLayout>
+      <AdminLayout activePage="admin_plugins" title="Kelola Plugin">
         <div className="max-w-md mx-auto py-24 text-center">
           <ShieldCheck className="w-12 h-12 mx-auto text-zinc-300 mb-3" />
           <p className="font-bold text-zinc-700 dark:text-zinc-200">Khusus Admin</p>
@@ -139,8 +139,8 @@ export default function AdminPlugins() {
   ];
 
   return (
-    <AdminLayout>
-      <div className="max-w-6xl mx-auto px-4 py-6">
+    <AdminLayout activePage="admin_plugins" title="Kelola Plugin">
+      <div>
         <div className="mb-5">
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
             <Puzzle className="w-6 h-6 text-blue-500" /> Kelola Plugin <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">ADMIN</span>

@@ -592,7 +592,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
         <main className={
           noPadding
             ? 'flex-1 flex flex-col overflow-hidden'
-            : 'flex-1 py-5 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto w-full relative'
+            : 'flex-1 py-6 px-4 sm:px-6 md:px-8 max-w-6xl mx-auto w-full relative'
         }>
           {announcement && (
             <div className={`mb-6 p-4 rounded-2xl border text-xs font-bold flex items-center justify-between gap-3 shadow-xs ${announcement.type === 'success'

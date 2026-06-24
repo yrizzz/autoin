@@ -208,8 +208,8 @@ export default function Plugins() {
   );
 
   return (
-    <AdminLayout>
-      <div className="max-w-6xl mx-auto px-4 py-6">
+    <AdminLayout activePage="plugins" title="Plugin / Extension">
+      <div>
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
