@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChatbotRule extends Model
 {
-    protected $fillable = ['user_id', 'trigger', 'match_type', 'reply', 'media_url', 'media_type', 'platform', 'is_active', 'is_ai', 'reply_type', 'prefix'];
+    protected $fillable = ['user_id', 'trigger', 'match_type', 'reply', 'media_url', 'media_type', 'platform', 'is_active', 'is_ai', 'reply_type', 'prefix', 'plugin_id'];
 
     protected function casts(): array
     {
@@ -14,6 +14,50 @@ class ChatbotRule extends Model
             'is_active' => 'boolean',
             'is_ai' => 'boolean',
         ];
+    }
+
+    public function plugin()
+    {
+        return $this->belongsTo(Plugin::class);
+    }
+
+    /**
+     * Ambil argumen setelah prefix + trigger (untuk balasan via plugin).
+     * Mengembalikan ['args' => [...], 'raw_args' => '...'].
+     */
+    public function extractArgs(string $text): array
+    {
+        $t = trim($text);
+
+        // Buang 1 prefix di awal teks (kalau ada)
+        foreach (['.', '/', '!', '#'] as $p) {
+            if (str_starts_with($t, $p)) {
+                $t = ltrim(substr($t, strlen($p)));
+                break;
+            }
+        }
+
+        // Buang prefix di awal trigger juga, lalu cari posisi trigger di teks
+        $k = trim($this->trigger);
+        foreach (['.', '/', '!', '#'] as $p) {
+            if (str_starts_with($k, $p)) {
+                $k = ltrim(substr($k, strlen($p)));
+                break;
+            }
+        }
+
+        $rest = $t;
+        if ($k !== '') {
+            $pos = mb_stripos($t, $k);
+            if ($pos !== false) {
+                $rest = mb_substr($t, $pos + mb_strlen($k));
+            }
+        }
+        $rest = trim($rest);
+
+        $args = $rest === '' ? [] : preg_split('/\s+/', $rest);
+
+        return ['args' => $args, 'raw_args' => $rest];
     }
 
     public function matches(string $text): bool

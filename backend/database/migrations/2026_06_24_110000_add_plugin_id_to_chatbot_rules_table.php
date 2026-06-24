@@ -1,0 +1,31 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('chatbot_rules', function (Blueprint $table) {
+            // Auto-reply boleh memakai plugin dari pustaka sebagai sumber balasan.
+            $table->foreignId('plugin_id')->nullable()->after('is_ai')
+                ->constrained('plugins')->nullOnDelete();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('chatbot_rules', function (Blueprint $table) {
+            $table->dropForeign(['plugin_id']);
+            $table->dropColumn('plugin_id');
+        });
+    }
+};

@@ -29,14 +29,18 @@ class ChatbotRuleController extends Controller
         $data = $request->validate([
             'trigger'    => 'required|string|max:255',
             'match_type' => 'required|in:exact,contains,starts_with',
-            'reply'      => 'required|string',
+            'reply'      => 'required_without:plugin_id|nullable|string',
             'media_url'  => 'nullable|string',
             'media_type' => 'nullable|string',
             'platform'   => 'required|in:all,whatsapp',
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
             'is_ai'      => 'sometimes|boolean',
+            'plugin_id'  => 'sometimes|nullable|integer',
         ]);
+
+        $this->assertOwnsPlugin($user, $data['plugin_id'] ?? null);
+        $data['reply'] = $data['reply'] ?? '';
 
         $rule = $user->chatbotRules()->create($data);
 
@@ -50,7 +54,7 @@ class ChatbotRuleController extends Controller
         $data = $request->validate([
             'trigger'    => 'sometimes|string|max:255',
             'match_type' => 'sometimes|in:exact,contains,starts_with',
-            'reply'      => 'sometimes|string',
+            'reply'      => 'sometimes|nullable|string',
             'media_url'  => 'nullable|string',
             'media_type' => 'nullable|string',
             'platform'   => 'sometimes|in:all,whatsapp',
@@ -58,7 +62,15 @@ class ChatbotRuleController extends Controller
             'is_ai'      => 'sometimes|boolean',
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
+            'plugin_id'  => 'sometimes|nullable|integer',
         ]);
+
+        if (array_key_exists('plugin_id', $data)) {
+            $this->assertOwnsPlugin($request->user(), $data['plugin_id']);
+        }
+        if (array_key_exists('reply', $data) && $data['reply'] === null) {
+            $data['reply'] = '';
+        }
 
         $chatbotRule->update($data);
 
@@ -70,6 +82,16 @@ class ChatbotRuleController extends Controller
         abort_if($chatbotRule->user_id !== $request->user()->id, 403);
         $chatbotRule->delete();
         return response()->json(null, 204);
+    }
+
+    // Pastikan plugin yang dipilih milik user ybs (atau null).
+    private function assertOwnsPlugin($user, ?int $pluginId): void
+    {
+        if ($pluginId === null) {
+            return;
+        }
+        $owns = Plugin::where('id', $pluginId)->where('user_id', $user->id)->exists();
+        abort_unless($owns, 422, 'Plugin tidak ditemukan.');
     }
 
     // ── Internal: called by Node services on every incoming message ───────────
@@ -134,6 +156,27 @@ class ChatbotRuleController extends Controller
 
         foreach ($rules as $rule) {
             if ($rule->matches($text)) {
+                // Rule memakai plugin dari pustaka -> jalankan plugin sbg balasan
+                if ($rule->plugin_id) {
+                    $plugin = $rule->plugin;
+                    if ($plugin && $plugin->is_active) {
+                        $extracted = $rule->extractArgs($text);
+                        return response()->json([
+                            'type'   => 'plugin',
+                            'plugin' => [
+                                'id'         => $plugin->id,
+                                'name'       => $plugin->name,
+                                'code'       => $plugin->code,
+                                'timeout_ms' => $plugin->timeout_ms,
+                            ],
+                            'args'     => $extracted['args'],
+                            'raw_args' => $extracted['raw_args'],
+                            'sender'   => $request->input('sender'),
+                        ]);
+                    }
+                    // plugin nonaktif/terhapus -> lanjut pakai reply biasa
+                }
+
                 $finalReply = $rule->reply;
 
                 if ($rule->is_ai) {
