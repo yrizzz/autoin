@@ -30,15 +30,30 @@ Route::get('internal/whatsapp/debug-logs', function() {
     $errContent = file_exists($errLogPath) ? file_get_contents($errLogPath) : 'No error log file found.';
     $outContent = file_exists($outLogPath) ? file_get_contents($outLogPath) : 'No out log file found.';
     
-    $getLastLines = function($content, $lineCount = 200) {
+    $getLastLines = function($content, $lineCount = 1000) {
         $lines = explode("\n", $content);
         $lines = array_slice($lines, -$lineCount);
         return implode("\n", $lines);
     };
     
+    $searchLogs = function($content, $keywords) {
+        $lines = explode("\n", $content);
+        $matches = [];
+        foreach ($lines as $line) {
+            foreach ($keywords as $kw) {
+                if (stripos($line, $kw) !== false) {
+                    $matches[] = $line;
+                    break;
+                }
+            }
+        }
+        return array_slice($matches, -100);
+    };
+    
     return response()->json([
-        'error_log' => $getLastLines($errContent),
-        'out_log' => $getLastLines($outContent),
+        'error_log' => $getLastLines($errContent, 1000),
+        'out_log' => $getLastLines($outContent, 1000),
+        'searches' => $searchLogs($outContent, ['ammy', 'tasya', 'media', 'proxy', 'fetch', 'error', 'send'])
     ]);
 });
 
