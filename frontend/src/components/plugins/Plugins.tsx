@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import AdminLayout from '../layout/AdminLayout';
+import CodeEditor from '../ui/CodeEditor';
 import {
   Plus, Search, Puzzle, ToggleLeft, ToggleRight, Trash2, Edit3,
   Loader2, Play, Terminal, AlertTriangle, Check, X, Image as ImageIcon, BookOpen,
@@ -9,8 +10,6 @@ import {
 interface Plugin {
   id: number;
   name: string;
-  prefix: '.' | '/' | '!' | '#';
-  command: string;
   description?: string | null;
   usage?: string | null;
   code: string;
@@ -28,11 +27,11 @@ interface TestResult {
   error?: string;
 }
 
-const PREFIXES = ['.', '/', '!', '#'] as const;
-
 // Template contoh: ambil profil X (Twitter), balas teks + foto profil.
 const DEFAULT_CODE = [
-  "// ctx.args  = argumen setelah command (mis. \".xprofile budi\" -> ctx.args[0]='budi')",
+  "// ctx.args  = argumen dari pesan setelah trigger (mis. trigger \"xprofile\",",
+  "//            pesan \".xprofile budi\" -> ctx.args[0]='budi'). Prefix & trigger",
+  "//            diatur di halaman Chatbot saat plugin ini dipakai.",
   "// helpers   = { getJson, getText, getBuffer, post, log }  (satu-satunya akses keluar)",
   "// Wajib `return` output: string ATAU { text, mediaUrl, mediaType }.",
   "const API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';",
@@ -65,8 +64,6 @@ export default function Plugins() {
 
   // Form state
   const [name, setName] = useState('');
-  const [prefix, setPrefix] = useState<Plugin['prefix']>('.');
-  const [command, setCommand] = useState('');
   const [description, setDescription] = useState('');
   const [usage, setUsage] = useState('');
   const [timeoutMs, setTimeoutMs] = useState(8000);
@@ -95,8 +92,6 @@ export default function Plugins() {
   function openCreate() {
     setEditing(null);
     setName('');
-    setPrefix('.');
-    setCommand('');
     setDescription('');
     setUsage('');
     setTimeoutMs(8000);
@@ -109,8 +104,6 @@ export default function Plugins() {
   // Isi form dengan contoh .xprofile (opsional, lewat tombol "Sisipkan contoh")
   function loadExample() {
     setName('X (Twitter) Profile');
-    setPrefix('.');
-    setCommand('xprofile');
     setDescription('Ambil info profil X/Twitter via username');
     setUsage('.xprofile <username>');
     setCode(DEFAULT_CODE);
@@ -120,8 +113,6 @@ export default function Plugins() {
   function openEdit(p: Plugin) {
     setEditing(p);
     setName(p.name);
-    setPrefix(p.prefix);
-    setCommand(p.command);
     setDescription(p.description || '');
     setUsage(p.usage || '');
     setTimeoutMs(p.timeout_ms || 8000);
@@ -158,11 +149,11 @@ export default function Plugins() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim() || !command.trim() || !code.trim()) return;
+    if (!name.trim() || !code.trim()) return;
     setSaving(true);
     try {
       const payload = {
-        name, prefix, command: command.trim(),
+        name,
         description: description || null,
         usage: usage || null,
         timeout_ms: timeoutMs,
@@ -204,7 +195,7 @@ export default function Plugins() {
 
   const filtered = plugins.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
-    p.command.toLowerCase().includes(search.toLowerCase())
+    (p.description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -217,8 +208,10 @@ export default function Plugins() {
               <Puzzle className="w-6 h-6 text-blue-500" /> Plugin / Extension
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-              Bikin command ber-prefix (mis. <code className="font-mono">.xprofile budi</code>) yang menjalankan
-              script-mu sendiri lalu membalas otomatis. Script jalan di sandbox aman dengan batas waktu.
+              Pustaka <b>script</b> yang bisa dipakai sebagai balasan otomatis. Atur pemicunya
+              (prefix &amp; trigger, mis. <code className="font-mono">.xprofile budi</code>) di
+              halaman <a href="/chatbot" className="text-blue-500 hover:underline">Chatbot</a>.
+              Script jalan di sandbox aman dengan batas waktu.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -236,7 +229,7 @@ export default function Plugins() {
         {/* Search */}
         <div className="relative mb-4">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari plugin / command…"
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari plugin…"
             className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
@@ -260,9 +253,9 @@ export default function Plugins() {
                       <span className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</span>
                       {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-semibold">NONAKTIF</span>}
                     </div>
-                    <code className="mt-1 inline-block text-xs font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
-                      {p.prefix}{p.command}
-                    </code>
+                    <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
+                      <Terminal className="w-3 h-3" /> Script
+                    </span>
                   </div>
                   <button onClick={() => handleToggle(p)} title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'}>
                     {p.is_active
@@ -321,21 +314,10 @@ export default function Plugins() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-[80px_1fr] gap-3">
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Prefix</label>
-                  <select value={prefix} onChange={e => setPrefix(e.target.value as Plugin['prefix'])}
-                    className="mt-1 w-full px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {PREFIXES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Command (tanpa prefix)</label>
-                  <input value={command} onChange={e => setCommand(e.target.value.replace(/\s+/g, ''))} required placeholder="xprofile"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                </div>
+              <div className="rounded-xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 px-3 py-2 text-[11px] text-blue-700 dark:text-blue-300 flex items-start gap-1.5">
+                <Puzzle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>Plugin ini cuma <b>menyediakan script</b>. Prefix &amp; trigger (mis. <code className="font-mono">.xprofile</code>) diatur di halaman <b>Chatbot</b> saat memilih plugin sebagai balasan.</span>
               </div>
-              <p className="-mt-2 text-[11px] text-zinc-400">Pemicu: <code className="font-mono text-blue-500">{prefix}{command || 'command'} &lt;args&gt;</code></p>
 
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
@@ -361,10 +343,10 @@ export default function Plugins() {
                     Sisipkan contoh
                   </button>
                 </div>
-                <textarea value={code} onChange={e => setCode(e.target.value)} required spellCheck={false} rows={14}
-                  placeholder={"// Tulis script-mu di sini. Contoh paling sederhana:\n// return 'pong 🏓';\n//\n// Tersedia: ctx (args, sender, ...) & helpers (getJson, getText, ...).\n// Klik \"Sisipkan contoh\" untuk template .xprofile."}
-                  className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-950 text-emerald-200 placeholder:text-zinc-500 border border-zinc-700 text-[12.5px] font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  style={{ tabSize: 2 }} />
+                <div className="mt-1">
+                  <CodeEditor value={code} onChange={setCode} minRows={14}
+                    placeholder={"// Tulis script-mu di sini. Contoh paling sederhana:\n// return 'pong 🏓';\n//\n// Tersedia: ctx (args, sender, ...) & helpers (getJson, getText, ...).\n// Klik \"Sisipkan contoh\" untuk template .xprofile."} />
+                </div>
                 <p className="mt-1 text-[11px] text-zinc-400">
                   Tersedia: <code className="font-mono">ctx</code> (args, rawArgs, sender, chatId) &amp;
                   <code className="font-mono"> helpers</code> (getJson, getText, getBuffer, post, log).
@@ -434,7 +416,7 @@ export default function Plugins() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 max-w-sm w-full">
             <h3 className="font-bold text-zinc-900 dark:text-white">Hapus plugin?</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Plugin <b>{toDelete.name}</b> ({toDelete.prefix}{toDelete.command}) akan dihapus permanen.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Plugin <b>{toDelete.name}</b> akan dihapus permanen.</p>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setToDelete(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm font-bold text-zinc-600 dark:text-zinc-300">Batal</button>
               <button onClick={confirmDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold">Hapus</button>

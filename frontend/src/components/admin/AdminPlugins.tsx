@@ -11,8 +11,6 @@ interface AdminPlugin {
   id: number;
   user_id: number;
   name: string;
-  prefix: string;
-  command: string;
   description?: string | null;
   usage?: string | null;
   code: string;
@@ -108,7 +106,7 @@ export default function AdminPlugins() {
     const q = search.toLowerCase();
     const matchSearch = !q ||
       p.name.toLowerCase().includes(q) ||
-      p.command.toLowerCase().includes(q) ||
+      (p.description || '').toLowerCase().includes(q) ||
       (p.user?.email || '').toLowerCase().includes(q) ||
       (p.user?.name || '').toLowerCase().includes(q);
     const matchFilter =
@@ -190,7 +188,7 @@ export default function AdminPlugins() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</span>
-                    <code className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">{p.prefix}{p.command}</code>
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">Script</span>
                     {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-semibold">NONAKTIF</span>}
                     {p.last_error && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" />ERROR</span>}
                   </div>
@@ -225,7 +223,6 @@ export default function AdminPlugins() {
                   <Puzzle className="w-5 h-5 text-blue-500 shrink-0" /> {viewing.name}
                 </h2>
                 <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                  <code className="font-mono text-blue-500">{viewing.prefix}{viewing.command}</code>
                   <span className="flex items-center gap-1"><UserIcon className="w-3 h-3" />{viewing.user?.email || `user#${viewing.user_id}`}</span>
                 </p>
               </div>
@@ -284,7 +281,7 @@ export default function AdminPlugins() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 max-w-sm w-full">
             <h3 className="font-bold text-zinc-900 dark:text-white">Hapus plugin?</h3>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Plugin <b>{toDelete.name}</b> ({toDelete.prefix}{toDelete.command}) milik <b>{toDelete.user?.email || `user#${toDelete.user_id}`}</b> akan dihapus permanen.</p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Plugin <b>{toDelete.name}</b> milik <b>{toDelete.user?.email || `user#${toDelete.user_id}`}</b> akan dihapus permanen.</p>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setToDelete(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 text-sm font-bold text-zinc-600 dark:text-zinc-300">Batal</button>
               <button onClick={confirmDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-bold">Hapus</button>

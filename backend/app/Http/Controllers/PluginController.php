@@ -54,8 +54,6 @@ class PluginController extends Controller
         $req = $partial ? 'sometimes' : 'required';
         $data = $request->validate([
             'name'        => "$req|string|max:255",
-            'prefix'      => 'sometimes|in:.,/,!,#',
-            'command'     => "$req|string|max:64|regex:/^[A-Za-z0-9_-]+$/",
             'description' => 'nullable|string|max:255',
             'usage'       => 'nullable|string|max:255',
             'code'        => "$req|string",
@@ -110,7 +108,16 @@ class PluginController extends Controller
                     'timeout_ms' => $plugin->timeout_ms,
                 ]);
 
-            $result = $res->json() ?? ['ok' => false, 'error' => 'Respons WA service tidak valid'];
+            $result = $res->json();
+
+            // Respons bukan JSON yang valid -> kemungkinan besar WA service versi lama
+            // (route /plugins/run belum ada) atau crash. Beri pesan yang bisa ditindak.
+            if (!is_array($result)) {
+                $hint = $res->status() === 404
+                    ? 'route /plugins/run tidak ada — WA service perlu di-restart/redeploy (pm2 restart autoin-wa).'
+                    : 'respons tidak valid (HTTP ' . $res->status() . ').';
+                $result = ['ok' => false, 'error' => 'WA service: ' . $hint];
+            }
         } catch (\Throwable $e) {
             $result = ['ok' => false, 'error' => 'WA service tidak terjangkau: ' . $e->getMessage()];
         }

@@ -119,32 +119,8 @@ class ChatbotRuleController extends Controller
             return response()->json(['reply' => null]);
         }
 
-        // ── Plugin pass (dicek SEBELUM rule biasa) ────────────────────────────
-        // Command ber-prefix (mis. ".igprofile budi") dieksekusi sebagai script di
-        // WA service. Di sini cukup cocokkan command + parse args, lalu kirim kode
-        // plugin + args ke WA service untuk dijalankan dalam sandbox.
-        $plugins = Plugin::where('user_id', $channel->user_id)
-            ->where('is_active', true)
-            ->orderBy('created_at')
-            ->get();
-
-        foreach ($plugins as $plugin) {
-            $matched = $plugin->matchCommand($text);
-            if ($matched !== null) {
-                return response()->json([
-                    'type'   => 'plugin',
-                    'plugin' => [
-                        'id'         => $plugin->id,
-                        'name'       => $plugin->name,
-                        'code'       => $plugin->code,
-                        'timeout_ms' => $plugin->timeout_ms,
-                    ],
-                    'args'     => $matched['args'],
-                    'raw_args' => $matched['raw_args'],
-                    'sender'   => $request->input('sender'),
-                ]);
-            }
-        }
+        // Plugin TIDAK lagi punya prefix/command sendiri. Pemicunya diatur lewat
+        // chatbot rule (prefix + trigger + plugin_id) yang dicek di loop di bawah.
 
         $rules = ChatbotRule::where('user_id', $channel->user_id)
             ->where('is_active', true)

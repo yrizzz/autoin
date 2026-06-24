@@ -82,8 +82,9 @@ export default function PluginDocs() {
             <Puzzle className="w-6 h-6 text-blue-500" /> Dokumentasi Plugin
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Plugin = command ber-prefix (mis. <code className="font-mono text-blue-500">.xprofile budi</code>) yang menjalankan
-            script JS-mu sendiri lalu membalas otomatis di WhatsApp. Script berjalan di sandbox aman dengan batas waktu.
+            Plugin = <b>script JS</b> yang kamu tulis. Pemicunya (prefix + trigger, mis.
+            <code className="font-mono text-blue-500"> .xprofile budi</code>) diatur di halaman <b>Chatbot</b> saat
+            plugin dipilih sebagai balasan. Script berjalan di sandbox aman dengan batas waktu.
           </p>
         </div>
 
@@ -91,31 +92,33 @@ export default function PluginDocs() {
         <Section n="1" title="Cara kerja" icon={<Zap className="w-4 h-4 text-amber-500" />}>
           <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl p-3 border border-zinc-200 dark:border-zinc-700">
             <span className="font-mono">Pesan masuk</span> <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="font-mono">cocokkan prefix+command</span> <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="font-mono">jalankan script (sandbox)</span> <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="font-mono">cocok dgn rule chatbot (prefix+trigger)</span> <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="font-mono">jalankan script plugin (sandbox)</span> <ArrowRight className="w-3.5 h-3.5 text-zinc-400" />
             <span className="font-mono">kirim output</span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Plugin dicek <b>sebelum</b> auto-reply biasa, jadi command-mu tidak akan “kemakan” rule chatbot.
+            <b>Plugin hanya menyediakan script.</b> Kapan ia berjalan ditentukan oleh <b>rule chatbot</b> yang
+            memilihnya: di sanalah kamu atur prefix &amp; trigger. Teks setelah trigger menjadi <code className="font-mono">ctx.args</code>.
           </p>
         </Section>
 
         {/* 2. Membuat plugin */}
-        <Section n="2" title="Membuat plugin (di dashboard)">
+        <Section n="2" title="Membuat & memasang plugin">
           <ol className="text-sm text-zinc-600 dark:text-zinc-300 space-y-1.5 list-decimal list-inside">
             <li>Buka menu <b>Plugin / Extension</b> → <b>Tambah Plugin</b>.</li>
-            <li>Isi <b>Nama</b>, pilih <b>Prefix</b>, isi <b>Command</b> (tanpa prefix, mis. <code className="font-mono">xprofile</code>).</li>
-            <li>Tulis <b>Script</b> (body handler) di editor.</li>
+            <li>Isi <b>Nama</b> + <b>Deskripsi</b>, lalu tulis <b>Script</b> (body handler) di editor.</li>
             <li>Klik <b>Simpan</b>, lalu <b>Tes</b> dengan contoh argumen untuk melihat output/log/error.</li>
-            <li>Pastikan plugin <b>Aktif</b>. Selesai — kirim <code className="font-mono">{'<prefix><command> <args>'}</code> dari WhatsApp.</li>
+            <li>Pastikan plugin <b>Aktif</b>.</li>
+            <li>Buka halaman <b>Chatbot</b> → buat rule, pilih mode <b>Plugin</b>, set <b>Prefix</b> &amp; <b>Trigger</b> (mis. <code className="font-mono">xprofile</code>), lalu pilih plugin ini.</li>
           </ol>
         </Section>
 
-        {/* 3. Anatomi command */}
-        <Section n="3" title="Anatomi command">
-          <Code id="anat" code={'.xprofile  username\n│ │         └── ctx.args[0]\n│ └────────── command\n└──────────── prefix ( . / ! # )'} />
+        {/* 3. Anatomi pemicu */}
+        <Section n="3" title="Anatomi pemicu (diatur di Chatbot)">
+          <Code id="anat" code={'.xprofile  username\n│ │         └── ctx.args[0]\n│ └────────── trigger (rule chatbot)\n└──────────── prefix (rule chatbot)'} />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Cocok bila pesan diawali <b>prefix+command</b> diikuti spasi atau akhir. Command tidak peka huruf besar/kecil; argumen tetap apa adanya.
+            Prefix &amp; trigger berasal dari <b>rule chatbot</b> yang memakai plugin ini — bukan dari plugin-nya.
+            Trigger tidak peka huruf besar/kecil; argumen tetap apa adanya.
           </p>
         </Section>
 
@@ -197,7 +200,7 @@ return {
               <tr><td className="py-2 pr-3 font-mono text-amber-600 dark:text-amber-400 align-top whitespace-nowrap">Missing API Key</td><td className="py-2 text-zinc-500 dark:text-zinc-400">API tujuan butuh header auth. Kirim lewat <code className="font-mono">{'opts.headers'}</code>.</td></tr>
               <tr><td className="py-2 pr-3 font-mono text-amber-600 dark:text-amber-400 align-top whitespace-nowrap">Plugin timeout</td><td className="py-2 text-zinc-500 dark:text-zinc-400">Eksekusi terlalu lama. Naikkan timeout atau percepat request.</td></tr>
               <tr><td className="py-2 pr-3 font-mono text-amber-600 dark:text-amber-400 align-top whitespace-nowrap">Akses ke IP privat ditolak</td><td className="py-2 text-zinc-500 dark:text-zinc-400">URL menunjuk ke localhost/IP internal. Pakai domain publik.</td></tr>
-              <tr><td className="py-2 pr-3 font-mono text-amber-600 dark:text-amber-400 align-top whitespace-nowrap">Bot tidak membalas</td><td className="py-2 text-zinc-500 dark:text-zinc-400">Pastikan plugin Aktif, prefix+command tepat, dan script ada <code className="font-mono">return</code>.</td></tr>
+              <tr><td className="py-2 pr-3 font-mono text-amber-600 dark:text-amber-400 align-top whitespace-nowrap">Bot tidak membalas</td><td className="py-2 text-zinc-500 dark:text-zinc-400">Pastikan plugin Aktif, ada rule chatbot yang memilihnya dengan prefix+trigger tepat, dan script ada <code className="font-mono">return</code>.</td></tr>
             </tbody>
           </table>
         </Section>

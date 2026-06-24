@@ -25,8 +25,7 @@ interface ChatbotRule {
 interface PluginLite {
   id: number;
   name: string;
-  prefix: string;
-  command: string;
+  description?: string | null;
   is_active: boolean;
 }
 
@@ -242,7 +241,7 @@ export default function ChatbotRules() {
       const p = pluginById(rule.plugin_id);
       return (
         <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 flex items-center gap-0.5">
-          <Puzzle className="w-2.5 h-2.5" /> {p ? `${p.prefix}${p.command}` : 'Plugin'}
+          <Puzzle className="w-2.5 h-2.5" /> {p ? p.name : 'Plugin'}
         </span>
       );
     }
@@ -356,7 +355,7 @@ export default function ChatbotRules() {
                       <Puzzle className="w-4 h-4 text-blue-500 shrink-0" />
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">{plg ? plg.name : `Plugin #${rule.plugin_id}`}</p>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{plg ? `Jalankan ${plg.prefix}${plg.command}` : 'Plugin tidak ditemukan'}</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 truncate">{plg ? (plg.description || 'Jalankan script plugin') : 'Plugin tidak ditemukan'}</p>
                       </div>
                     </div>
                   ) : (
@@ -471,7 +470,7 @@ export default function ChatbotRules() {
                         <option value="">— pilih plugin —</option>
                         {plugins.map(p => (
                           <option key={p.id} value={p.id} disabled={!p.is_active}>
-                            {p.prefix}{p.command} — {p.name}{p.is_active ? '' : ' (nonaktif)'}
+                            {p.name}{p.is_active ? '' : ' (nonaktif)'}
                           </option>
                         ))}
                       </select>
