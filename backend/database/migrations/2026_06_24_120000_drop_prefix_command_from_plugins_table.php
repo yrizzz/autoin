@@ -13,9 +13,13 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Index ['user_id','command'] juga dipakai FK user_id (kolom paling kiri),
+        // jadi tak bisa di-drop sebelum ada index lain yang menutup user_id dulu.
         Schema::table('plugins', function (Blueprint $table) {
-            // Index ['user_id','command'] memakai kolom command -> drop dulu.
-            $table->dropIndex(['user_id', 'command']);
+            $table->index('user_id');                  // penopang FK user_id
+        });
+        Schema::table('plugins', function (Blueprint $table) {
+            $table->dropIndex(['user_id', 'command']); // baru aman di-drop
             $table->dropColumn(['prefix', 'command']);
         });
     }
@@ -26,6 +30,9 @@ return new class extends Migration
             $table->string('prefix')->default('.')->after('name');
             $table->string('command')->default('')->after('prefix');
             $table->index(['user_id', 'command']);
+        });
+        Schema::table('plugins', function (Blueprint $table) {
+            $table->dropIndex(['user_id']);            // kembalikan ke kondisi semula
         });
     }
 };
