@@ -972,43 +972,79 @@ class SessionManager extends EventEmitter {
       let content = {};
       if (mediaUrl) {
         let resolvedUrl = mediaUrl;
+        let localFileBuffer = null;
+        let detectedMime = null;
+
         if (mediaUrl.includes('/uploads/')) {
           const filename = mediaUrl.split('/').pop();
-          const localPath = path.join(__dirname, '../../backend/public/uploads', filename);
-          if (fs.existsSync(localPath)) {
-            resolvedUrl = localPath;
-            console.log(`[sessions] Resolved local media URL to filesystem path: ${resolvedUrl}`);
-          } else {
-            // Rewrite domain to local server port if loopback fails
-            const publicAppUrl = 'https://api.autoin.my.id';
-            if (mediaUrl.startsWith(publicAppUrl)) {
-              resolvedUrl = mediaUrl.replace(publicAppUrl, BACKEND_URL);
-              console.log(`[sessions] Rewrote public media URL to internal backend URL: ${resolvedUrl}`);
+          // 1. Try local filesystem paths
+          const possiblePaths = [
+            path.join(__dirname, '../../backend/public/uploads', filename),
+            path.join(__dirname, '../../backend/public/storage/uploads', filename),
+            path.join(__dirname, '../../backend/storage/app/public/uploads', filename),
+            path.join(__dirname, '../../backend/storage/app/private/uploads', filename),
+            path.join(__dirname, '../../backend/storage/app/uploads', filename)
+          ];
+          
+          for (const p of possiblePaths) {
+            if (fs.existsSync(p)) {
+              try {
+                localFileBuffer = fs.readFileSync(p);
+                console.log(`[sessions] Resolved local media to filesystem path: ${p} (${localFileBuffer.length} bytes)`);
+                break;
+              } catch (e) {
+                console.error(`[sessions] Failed to read file at ${p}:`, e.message || e);
+              }
+            }
+          }
+
+          // 2. If not found on disk, try internal loopback URLs
+          if (!localFileBuffer) {
+            const internalUrls = [
+              `${BACKEND_URL}/storage/uploads/${filename}`,
+              `${BACKEND_URL}/uploads/${filename}`
+            ];
+            for (const intUrl of internalUrls) {
+              try {
+                console.log(`[sessions] Trying internal loopback URL: ${intUrl}`);
+                const res = await fetch(intUrl, { signal: AbortSignal.timeout(5000) });
+                if (res.ok) {
+                  const ab = await res.arrayBuffer();
+                  localFileBuffer = Buffer.from(ab);
+                  detectedMime = res.headers.get('content-type');
+                  console.log(`[sessions] Successfully fetched from internal URL: size=${localFileBuffer.length} bytes, mime=${detectedMime}`);
+                  break;
+                }
+              } catch (e) {
+                console.log(`[sessions] Internal loopback fetch failed for ${intUrl}:`, e.message || e);
+              }
             }
           }
         }
 
-        let mediaSource = { url: resolvedUrl };
-        let detectedMime = null;
-
-        if (fs.existsSync(resolvedUrl)) {
-          mediaSource = fs.readFileSync(resolvedUrl);
-          console.log(`[sessions] Read local media file to Buffer: size=${mediaSource.length} bytes`);
+        let mediaSource = null;
+        if (localFileBuffer) {
+          mediaSource = localFileBuffer;
         } else if (resolvedUrl.startsWith('http://') || resolvedUrl.startsWith('https://')) {
+          // 3. Fallback to public remote URL fetch
           try {
-            console.log(`[sessions] Fetching media buffer from: ${resolvedUrl}`);
+            console.log(`[sessions] Fetching media buffer from public URL: ${resolvedUrl}`);
             const res = await fetch(resolvedUrl, { signal: AbortSignal.timeout(15000) });
             if (res.ok) {
               const ab = await res.arrayBuffer();
               mediaSource = Buffer.from(ab);
               detectedMime = res.headers.get('content-type');
-              console.log(`[sessions] Successfully fetched media buffer: size=${mediaSource.length} bytes, mime=${detectedMime}`);
+              console.log(`[sessions] Successfully fetched public media buffer: size=${mediaSource.length} bytes, mime=${detectedMime}`);
             } else {
-              console.warn(`[sessions] Fetching media buffer failed with status ${res.status}, using URL fallback`);
+              console.warn(`[sessions] Fetching public media buffer failed with status ${res.status}, using URL object fallback`);
+              mediaSource = { url: resolvedUrl };
             }
           } catch (e) {
-            console.error(`[sessions] Error fetching media buffer, using URL fallback:`, e.message || e);
+            console.error(`[sessions] Error fetching public media buffer, using URL object fallback:`, e.message || e);
+            mediaSource = { url: resolvedUrl };
           }
+        } else {
+          mediaSource = { url: resolvedUrl };
         }
 
         let actualMediaType = mediaType;
