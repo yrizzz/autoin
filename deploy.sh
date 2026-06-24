@@ -71,6 +71,16 @@ if $SETUP_MODE; then
     ok "PM2 already installed"
   fi
 
+  # FFmpeg
+  if ! command -v ffmpeg &>/dev/null; then
+    log "Install FFmpeg..."
+    sudo apt-get update -q
+    sudo apt-get install -y ffmpeg
+    ok "FFmpeg installed"
+  else
+    ok "FFmpeg already installed"
+  fi
+
   # Log directory
   sudo mkdir -p /var/log/autoin
   sudo chown -R "$USER":"$USER" /var/log/autoin
