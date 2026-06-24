@@ -13,8 +13,8 @@ interface AdminLayoutProps {
   activePage: string;
   title: string;
   noPadding?: boolean;
-  /** Pakai lebar penuh (tanpa batas max-w-6xl) tapi tetap responsif/ber-padding. */
-  fullWidth?: boolean;
+  /** Batasi lebar konten (max-w-6xl) — default-nya full width agar proporsional di layar besar. */
+  boxed?: boolean;
   onRefresh?: () => void;
   refreshing?: boolean;
 }
@@ -215,7 +215,7 @@ const getAvatarUrl = (user: User | null) => {
   return `https://www.gravatar.com/avatar/${hash}?d=mp`;
 };
 
-export default function AdminLayout({ children, activePage, title, noPadding, fullWidth, onRefresh, refreshing }: AdminLayoutProps) {
+export default function AdminLayout({ children, activePage, title, noPadding, boxed, onRefresh, refreshing }: AdminLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -594,9 +594,9 @@ export default function AdminLayout({ children, activePage, title, noPadding, fu
         <main className={
           noPadding
             ? 'flex-1 flex flex-col overflow-hidden'
-            : fullWidth
-              ? 'flex-1 py-6 px-4 sm:px-6 md:px-8 w-full relative'
-              : 'flex-1 py-6 px-4 sm:px-6 md:px-8 max-w-6xl mx-auto w-full relative'
+            : boxed
+              ? 'flex-1 py-6 px-4 sm:px-6 md:px-8 max-w-6xl mx-auto w-full relative'
+              : 'flex-1 py-6 px-4 sm:px-6 md:px-8 w-full relative'
         }>
           {announcement && (
             <div className={`mb-6 p-4 rounded-2xl border text-xs font-bold flex items-center justify-between gap-3 shadow-xs ${announcement.type === 'success'

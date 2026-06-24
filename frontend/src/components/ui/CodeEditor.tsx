@@ -69,14 +69,22 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
   const lineCount = useMemo(() => Math.max(value.split('\n').length, minRows), [value, minRows]);
   const html = useMemo(() => highlight(value) + '\n', [value]); // \n agar baris terakhir terender
 
-  // Sinkronkan scroll highlight <pre> dengan <textarea>.
+  // Sinkronkan scroll highlight <pre> dengan <textarea> (khusus horizontal).
   function syncScroll() {
     if (preRef.current && taRef.current) {
-      preRef.current.scrollTop = taRef.current.scrollTop;
       preRef.current.scrollLeft = taRef.current.scrollLeft;
     }
   }
-  useEffect(syncScroll, [value]);
+
+  // Auto-grow vertikal: tinggi textarea = tinggi konten, supaya tak ada scroll
+  // vertikal internal (gutter nomor baris selalu sinkron) — modal yang scroll.
+  function autoGrow() {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
+  }
+  useEffect(() => { autoGrow(); syncScroll(); }, [value]);
 
   function setValueWithCaret(next: string, caretStart: number, caretEnd = caretStart) {
     onChange(next);
@@ -142,7 +150,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
           <pre
             ref={preRef}
             aria-hidden
-            className="absolute inset-0 m-0 overflow-auto py-3 px-3 text-[12.5px] font-mono leading-[1.6] text-zinc-100 whitespace-pre pointer-events-none"
+            className="absolute inset-0 m-0 overflow-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] text-zinc-100 whitespace-pre pointer-events-none"
             style={{ tabSize: 2 }}
             dangerouslySetInnerHTML={{ __html: html }}
           />
@@ -156,7 +164,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
             onBlur={() => setFocused(false)}
             spellCheck={false}
             placeholder={placeholder}
-            className="relative w-full resize-none overflow-auto py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent caret-white placeholder:text-zinc-500 whitespace-pre focus:outline-none"
+            className="relative block w-full resize-none overflow-x-auto overflow-y-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent caret-white placeholder:text-zinc-500 whitespace-pre focus:outline-none"
             style={{ tabSize: 2, minHeight: `${minRows * 1.6 + 1.5}em` }}
           />
         </div>
