@@ -29,7 +29,6 @@ class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'google_id' => null,
             'avatar' => null,
-            'trial_count' => 5,
         ];
     }
 }

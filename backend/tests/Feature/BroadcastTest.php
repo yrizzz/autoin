@@ -22,10 +22,8 @@ class BroadcastTest extends TestCase
                 'name'        => 'Demo User',
                 'google_id'   => 'demo',
                 'avatar'      => null,
-                'trial_count' => 5,
             ]
         );
-        $user->update(['trial_count' => 5]);
 
         // 2. Create a channel
         $channel = Channel::create([
@@ -80,15 +78,11 @@ class BroadcastTest extends TestCase
             'channel_id'   => $channel->id,
             'status'       => 'success',
         ]);
-
-        // 7. Verify trial quota was decremented
-        $user->refresh();
-        $this->assertEquals(4, $user->trial_count);
     }
 
     public function test_can_send_broadcast_with_aliases_and_media(): void
     {
-        $user = User::factory()->create(['trial_count' => 10]);
+        $user = User::factory()->create();
 
         $channel = Channel::create([
             'user_id'     => $user->id,

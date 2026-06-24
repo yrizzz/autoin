@@ -71,12 +71,6 @@ class SendBroadcastJob implements ShouldQueue
         if (in_array($this->broadcast->recurring, ['daily', 'weekly', 'monthly'])) {
             $this->scheduleNextOccurrence($this->broadcast);
         }
-
-        // Deduct trial if on free plan
-        $user = $this->broadcast->user;
-        if (!$user->subscription || $user->subscription->plan === 'free') {
-            $user->decrement('trial_count');
-        }
     }
 
     /**

@@ -9,7 +9,6 @@ interface SubscriberUser {
   name: string;
   email: string;
   avatar: string | null;
-  trial_count: number;
   channels_count: number;
   chatbot_rules_count: number;
   webhooks_count: number;
@@ -232,7 +231,7 @@ export default function SubscribersManager() {
               Pemantauan Pelanggan (Admin Panel)
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-              Halaman khusus untuk memantau status subscription, limit trial, dan integrasi aktif pelanggan Autoin.
+              Halaman khusus untuk memantau status subscription dan integrasi aktif pelanggan Autoin.
             </p>
           </div>
           <button
@@ -342,15 +341,11 @@ export default function SubscribersManager() {
                           </div>
                         </div>
 
-                        {/* Plan & Trial Limit */}
+                        {/* Plan */}
                         <div className="flex items-center justify-between gap-4 border-t border-b border-zinc-150 dark:border-zinc-800 py-3 text-xs">
                           <div>
                             <span className="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Paket Langganan</span>
                             {getPlanBadge(user.subscription?.plan)}
-                          </div>
-                          <div className="text-right">
-                            <span className="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Limit Trial</span>
-                            <span className="font-bold text-zinc-800 dark:text-zinc-200">{user.trial_count} Pesan</span>
                           </div>
                         </div>
 
@@ -441,7 +436,6 @@ export default function SubscribersManager() {
                           <th className="px-6 py-4">Paket Langganan</th>
                           <th className="px-6 py-4">Mulai / Berakhir</th>
                           <th className="px-6 py-4 text-center">Integrasi Aktif</th>
-                          <th className="px-6 py-4 text-center">Limit Trial</th>
                           <th className="px-6 py-4 text-center">Aksi</th>
                         </tr>
                       </thead>
@@ -506,9 +500,6 @@ export default function SubscribersManager() {
                                   <LinkIcon className="w-3 h-3 text-blue-500" /> {user.webhooks_count}
                                 </span>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 text-center text-zinc-500 dark:text-zinc-450 font-bold">
-                              {user.trial_count} Pesan
                             </td>
                             <td className={`px-6 py-4 text-center whitespace-nowrap ${activeDropdownUserId === user.id ? 'z-30 relative' : ''}`}>
                               <div className="flex items-center justify-center">
