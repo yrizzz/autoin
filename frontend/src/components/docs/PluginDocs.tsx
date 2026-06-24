@@ -64,7 +64,7 @@ function Section({ n, title, icon, children }: { n: string; title: string; icon?
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-        <span className="w-5 h-5 rounded-lg bg-violet-500/10 text-violet-500 flex items-center justify-center text-[10px] font-bold">{n}</span>
+        <span className="w-5 h-5 rounded-lg btn-primary text-white flex items-center justify-center text-[10px] font-bold">{n}</span>
         {icon}{title}
       </h2>
       {children}
@@ -79,10 +79,10 @@ export default function PluginDocs() {
         {/* Header */}
         <div>
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-            <Puzzle className="w-6 h-6 text-violet-500" /> Dokumentasi Plugin
+            <Puzzle className="w-6 h-6 text-blue-500" /> Dokumentasi Plugin
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Plugin = command ber-prefix (mis. <code className="font-mono text-violet-500">.xprofile budi</code>) yang menjalankan
+            Plugin = command ber-prefix (mis. <code className="font-mono text-blue-500">.xprofile budi</code>) yang menjalankan
             script JS-mu sendiri lalu membalas otomatis di WhatsApp. Script berjalan di sandbox aman dengan batas waktu.
           </p>
         </div>
@@ -113,7 +113,7 @@ export default function PluginDocs() {
 
         {/* 3. Anatomi command */}
         <Section n="3" title="Anatomi command">
-          <Code id="anat" code={'.xprofile  tasyaardhisa_\n│ │         └── ctx.args[0]\n│ └────────── command\n└──────────── prefix ( . / ! # )'} />
+          <Code id="anat" code={'.xprofile  username\n│ │         └── ctx.args[0]\n│ └────────── command\n└──────────── prefix ( . / ! # )'} />
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Cocok bila pesan diawali <b>prefix+command</b> diikuti spasi atau akhir. Command tidak peka huruf besar/kecil; argumen tetap apa adanya.
           </p>
@@ -122,8 +122,8 @@ export default function PluginDocs() {
         {/* 4. Kontrak script */}
         <Section n="4" title="Kontrak base script" icon={<Terminal className="w-4 h-4 text-zinc-500" />}>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Kamu menulis <b>body handler</b>. Tersedia dua variabel global: <code className="font-mono text-violet-500">ctx</code> dan
-            <code className="font-mono text-violet-500"> helpers</code>. Script <b>wajib</b> <code className="font-mono">return</code> output.
+            Kamu menulis <b>body handler</b>. Tersedia dua variabel global: <code className="font-mono text-blue-500">ctx</code> dan
+            <code className="font-mono text-blue-500"> helpers</code>. Script <b>wajib</b> <code className="font-mono">return</code> output.
           </p>
 
           <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mt-2">ctx — data pesan masuk</div>
@@ -131,7 +131,7 @@ export default function PluginDocs() {
             <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800">
               {CTX_ROWS.map(([k, v]) => (
                 <tr key={k}>
-                  <td className="py-2 pr-3 font-mono text-violet-600 dark:text-violet-400 whitespace-nowrap align-top">{k}</td>
+                  <td className="py-2 pr-3 font-mono text-blue-600 dark:text-blue-400 whitespace-nowrap align-top">{k}</td>
                   <td className="py-2 text-zinc-500 dark:text-zinc-400">{v}</td>
                 </tr>
               ))}
@@ -143,7 +143,7 @@ export default function PluginDocs() {
             <tbody className="divide-y divide-zinc-200/40 dark:divide-zinc-800">
               {HELPER_ROWS.map(([k, v]) => (
                 <tr key={k}>
-                  <td className="py-2 pr-3 font-mono text-violet-600 dark:text-violet-400 whitespace-nowrap align-top">{k}</td>
+                  <td className="py-2 pr-3 font-mono text-blue-600 dark:text-blue-400 whitespace-nowrap align-top">{k}</td>
                   <td className="py-2 text-zinc-500 dark:text-zinc-400">{v}</td>
                 </tr>
               ))}

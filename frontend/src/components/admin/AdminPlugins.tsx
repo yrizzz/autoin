@@ -135,7 +135,7 @@ export default function AdminPlugins() {
     { label: 'Total Plugin', value: stats.total, color: 'text-zinc-900 dark:text-white' },
     { label: 'Aktif', value: stats.active, color: 'text-emerald-600 dark:text-emerald-400' },
     { label: 'Bermasalah', value: stats.errored, color: 'text-red-600 dark:text-red-400' },
-    { label: 'Pemilik', value: stats.owners, color: 'text-violet-600 dark:text-violet-400' },
+    { label: 'Pemilik', value: stats.owners, color: 'text-blue-600 dark:text-blue-400' },
   ];
 
   return (
@@ -143,7 +143,7 @@ export default function AdminPlugins() {
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="mb-5">
           <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-            <Puzzle className="w-6 h-6 text-violet-500" /> Kelola Plugin <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300">ADMIN</span>
+            <Puzzle className="w-6 h-6 text-blue-500" /> Kelola Plugin <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300">ADMIN</span>
           </h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Pantau & kontrol semua plugin dari seluruh pengguna.</p>
         </div>
@@ -163,12 +163,12 @@ export default function AdminPlugins() {
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari nama / command / pemilik…"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
           <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl p-1">
             {(['all', 'active', 'inactive', 'errored'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition ${filter === f ? 'bg-white dark:bg-zinc-700 text-violet-600 dark:text-white shadow-sm' : 'text-zinc-500'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition ${filter === f ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-white shadow-sm' : 'text-zinc-500'}`}>
                 {f === 'all' ? 'Semua' : f === 'active' ? 'Aktif' : f === 'inactive' ? 'Nonaktif' : 'Error'}
               </button>
             ))}
@@ -190,7 +190,7 @@ export default function AdminPlugins() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</span>
-                    <code className="text-xs font-mono px-2 py-0.5 rounded bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300">{p.prefix}{p.command}</code>
+                    <code className="text-xs font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">{p.prefix}{p.command}</code>
                     {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-semibold">NONAKTIF</span>}
                     {p.last_error && <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 font-semibold flex items-center gap-1"><AlertTriangle className="w-3 h-3" />ERROR</span>}
                   </div>
@@ -202,9 +202,9 @@ export default function AdminPlugins() {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openView(p)} title="Lihat kode & tes"
-                    className="p-2 rounded-lg text-zinc-500 hover:text-violet-600 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Code2 className="w-4 h-4" /></button>
+                    className="p-2 rounded-lg text-zinc-500 hover:text-blue-600 hover:bg-zinc-100 dark:hover:bg-zinc-800"><Code2 className="w-4 h-4" /></button>
                   <button onClick={() => handleToggle(p)} title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'}>
-                    {p.is_active ? <ToggleRight className="w-8 h-8 text-violet-500" /> : <ToggleLeft className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />}
+                    {p.is_active ? <ToggleRight className="w-8 h-8 text-blue-500" /> : <ToggleLeft className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />}
                   </button>
                   <button onClick={() => setToDelete(p)} title="Hapus"
                     className="p-2 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/10"><Trash2 className="w-4 h-4" /></button>
@@ -222,10 +222,10 @@ export default function AdminPlugins() {
             <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-5 py-3.5 flex items-center justify-between">
               <div className="min-w-0">
                 <h2 className="font-extrabold text-zinc-900 dark:text-white truncate flex items-center gap-2">
-                  <Puzzle className="w-5 h-5 text-violet-500 shrink-0" /> {viewing.name}
+                  <Puzzle className="w-5 h-5 text-blue-500 shrink-0" /> {viewing.name}
                 </h2>
                 <p className="text-[11px] text-zinc-500 mt-0.5 flex items-center gap-2 flex-wrap">
-                  <code className="font-mono text-violet-500">{viewing.prefix}{viewing.command}</code>
+                  <code className="font-mono text-blue-500">{viewing.prefix}{viewing.command}</code>
                   <span className="flex items-center gap-1"><UserIcon className="w-3 h-3" />{viewing.user?.email || `user#${viewing.user_id}`}</span>
                 </p>
               </div>
@@ -245,8 +245,8 @@ export default function AdminPlugins() {
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Argumen tes (pisah spasi)</label>
-                    <input value={testArgs} onChange={e => setTestArgs(e.target.value)} placeholder="tasyaardhisa_"
-                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    <input value={testArgs} onChange={e => setTestArgs(e.target.value)} placeholder="username"
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <button onClick={handleTest} disabled={testing}
                     className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-bold disabled:opacity-50">
@@ -261,7 +261,7 @@ export default function AdminPlugins() {
                     {testResult.error && <pre className="text-[11px] whitespace-pre-wrap text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 p-2 rounded-lg">{testResult.error}</pre>}
                     {testResult.output?.text && <div className="text-[13px] whitespace-pre-wrap text-zinc-800 dark:text-zinc-100 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 p-2.5 rounded-lg">{testResult.output.text}</div>}
                     {testResult.output?.mediaUrl && (
-                      <div className="text-[11px] text-zinc-500 truncate">media: <a href={testResult.output.mediaUrl} target="_blank" rel="noreferrer" className="text-violet-500 underline">{testResult.output.mediaUrl}</a></div>
+                      <div className="text-[11px] text-zinc-500 truncate">media: <a href={testResult.output.mediaUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">{testResult.output.mediaUrl}</a></div>
                     )}
                     {!!testResult.logs?.length && <pre className="text-[11px] whitespace-pre-wrap text-zinc-500 bg-zinc-100 dark:bg-zinc-800 p-2 rounded-lg">{testResult.logs.join('\n')}</pre>}
                   </div>

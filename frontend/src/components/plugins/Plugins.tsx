@@ -70,7 +70,7 @@ export default function Plugins() {
   const [description, setDescription] = useState('');
   const [usage, setUsage] = useState('');
   const [timeoutMs, setTimeoutMs] = useState(8000);
-  const [code, setCode] = useState(DEFAULT_CODE);
+  const [code, setCode] = useState('');
 
   // Test panel
   const [testArgs, setTestArgs] = useState('');
@@ -94,16 +94,27 @@ export default function Plugins() {
 
   function openCreate() {
     setEditing(null);
+    setName('');
+    setPrefix('.');
+    setCommand('');
+    setDescription('');
+    setUsage('');
+    setTimeoutMs(8000);
+    setCode('');
+    setTestArgs('');
+    setTestResult(null);
+    setModalOpen(true);
+  }
+
+  // Isi form dengan contoh .xprofile (opsional, lewat tombol "Sisipkan contoh")
+  function loadExample() {
     setName('X (Twitter) Profile');
     setPrefix('.');
     setCommand('xprofile');
     setDescription('Ambil info profil X/Twitter via username');
     setUsage('.xprofile <username>');
-    setTimeoutMs(8000);
     setCode(DEFAULT_CODE);
-    setTestArgs('tasyaardhisa_');
-    setTestResult(null);
-    setModalOpen(true);
+    setTestArgs('jokowi');
   }
 
   function openEdit(p: Plugin) {
@@ -203,7 +214,7 @@ export default function Plugins() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
           <div>
             <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-              <Puzzle className="w-6 h-6 text-violet-500" /> Plugin / Extension
+              <Puzzle className="w-6 h-6 text-blue-500" /> Plugin / Extension
             </h1>
             <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
               Bikin command ber-prefix (mis. <code className="font-mono">.xprofile budi</code>) yang menjalankan
@@ -216,7 +227,7 @@ export default function Plugins() {
               <BookOpen className="w-4 h-4" /> Panduan
             </a>
             <button onClick={openCreate}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold shadow-sm transition whitespace-nowrap">
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl btn-primary text-white text-sm font-bold shadow-sm transition whitespace-nowrap">
               <Plus className="w-4 h-4" /> Tambah Plugin
             </button>
           </div>
@@ -226,7 +237,7 @@ export default function Plugins() {
         <div className="relative mb-4">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cari plugin / command…"
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
 
         {/* List */}
@@ -249,13 +260,13 @@ export default function Plugins() {
                       <span className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</span>
                       {!p.is_active && <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-semibold">NONAKTIF</span>}
                     </div>
-                    <code className="mt-1 inline-block text-xs font-mono px-2 py-0.5 rounded bg-violet-50 dark:bg-violet-500/10 text-violet-700 dark:text-violet-300">
+                    <code className="mt-1 inline-block text-xs font-mono px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300">
                       {p.prefix}{p.command}
                     </code>
                   </div>
                   <button onClick={() => handleToggle(p)} title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'}>
                     {p.is_active
-                      ? <ToggleRight className="w-8 h-8 text-violet-500" />
+                      ? <ToggleRight className="w-8 h-8 text-blue-500" />
                       : <ToggleLeft className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />}
                   </button>
                 </div>
@@ -270,7 +281,7 @@ export default function Plugins() {
 
                 <div className="flex items-center gap-2 mt-1 pt-2 border-t border-zinc-100 dark:border-zinc-800">
                   <button onClick={() => openEdit(p)}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-violet-600">
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:text-blue-600">
                     <Edit3 className="w-3.5 h-3.5" /> Edit & Tes
                   </button>
                   <button onClick={() => setToDelete(p)}
@@ -290,7 +301,7 @@ export default function Plugins() {
           <div className="bg-white dark:bg-zinc-900 w-full sm:max-w-3xl sm:rounded-2xl rounded-t-2xl max-h-[92vh] overflow-y-auto">
             <div className="sticky top-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-5 py-3.5 flex items-center justify-between">
               <h2 className="font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
-                <Puzzle className="w-5 h-5 text-violet-500" /> {editing ? 'Edit Plugin' : 'Plugin Baru'}
+                <Puzzle className="w-5 h-5 text-blue-500" /> {editing ? 'Edit Plugin' : 'Plugin Baru'}
               </h2>
               <button onClick={() => setModalOpen(false)} className="text-zinc-400 hover:text-zinc-600"><X className="w-5 h-5" /></button>
             </div>
@@ -300,13 +311,13 @@ export default function Plugins() {
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Nama Plugin</label>
                   <input value={name} onChange={e => setName(e.target.value)} required
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Timeout (ms)</label>
                   <input type="number" min={1000} max={15000} step={500} value={timeoutMs}
                     onChange={e => setTimeoutMs(Number(e.target.value))}
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
@@ -314,38 +325,45 @@ export default function Plugins() {
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Prefix</label>
                   <select value={prefix} onChange={e => setPrefix(e.target.value as Plugin['prefix'])}
-                    className="mt-1 w-full px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500">
+                    className="mt-1 w-full px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {PREFIXES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Command (tanpa prefix)</label>
                   <input value={command} onChange={e => setCommand(e.target.value.replace(/\s+/g, ''))} required placeholder="xprofile"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
-              <p className="-mt-2 text-[11px] text-zinc-400">Pemicu: <code className="font-mono text-violet-500">{prefix}{command || 'command'} &lt;args&gt;</code></p>
+              <p className="-mt-2 text-[11px] text-zinc-400">Pemicu: <code className="font-mono text-blue-500">{prefix}{command || 'command'} &lt;args&gt;</code></p>
 
               <div className="grid sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Deskripsi (opsional)</label>
                   <input value={description} onChange={e => setDescription(e.target.value)}
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Contoh pemakaian (opsional)</label>
                   <input value={usage} onChange={e => setUsage(e.target.value)} placeholder=".xprofile budi"
-                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
 
               {/* Code editor */}
               <div>
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
-                  <Terminal className="w-3.5 h-3.5" /> Script (body handler JS)
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                    <Terminal className="w-3.5 h-3.5" /> Script (body handler JS)
+                  </label>
+                  <button type="button" onClick={loadExample}
+                    className="text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                    Sisipkan contoh
+                  </button>
+                </div>
                 <textarea value={code} onChange={e => setCode(e.target.value)} required spellCheck={false} rows={14}
-                  className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-950 text-emerald-200 border border-zinc-700 text-[12.5px] font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  placeholder={"// Tulis script-mu di sini. Contoh paling sederhana:\n// return 'pong 🏓';\n//\n// Tersedia: ctx (args, sender, ...) & helpers (getJson, getText, ...).\n// Klik \"Sisipkan contoh\" untuk template .xprofile."}
+                  className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-950 text-emerald-200 placeholder:text-zinc-500 border border-zinc-700 text-[12.5px] font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500"
                   style={{ tabSize: 2 }} />
                 <p className="mt-1 text-[11px] text-zinc-400">
                   Tersedia: <code className="font-mono">ctx</code> (args, rawArgs, sender, chatId) &amp;
@@ -359,8 +377,8 @@ export default function Plugins() {
                 <div className="flex items-end gap-2">
                   <div className="flex-1">
                     <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400">Argumen tes (pisah spasi)</label>
-                    <input value={testArgs} onChange={e => setTestArgs(e.target.value)} placeholder="tasyaardhisa_"
-                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500" />
+                    <input value={testArgs} onChange={e => setTestArgs(e.target.value)} placeholder="username"
+                      className="mt-1 w-full px-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm font-mono text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   </div>
                   <button type="button" onClick={handleTest} disabled={testing || !editing}
                     title={!editing ? 'Simpan dulu untuk mengetes' : 'Jalankan tes'}
@@ -384,7 +402,7 @@ export default function Plugins() {
                     {testResult.output?.mediaUrl && (
                       <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
                         <ImageIcon className="w-3.5 h-3.5" />
-                        <a href={testResult.output.mediaUrl} target="_blank" rel="noreferrer" className="text-violet-500 underline truncate">{testResult.output.mediaUrl}</a>
+                        <a href={testResult.output.mediaUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline truncate">{testResult.output.mediaUrl}</a>
                         <span className="text-zinc-400">({testResult.output.mediaType})</span>
                       </div>
                     )}
@@ -401,7 +419,7 @@ export default function Plugins() {
                   Tutup
                 </button>
                 <button type="submit" disabled={saving}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold disabled:opacity-50">
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl btn-primary text-white text-sm font-bold disabled:opacity-50">
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                   {editing ? 'Simpan Perubahan' : 'Simpan Plugin'}
                 </button>
