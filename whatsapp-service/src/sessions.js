@@ -406,6 +406,77 @@ class SessionManager extends EventEmitter {
     return null;
   }
 
+  // Ambil media untuk plugin: dari media yang dikirim bareng command (caption),
+  // atau dari pesan yang di-reply (quoted). Dikembalikan sebagai data URL base64
+  // supaya bisa dipakai langsung lewat ctx.media + helpers.upload di sandbox.
+  async _extractPluginMedia(sessionId, rawMessage) {
+    try {
+      const sock = this._sessions.get(sessionId);
+      if (!sock || !rawMessage?.message || !rawMessage.key) return null;
+
+      const realMsg = getRealMessage(rawMessage.message);
+      if (!realMsg) return null;
+
+      const KINDS = ['imageMessage', 'videoMessage', 'audioMessage', 'documentMessage'];
+      const kindOf = (msg) => msg && KINDS.find(k => msg[k]);
+
+      let node = null, kind = null, key = null;
+
+      const directKind = kindOf(realMsg);
+      if (directKind) {
+        // Gambar dikirim langsung bersama command (caption ".hd")
+        kind = directKind;
+        node = realMsg[directKind];
+        key = rawMessage.key;
+      } else {
+        // Command me-reply pesan lain → ambil dari contextInfo.quotedMessage
+        let ci = null;
+        for (const k of Object.keys(realMsg)) {
+          const c = realMsg[k]?.contextInfo;
+          if (c?.quotedMessage) { ci = c; break; }
+        }
+        if (!ci) return null;
+        const quoted = getRealMessage(ci.quotedMessage);
+        const qKind = kindOf(quoted);
+        if (!qKind) return null;
+        kind = qKind;
+        node = quoted[qKind];
+        key = {
+          remoteJid: rawMessage.key.remoteJid,
+          id: ci.stanzaId,
+          participant: ci.participant,
+          fromMe: false,
+        };
+      }
+
+      const mediaType = kind === 'imageMessage' ? 'image'
+        : kind === 'videoMessage' ? 'video'
+        : kind === 'audioMessage' ? 'audio' : 'document';
+      const mimetype = node.mimetype || (mediaType === 'image' ? 'image/jpeg' : 'application/octet-stream');
+
+      const buffer = await downloadMediaMessage(
+        { key, message: { [kind]: node } },
+        'buffer',
+        {},
+        { logger, reuploadRequest: sock.updateMediaMessage }
+      );
+      if (!buffer || !buffer.length) return null;
+
+      const MAX = 8 * 1024 * 1024; // batasi base64 agar ctx tidak membengkak
+      if (buffer.length > MAX) return { mediaType, mimetype, size: buffer.length, tooLarge: true };
+
+      return {
+        mediaType,
+        mimetype,
+        size: buffer.length,
+        dataUrl: `data:${mimetype};base64,${buffer.toString('base64')}`,
+      };
+    } catch (err) {
+      console.error('[Plugin] Gagal mengambil media:', err?.message || err);
+      return null;
+    }
+  }
+
   has(id) { return this._sessions.has(id); }
   isConnected(id) {
     const sock = this._sessions.get(id);
@@ -892,6 +963,13 @@ class SessionManager extends EventEmitter {
       sessionId,
     };
 
+    // Lampirkan media (gambar yang di-reply / dikirim dgn caption) bila ada,
+    // supaya plugin bisa memprosesnya (mis. .removebg / .hd).
+    try {
+      const media = await this._extractPluginMedia(sessionId, rawMessage);
+      if (media) ctx.media = media;
+    } catch { /* non-fatal */ }
+
     let result;
     try {
       result = await runPlugin(plugin.code, ctx, { timeoutMs: plugin.timeout_ms || 8000 });
@@ -1073,21 +1151,35 @@ class SessionManager extends EventEmitter {
       let content = {};
       let actualMediaType = null;
       if (mediaUrl) {
+        const isDataUri = mediaUrl.startsWith('data:');
         await saveRemoteDebugLog('last_media_info', {
           time: new Date().toISOString(),
-          mediaUrl,
+          mediaUrl: isDataUri ? mediaUrl.slice(0, 64) + `...[data URI, ${mediaUrl.length} chars]` : mediaUrl,
           mediaType,
           jid
         });
         // Handle relative URLs by prepending the backend URL
-        if (mediaUrl.startsWith('/')) {
+        if (!isDataUri && mediaUrl.startsWith('/')) {
           mediaUrl = `${BACKEND_URL}${mediaUrl}`;
         }
         let resolvedUrl = mediaUrl;
         let localFileBuffer = null;
         let detectedMime = null;
 
-        if (mediaUrl.includes('/uploads/')) {
+        // data: URI (mis. hasil olahan gambar dari plugin) → decode langsung ke buffer.
+        // Memakai jalur localFileBuffer sehingga sisa alur di bawah tetap sama.
+        if (isDataUri) {
+          const m = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(mediaUrl);
+          if (m) {
+            detectedMime = m[1] || 'application/octet-stream';
+            localFileBuffer = m[2]
+              ? Buffer.from(m[3], 'base64')
+              : Buffer.from(decodeURIComponent(m[3]));
+            console.log(`[sessions] Decoded data: URI media (${localFileBuffer.length} bytes, ${detectedMime})`);
+          }
+        }
+
+        if (!isDataUri && mediaUrl.includes('/uploads/')) {
           const filename = mediaUrl.split('/').pop();
           // 1. Try local filesystem paths
           const possiblePaths = [

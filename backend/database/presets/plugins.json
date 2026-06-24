@@ -1,0 +1,145 @@
+[
+  {
+    "name": "Universal Downloader",
+    "trigger": "download",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".download <link>",
+    "description": "Unduh media TikTok/IG/YouTube/FB/Twitter dari link",
+    "timeout_ms": 15000,
+    "needs_media": false,
+    "code": "// .download <link>  -> unduh media dari TikTok/IG/YouTube/Facebook/Twitter dll.\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst url = (ctx.rawArgs || ctx.args[0] || '').trim();\nif (!/^https?:\\/\\//i.test(url)) {\n  return 'Pemakaian: .download <link>\\nContoh: .download https://vt.tiktok.com/xxxxx';\n}\n\nconst res = await helpers.getJson(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/download?url=' + encodeURIComponent(url),\n  { headers: { 'x-api-key': API_KEY } }\n);\nconst medias = (res && res.status === true && res.data) ? (res.data.medias || []) : [];\nif (medias.length === 0) {\n  return '❌ Gagal mengunduh' + (res && res.message ? ': ' + res.message : '') + '.';\n}\n\nconst d = res.data;\nconst EMOJI = { tiktok:'🎵', instagram:'📸', youtube:'▶️', facebook:'📘', twitter:'🐦' };\nconst icon = EMOJI[d.source] || '⬇️';\n\n// endpoint sudah urutkan video dulu → ambil yang pertama sebagai media utama\nconst pick = medias[0];\n\nlet text = icon + ' *Download ' + (d.source || 'media').toUpperCase() + '*';\nif (d.title) text += '\\n📝 ' + d.title.slice(0, 200);\nif (d.author) text += '\\n👤 ' + d.author;\n\n// tawarkan media lain (kualitas/format) sebagai link tap — maks 6 biar nggak spam\nconst others = medias.slice(1, 7);\nif (others.length) {\n  text += '\\n\\n🔗 Lainnya:\\n' + others.map(m => '• ' + (m.label || m.type) + ': ' + m.url).join('\\n');\n  if (medias.length > 7) text += '\\n• …dan ' + (medias.length - 7) + ' lagi';\n}\n\nreturn { text, mediaUrl: pick.url, mediaType: pick.type };"
+  },
+  {
+    "name": "Instagram Post",
+    "trigger": "igpost",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".igpost <username>",
+    "description": "Postingan Instagram terbaru",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .igpost <username>  -> postingan terbaru (media + caption)\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst username = (ctx.args[0] || '').replace('@','').trim();\nif (!username) return 'Pemakaian: .igpost <username>';\n\nconst res = await helpers.post(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/igprofile',\n  { username, count: 1 },\n  { headers: { 'x-api-key': API_KEY } }\n);\nconst posts = res && res.status === true ? (res.data && res.data.posts) || [] : [];\nif (posts.length === 0) return 'Tidak ada postingan untuk @' + username + '.';\n\nconst post  = posts[0];\nconst first = (post.carousel_media && post.carousel_media[0]) || post; // carousel -> media pertama\nconst isVideo = first.media_type === 'video' || !!first.video_url;\nconst url = isVideo ? (first.video_url || first.image_url) : first.image_url;\nconst cap = (post.caption || '').slice(0, 500);\n\nconst text =\n  '📷 *Postingan terbaru @' + username + '*\\n' +\n  '❤️ ' + Number(post.like_count || 0).toLocaleString('id-ID') +\n  '   💬 ' + Number(post.comment_count || 0).toLocaleString('id-ID') +\n  (cap ? '\\n\\n' + cap : '') +\n  '\\n\\ninstagram.com/p/' + post.shortcode;\n\nreturn { text, mediaUrl: url || null, mediaType: url ? (isVideo ? 'video' : 'image') : null };"
+  },
+  {
+    "name": "Instagram Story",
+    "trigger": "igstory",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".igstory <username>",
+    "description": "Story Instagram aktif",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .igstory <username>  -> story aktif terbaru\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst username = (ctx.args[0] || '').replace('@','').trim();\nif (!username) return 'Pemakaian: .igstory <username>';\n\nconst res = await helpers.post(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/igprofile',\n  { username },\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true) return 'Akun @' + username + ' tidak ditemukan.';\n\nconst stories = (res.data && res.data.stories) || [];\nif (stories.length === 0) {\n  return res.data && res.data.profile && res.data.profile.is_private\n    ? '🔒 Akun @' + username + ' privat — story tidak bisa diambil.'\n    : '@' + username + ' tidak punya story aktif saat ini.';\n}\n\nconst s = stories[0];\nconst isVideo = s.media_type === 'video' || !!s.video_url;\nconst url = isVideo ? (s.video_url || s.image_url) : s.image_url;\n\nreturn {\n  text: '👻 *Story aktif @' + username + '*\\n📦 Total story aktif: ' + stories.length,\n  mediaUrl: url || null,\n  mediaType: url ? (isVideo ? 'video' : 'image') : null,\n};"
+  },
+  {
+    "name": "Instagram Profile",
+    "trigger": "igprofile",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".igprofile <username>",
+    "description": "Profil Instagram lengkap + foto",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .ig <username>  -> profil Instagram lengkap + foto profil\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst username = (ctx.args[0] || '').replace('@','').trim();\nif (!username) return 'Pemakaian: .ig <username>';\n\nconst res = await helpers.post(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/igprofile',\n  { username },\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) {\n  return 'Akun @' + username + ' tidak ditemukan' + (res && res.message ? ' (' + res.message + ')' : '') + '.';\n}\n\nconst d = res.data;\nconst p = d.profile || {};\nconst fmt = (n) => Number(n || 0).toLocaleString('id-ID');\nconst badge = (p.is_verified ? ' ✅' : '') + (p.is_private ? ' 🔒' : '');\n\nconst lines = [\n  '📸 *' + (p.full_name || username) + '*  (@' + (p.username || username) + ')' + badge,\n  '',\n  '👥 Followers : ' + fmt(p.follower_count),\n  '➡️ Following : ' + fmt(p.following_count),\n  '🖼️ Postingan : ' + fmt(p.post_count),\n];\nif (p.biography)   lines.push('', '📝 ' + p.biography);\nif (p.external_url) lines.push('🔗 ' + p.external_url);\nlines.push(\n  '',\n  '🧩 Konten terambil:',\n  '• ' + d.posts_count + ' post terbaru   • ' + d.stories_count + ' story aktif   • ' + d.highlights_count + ' highlight',\n  '',\n  'instagram.com/' + (p.username || username)\n);\n\nreturn {\n  text: lines.join('\\n'),\n  mediaUrl: p.profile_pic_url || null,\n  mediaType: p.profile_pic_url ? 'image' : null,\n};"
+  },
+  {
+    "name": "TikTok Profile",
+    "trigger": "tiktok",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".tiktok <username>",
+    "description": "Profil TikTok + foto",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .tiktok <username>  -> profil TikTok + foto profil\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst username = (ctx.args[0] || '').replace('@','').trim();\nif (!username) return 'Pemakaian: .tiktok <username>';\n\nconst res = await helpers.getJson(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/ttprofile?username=' + encodeURIComponent(username),\n  { headers: { 'x-api-key': API_KEY } }\n);\nconst info = res && res.status === true && res.data ? res.data.userInfo : null;\nif (!info || !info.user) {\n  return 'Akun TikTok @' + username + ' tidak ditemukan' + (res && res.message ? ' (' + res.message + ')' : '') + '.';\n}\n\nconst u = info.user;\nconst s = info.stats || {};\nconst fmt = (n) => Number(n || 0).toLocaleString('id-ID');\nconst badge = (u.verified ? ' ✅' : '') + (u.privateAccount ? ' 🔒' : '');\n\nconst lines = [\n  '🎵 *' + (u.nickname || username) + '*  (@' + (u.uniqueId || username) + ')' + badge,\n  '',\n  '👥 Followers : ' + fmt(s.followerCount),\n  '➡️ Following : ' + fmt(s.followingCount),\n  '❤️ Likes     : ' + fmt(s.heartCount || s.heart),\n  '🎬 Video     : ' + fmt(s.videoCount),\n];\nif (u.signature) lines.push('', '📝 ' + u.signature);\nlines.push('', 'tiktok.com/@' + (u.uniqueId || username));\n\nconst pic = u.avatarLarger || u.avatarMedium || u.avatarThumb || null;\nreturn { text: lines.join('\\n'), mediaUrl: pic, mediaType: pic ? 'image' : null };"
+  },
+  {
+    "name": "X/Twitter Profile",
+    "trigger": "xprofile",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".xprofile <username>",
+    "description": "Profil X/Twitter + foto",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .xprofile <username>  -> balas info profil X/Twitter + foto\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nconst username = (ctx.args[0] || '').replace('@','').trim();\nif (!username) return 'Pemakaian: .xprofile <username>';\n\nconst res = await helpers.getJson(\n  'https://api.yrizzz.my.id/api/execute/v1/socialmedia/xprofile?username=' + encodeURIComponent(username),\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) return 'Profil @' + username + ' tidak ditemukan.';\n\nconst d = res.data;\nconst text =\n  '👤 *' + (d.name || username) + '*  (@' + d.screen_name + ')\\n' +\n  '👥 Followers: ' + Number(d.followers_count ?? 0).toLocaleString('id-ID') + '\\n' +\n  '➡️ Following: ' + Number(d.following_count ?? 0).toLocaleString('id-ID');\n\nreturn { text, mediaUrl: d.profile_image || null, mediaType: d.profile_image ? 'image' : null };"
+  },
+  {
+    "name": "Domain Info",
+    "trigger": "domain",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".domain <domain>",
+    "description": "Info domain/WHOIS lengkap",
+    "timeout_ms": 12000,
+    "needs_media": false,
+    "code": "// .domain <domain>  -> info domain LENGKAP (registrar, whois, umur, tanggal)\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\n\n// terima \"google.com\", \"https://google.com/x\", \"@google.com\" -> google.com\nconst domain = (ctx.args[0] || '')\n  .trim().toLowerCase()\n  .replace(/^https?:\\/\\//, '')\n  .replace(/^www\\./, '')\n  .replace(/\\/.*$/, '')\n  .replace(/^@/, '');\nif (!domain || !domain.includes('.')) return 'Pemakaian: .domain <domain.com>';\n\nconst res = await helpers.getJson(\n  'https://api.yrizzz.my.id/api/execute/v1/domain/domaininfo?domain=' + encodeURIComponent(domain),\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) {\n  return '❌ Info domain *' + domain + '* tidak ditemukan' + (res && res.message ? ' (' + res.message + ')' : '') + '.';\n}\n\nconst d = res.data;\nconst val = (v) => (v && v !== '-') ? v : '—';\n\nconst lines = [\n  '🌐 *' + domain + '*',\n  '',\n  '🏢 Registrar : ' + val(d.name),\n  '🔗 Registrar URL : ' + val(d.registrar),\n  '📖 WHOIS : ' + val(d.whois),\n  '',\n  '⏳ Umur : ' + val(d.age),\n  '📅 Dibuat : ' + val(d.created),\n  '🔄 Diperbarui : ' + val(d.updated),\n  '⌛ Kedaluwarsa : ' + val(d.expired),\n];\n\nreturn { text: lines.join('\\n') };"
+  },
+  {
+    "name": "Remove Background",
+    "trigger": "removebg",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".removebg (kirim/reply gambar)",
+    "description": "Hapus background gambar",
+    "timeout_ms": 15000,
+    "needs_media": true,
+    "code": "// .removebg  -> hapus background dari gambar yang kamu kirim / reply\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\n\n// Gambar diambil dari pesan yang kamu kirim bareng \".removebg\" (caption),\n// atau dari pesan gambar yang kamu reply.\nif (!ctx.media)                       return 'Kirim *gambar* dengan caption .removebg, atau reply gambar lalu ketik .removebg';\nif (ctx.media.mediaType !== 'image')  return 'Khusus gambar ya 🙏';\nif (ctx.media.tooLarge)               return 'Gambar terlalu besar (maks 8MB).';\n\nconst res = await helpers.upload(\n  'https://api.yrizzz.my.id/api/execute/v1/tool/removeBg',\n  { data: ctx.media.dataUrl, field: 'image', filename: 'input.png', contentType: ctx.media.mimetype },\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) {\n  return 'Gagal memproses' + (res && res.message ? ': ' + res.message : '') + '.';\n}\n\n// API bisa balas URL (http...) atau base64 mentah → keduanya didukung.\nconst out = res.data;\nconst mediaUrl = (typeof out === 'string' && out.startsWith('http')) ? out : 'data:image/png;base64,' + out;\nreturn { text: '✅ Background dihapus!', mediaUrl, mediaType: 'image' };"
+  },
+  {
+    "name": "Image HD / Upscale",
+    "trigger": "hd",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".hd (kirim/reply gambar)",
+    "description": "Tingkatkan resolusi gambar",
+    "timeout_ms": 15000,
+    "needs_media": true,
+    "code": "// .hd  -> tingkatkan resolusi (upscale) gambar yang kamu kirim / reply\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nif (!ctx.media)                      return 'Kirim gambar dgn caption .hd, atau reply gambar lalu ketik .hd';\nif (ctx.media.mediaType !== 'image') return 'Khusus gambar ya 🙏';\nif (ctx.media.tooLarge)              return 'Gambar terlalu besar (maks 8MB).';\n\nconst res = await helpers.upload(\n  'https://api.yrizzz.my.id/api/execute/v1/tool/imageHd',\n  { data: ctx.media.dataUrl, field: 'image', filename: 'input.png', contentType: ctx.media.mimetype },\n  { headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) {\n  return 'Gagal upscale' + (res && res.message ? ': ' + res.message : '') + '.';\n}\nconst out = res.data;\nconst mediaUrl = (typeof out === 'string' && out.startsWith('http')) ? out : 'data:image/png;base64,' + out;\nreturn { text: '✨ Gambar di-HD-kan!', mediaUrl, mediaType: 'image' };"
+  },
+  {
+    "name": "Image Background",
+    "trigger": "bg",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".bg <warna> (kirim/reply gambar)",
+    "description": "Ganti background jadi warna solid",
+    "timeout_ms": 15000,
+    "needs_media": true,
+    "code": "// .bg <warna>  -> ganti background jadi warna solid (mis. .bg red). Default: blue\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nif (!ctx.media)                      return 'Kirim gambar dgn caption \".bg <warna>\", atau reply gambar lalu ketik .bg <warna>';\nif (ctx.media.mediaType !== 'image') return 'Khusus gambar ya 🙏';\nif (ctx.media.tooLarge)              return 'Gambar terlalu besar (maks 8MB).';\n\nconst color = (ctx.args[0] || 'blue').trim();\nconst res = await helpers.upload(\n  'https://api.yrizzz.my.id/api/execute/v1/tool/imageBg',\n  { data: ctx.media.dataUrl, field: 'image', filename: 'input.png', contentType: ctx.media.mimetype },\n  { fields: { color }, headers: { 'x-api-key': API_KEY } }   // field tambahan lewat opts.fields\n);\nif (!res || res.status !== true || !res.data) {\n  return 'Gagal mengganti background' + (res && res.message ? ': ' + res.message : '') + '.';\n}\nconst out = res.data;\nconst mediaUrl = (typeof out === 'string' && out.startsWith('http')) ? out : 'data:image/png;base64,' + out;\nreturn { text: '🎨 Background diganti jadi ' + color + '!', mediaUrl, mediaType: 'image' };"
+  },
+  {
+    "name": "Image Convert",
+    "trigger": "convert",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".convert <format> (kirim/reply gambar)",
+    "description": "Konversi format gambar",
+    "timeout_ms": 15000,
+    "needs_media": true,
+    "code": "// .convert <format>  -> ubah format gambar (png/jpg/webp/avif/heic...). Default: png\nconst API_KEY = 'pk_3876f9c71b90f5000e9f3b626298e4e34ae446dfe0a918342602e63f364709aa';\nif (!ctx.media)                      return 'Kirim gambar dgn caption \".convert <format>\", atau reply gambar lalu ketik .convert <format>';\nif (ctx.media.mediaType !== 'image') return 'Khusus gambar ya 🙏';\nif (ctx.media.tooLarge)              return 'Gambar terlalu besar (maks 8MB).';\n\nconst type = (ctx.args[0] || 'png').toLowerCase().replace('.', '').trim();\nconst res = await helpers.upload(\n  'https://api.yrizzz.my.id/api/execute/v1/tool/imageCv',\n  { data: ctx.media.dataUrl, field: 'image', filename: 'input.png', contentType: ctx.media.mimetype },\n  { fields: { type }, headers: { 'x-api-key': API_KEY } }\n);\nif (!res || res.status !== true || !res.data) {\n  return 'Gagal konversi' + (res && res.message ? ': ' + res.message : '') + '.';\n}\nconst out = res.data;\nconst mime = 'image/' + (type === 'jpg' ? 'jpeg' : type);\nconst mediaUrl = (typeof out === 'string' && out.startsWith('http')) ? out : 'data:' + mime + ';base64,' + out;\n// png/jpg/webp/gif bisa tampil sbg gambar; format lain (avif/heic) dikirim sbg dokumen\nconst viewable = ['png','jpg','jpeg','webp','gif'].includes(type);\nreturn { text: '🔄 Dikonversi ke ' + type.toUpperCase(), mediaUrl, mediaType: viewable ? 'image' : 'document' };"
+  },
+  {
+    "name": "Ping",
+    "trigger": "ping",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".ping",
+    "description": "Balasan tes sederhana",
+    "timeout_ms": 5000,
+    "needs_media": false,
+    "code": "// .ping  -> balasan teks sederhana\nreturn 'pong 🏓';"
+  },
+  {
+    "name": "Kalkulator",
+    "trigger": "hitung",
+    "prefix": ".",
+    "match_type": "starts_with",
+    "usage": ".hitung 10 5",
+    "description": "Contoh argumen + log",
+    "timeout_ms": 5000,
+    "needs_media": false,
+    "code": "// .hitung 10 5  -> contoh pakai argumen & balas objek\nconst a = Number(ctx.args[0] || 0);\nconst b = Number(ctx.args[1] || 0);\nhelpers.log('input', a, b);            // muncul di panel Tes\nreturn { text: a + ' + ' + b + ' = ' + (a + b) };"
+  }
+]

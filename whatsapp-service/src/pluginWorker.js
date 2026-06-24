@@ -83,9 +83,56 @@ async function readLimited(res) {
   return buf;
 }
 
+// ── Multipart upload (untuk endpoint yang menerima file, mis. removeBg/imageHd) ──
+function dataToBuffer(data) {
+  if (Buffer.isBuffer(data)) return data;
+  if (typeof data === 'string') {
+    const m = /^data:([^;,]*)(;base64)?,([\s\S]*)$/.exec(data);
+    if (m) return m[2] ? Buffer.from(m[3], 'base64') : Buffer.from(decodeURIComponent(m[3]));
+    return Buffer.from(data, 'base64'); // anggap base64 polos
+  }
+  throw new Error('upload: file.data harus Buffer / base64 / data URL');
+}
+
+function buildMultipart(fields, file) {
+  const boundary = '----autoin' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+  const CRLF = '\r\n';
+  const parts = [];
+  for (const [name, value] of Object.entries(fields || {})) {
+    parts.push(Buffer.from(`--${boundary}${CRLF}Content-Disposition: form-data; name="${name}"${CRLF}${CRLF}${value}${CRLF}`));
+  }
+  parts.push(Buffer.from(
+    `--${boundary}${CRLF}Content-Disposition: form-data; name="${file.field}"; filename="${file.filename}"${CRLF}Content-Type: ${file.contentType}${CRLF}${CRLF}`
+  ));
+  parts.push(file.buffer, Buffer.from(CRLF));
+  parts.push(Buffer.from(`--${boundary}--${CRLF}`));
+  return { body: Buffer.concat(parts), boundary };
+}
+
 const helpers = {
   log: (...a) => {
     logs.push(a.map(x => (typeof x === 'string' ? x : safeStringify(x))).join(' '));
+  },
+  // helpers.upload(url, { data, field?, filename?, contentType? }, { fields?, headers? })
+  // data: ctx.media.dataUrl / base64 / Buffer. Mengembalikan JSON (atau teks) seperti helpers.post.
+  async upload(url, file, opts = {}) {
+    if (!file || file.data == null) throw new Error('upload: file.data wajib (mis. ctx.media.dataUrl)');
+    const buffer = dataToBuffer(file.data);
+    if (buffer.length > MAX_RESPONSE_BYTES) throw new Error('File untuk upload terlalu besar (maks 5MB)');
+    const { body, boundary } = buildMultipart(opts.fields || {}, {
+      field: file.field || 'image',
+      filename: file.filename || 'upload.bin',
+      contentType: file.contentType || 'application/octet-stream',
+      buffer,
+    });
+    const res = await safeFetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, ...(opts.headers || {}) },
+      body,
+    });
+    const ct = res.headers.get('content-type') || '';
+    const b = await readLimited(res);
+    return ct.includes('application/json') ? JSON.parse(b.toString('utf8')) : b.toString('utf8');
   },
   async getJson(url, opts) {
     const b = await readLimited(await safeFetch(url, opts));
