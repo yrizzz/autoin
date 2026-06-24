@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers
+  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -296,6 +296,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
     { id: 'api_docs', label: 'Dokumentasi API', icon: BookOpen, href: '/docs' },
   ];
   if (user?.email?.toLowerCase() === 'arisedyhandoko@gmail.com') {
+    settingsItems.unshift({ id: 'admin_plugins', label: 'Kelola Plugin', icon: Puzzle, href: '/admin-plugins' });
     settingsItems.unshift({ id: 'promo_codes', label: 'Kode Promo', icon: Ticket, href: '/promo-codes' });
     settingsItems.unshift({ id: 'users', label: 'Daftar Pelanggan', icon: Users, href: '/users' });
     settingsItems.unshift({ id: 'admin_settings', label: 'Sistem Admin', icon: Settings, href: '/admin-settings' });
@@ -318,6 +319,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, on
       items: [
         { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '/quick-send' },
         { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '/chatbot' },
+        { id: 'plugins', label: 'Plugin / Extension', icon: Puzzle, href: '/plugins' },
         { id: 'webhook', label: 'Webhook App', icon: Link, href: '/webhook' },
         { id: 'history', label: 'Riwayat Broadcast', icon: History, href: '/broadcast/history' },
       ]

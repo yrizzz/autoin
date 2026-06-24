@@ -18,6 +18,7 @@ class PlanLimits
             'messages_per_day'  => 50,   // 50 WA direct messages/day
             'chatbot_rules'     => 1,    // 1 chatbot rule for trial
             'webhooks'          => 1,    // 1 webhook
+            'plugins'           => 1,    // 1 plugin for trial
         ],
         'daily' => [
             'channels'          => 3,    // Max 3 devices on Daily Pass
@@ -26,6 +27,7 @@ class PlanLimits
             'messages_per_day'  => null,
             'chatbot_rules'     => 5,
             'webhooks'          => 3,
+            'plugins'           => 5,
         ],
         'monthly' => [
             'channels'          => 5,    // Max 5 devices on Monthly Pass
@@ -34,6 +36,7 @@ class PlanLimits
             'messages_per_day'  => null,
             'chatbot_rules'     => null,
             'webhooks'          => null,
+            'plugins'           => null,
         ],
         'yearly' => [
             'channels'          => 10,   // Max 10 devices on Yearly Pass
@@ -42,6 +45,7 @@ class PlanLimits
             'messages_per_day'  => null,
             'chatbot_rules'     => null,
             'webhooks'          => null,
+            'plugins'           => null,
         ],
     ];
 
@@ -94,6 +98,7 @@ class PlanLimits
             'messages_per_day' => 'Batas 50 pesan/hari tercapai. Upgrade untuk pengiriman pesan tanpa batas.',
             'chatbot_rules'    => 'Batas 1 auto-reply gratis tercapai. Upgrade untuk mengaktifkan lebih banyak Auto-Reply.',
             'webhooks'         => 'Batas webhook tercapai. Upgrade untuk webhook tanpa batas.',
+            'plugins'          => 'Batas 1 plugin gratis tercapai. Upgrade untuk memasang lebih banyak plugin.',
         ];
 
         return response()->json([
@@ -120,6 +125,7 @@ class PlanLimits
                 'broadcasts'    => $user->broadcasts()->count(),
                 'chatbot_rules' => $user->chatbotRules()->count(),
                 'webhooks'      => $user->webhooks()->count(),
+                'plugins'       => $user->plugins()->count(),
             ],
         ];
     }

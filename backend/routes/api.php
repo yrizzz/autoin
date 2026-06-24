@@ -6,6 +6,7 @@ use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\ChannelController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ChatbotRuleController;
+use App\Http\Controllers\PluginController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\UploadController;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 
 // Internal endpoint — called by Node.js services, no user auth required
 Route::post('internal/chatbot/match', [ChatbotRuleController::class, 'matchInternal']);
+Route::post('internal/plugins/report', [PluginController::class, 'reportInternal']);
 Route::post('internal/whatsapp/sync', [WhatsAppController::class, 'syncInternal']);
 Route::get('internal/whatsapp/sync-data', [WhatsAppController::class, 'getSyncInternal']);
 Route::get('internal/whatsapp/auth', [WhatsAppController::class, 'getAuthInternal']);
@@ -100,6 +102,16 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('broadcasts/{broadcast}/logs', [BroadcastController::class, 'logs']);
 
     Route::apiResource('chatbot-rules', ChatbotRuleController::class)->except(['show']);
+
+    Route::apiResource('plugins', PluginController::class)->except(['show']);
+    Route::post('plugins/{plugin}/test', [PluginController::class, 'test']);
+
+    // Admin: pantau & kelola semua plugin lintas user
+    Route::get('admin/plugins', [PluginController::class, 'adminIndex']);
+    Route::post('admin/plugins/{plugin}/toggle', [PluginController::class, 'adminToggle']);
+    Route::post('admin/plugins/{plugin}/test', [PluginController::class, 'adminTest']);
+    Route::delete('admin/plugins/{plugin}', [PluginController::class, 'adminDestroy']);
+
     Route::apiResource('webhooks', WebhookController::class)->except(['show']);
 
     Route::post('upload', [UploadController::class, 'upload']);

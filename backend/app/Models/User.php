@@ -52,6 +52,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(Webhook::class);
     }
 
+    public function plugins()
+    {
+        return $this->hasMany(Plugin::class);
+    }
+
     public function templates()
     {
         return $this->hasMany(Template::class);

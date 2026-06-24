@@ -16,6 +16,7 @@ const __dirname = path.dirname(__filename);
 import QRCode from 'qrcode';
 import pino from 'pino';
 import { EventEmitter } from 'events';
+import { runPlugin } from './pluginRunner.js';
 
 const MEDIA_DIR = './media-temp';
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8001';
@@ -837,6 +838,7 @@ class SessionManager extends EventEmitter {
 
   async _autoreply(sessionId, chatId, text, rawMessage = null) {
     console.log(`[Chatbot] Triggered for session ${sessionId}, chat ${chatId}, text: "${text}"`);
+    const sender = rawMessage?.key?.participant || rawMessage?.participant || chatId;
     try {
       const url = `${BACKEND_URL}/api/internal/chatbot/match`;
       console.log(`[Chatbot] Calling match API: ${url}`);
@@ -846,7 +848,7 @@ class SessionManager extends EventEmitter {
           'Content-Type': 'application/json',
           'X-Internal-Secret': INTERNAL_SECRET,
         },
-        body: JSON.stringify({ session_id: sessionId, text, platform: 'whatsapp' }),
+        body: JSON.stringify({ session_id: sessionId, text, sender, platform: 'whatsapp' }),
         signal: AbortSignal.timeout(10000)
       });
       console.log(`[Chatbot] Match API response status: ${res.status}`);
@@ -857,6 +859,13 @@ class SessionManager extends EventEmitter {
       }
       const data = await res.json();
       console.log(`[Chatbot] Match API response data:`, data);
+
+      // ── Plugin: jalankan script user di sandbox, kirim output-nya ───────────
+      if (data.type === 'plugin' && data.plugin) {
+        await this._runPluginReply(sessionId, chatId, data, rawMessage, sender);
+        return;
+      }
+
       if (data.reply || data.media_url) {
         console.log(`[Chatbot] Matching rule found! Replying with: "${data.reply}", type: ${data.reply_type || 'normal'}, media: ${data.media_url || 'none'}`);
         await new Promise(r => setTimeout(r, 800));
@@ -869,6 +878,59 @@ class SessionManager extends EventEmitter {
     } catch (err) {
       console.error(`[Chatbot] Exception in autoreply:`, err);
     }
+  }
+
+  async _runPluginReply(sessionId, chatId, data, rawMessage, sender) {
+    const plugin = data.plugin;
+    console.log(`[Plugin] Running "${plugin.name}" (#${plugin.id}) for ${sender}, args:`, data.args);
+    const ctx = {
+      args: data.args || [],
+      rawArgs: data.raw_args || '',
+      text: data.raw_args || '',
+      sender,
+      chatId,
+      sessionId,
+    };
+
+    let result;
+    try {
+      result = await runPlugin(plugin.code, ctx, { timeoutMs: plugin.timeout_ms || 8000 });
+    } catch (err) {
+      result = { ok: false, error: String(err?.message || err) };
+    }
+
+    if (result.logs?.length) console.log(`[Plugin] Logs (#${plugin.id}):`, result.logs.join('\n'));
+
+    if (!result.ok) {
+      console.error(`[Plugin] Error (#${plugin.id}):`, result.error);
+      this._reportPluginRun(plugin.id, result.error).catch(() => {});
+      await new Promise(r => setTimeout(r, 500));
+      await this.send(sessionId, chatId, `⚠️ Plugin "${plugin.name}" gagal: ${result.error}`, null, null, rawMessage).catch(() => {});
+      return;
+    }
+
+    const out = result.output || {};
+    if (!out.text && !out.mediaUrl) {
+      console.log(`[Plugin] (#${plugin.id}) selesai tanpa output, tidak mengirim balasan.`);
+      this._reportPluginRun(plugin.id, null).catch(() => {});
+      return;
+    }
+
+    await new Promise(r => setTimeout(r, 500));
+    await this.send(sessionId, chatId, out.text || '', out.mediaUrl || null, out.mediaType || null, rawMessage);
+    console.log(`[Plugin] (#${plugin.id}) reply sent.`);
+    this._reportPluginRun(plugin.id, null).catch(() => {});
+  }
+
+  async _reportPluginRun(pluginId, error) {
+    try {
+      await fetch(`${BACKEND_URL}/api/internal/plugins/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': INTERNAL_SECRET },
+        body: JSON.stringify({ plugin_id: pluginId, error: error || null }),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch { /* non-fatal */ }
   }
 
   async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null) {

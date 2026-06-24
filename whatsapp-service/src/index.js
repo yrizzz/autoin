@@ -1,6 +1,7 @@
 import 'dotenv/config'; // Trigger reload
 import express from 'express';
 import { sessionManager } from './sessions.js';
+import { runPlugin } from './pluginRunner.js';
 
 const app = express();
 app.use(express.json());
@@ -175,6 +176,21 @@ app.post('/sessions/:sessionId/send', auth, async (req, res) => {
     res.json({ ok: true, result });
   } catch (err) {
     console.error(`[index] Send error for ${sessionId}:`, err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ── Plugin sandbox: jalankan kode plugin sekali (dipakai fitur "Tes" dashboard) ──
+app.post('/plugins/run', auth, async (req, res) => {
+  const { code, ctx } = req.body || {};
+  const timeoutMs = req.body?.timeout_ms ?? req.body?.timeoutMs;
+  if (!code || typeof code !== 'string') {
+    return res.status(400).json({ ok: false, error: 'Kode plugin wajib diisi' });
+  }
+  try {
+    const result = await runPlugin(code, ctx || {}, { timeoutMs });
+    res.json(result);
+  } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
