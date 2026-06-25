@@ -18,7 +18,8 @@ class ApiLog extends Model
         'media_type',
         'status',
         'error',
-        'response'
+        'response',
+        'via'
     ];
 
     protected $casts = [
