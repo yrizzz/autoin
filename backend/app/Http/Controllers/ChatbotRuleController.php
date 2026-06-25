@@ -243,6 +243,7 @@ class ChatbotRuleController extends Controller
                             'raw_args'       => $extracted['raw_args'],
                             'sender'         => $request->input('sender'),
                             'react_feedback' => $reactFeedback,
+                            'reply_type'     => $rule->reply_type ?? 'normal',
                         ]);
                     }
                     // plugin nonaktif/terhapus -> lanjut pakai reply biasa

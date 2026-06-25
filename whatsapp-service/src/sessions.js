@@ -977,6 +977,9 @@ class SessionManager extends EventEmitter {
     // Reaction feedback (setting per-akun): ⏳ saat command terdeteksi.
     const reactKey = data.react_feedback ? (rawMessage?.key || null) : null;
     if (reactKey) await this._react(sessionId, reactKey, '⏳');
+
+    // Hormati mode kirim rule: 'quote' = balas sambil mengutip pesan, selain itu balas biasa.
+    const quoted = data.reply_type === 'quote' ? rawMessage : null;
     const ctx = {
       args: data.args || [],
       rawArgs: data.raw_args || '',
@@ -1007,7 +1010,7 @@ class SessionManager extends EventEmitter {
       if (reactKey) await this._react(sessionId, reactKey, '❌');
       this._reportPluginRun(plugin.id, result.error).catch(() => {});
       await new Promise(r => setTimeout(r, 500));
-      await this.send(sessionId, chatId, `⚠️ Plugin "${plugin.name}" gagal: ${result.error}`, null, null, rawMessage).catch(() => {});
+      await this.send(sessionId, chatId, `⚠️ Plugin "${plugin.name}" gagal: ${result.error}`, null, null, quoted).catch(() => {});
       return;
     }
 
@@ -1020,7 +1023,7 @@ class SessionManager extends EventEmitter {
     }
 
     await new Promise(r => setTimeout(r, 500));
-    await this.send(sessionId, chatId, out.text || '', out.mediaUrl || null, out.mediaType || null, rawMessage);
+    await this.send(sessionId, chatId, out.text || '', out.mediaUrl || null, out.mediaType || null, quoted);
     console.log(`[Plugin] (#${plugin.id}) reply sent.`);
     if (reactKey) await this._react(sessionId, reactKey, '✅');
     this._reportPluginRun(plugin.id, null).catch(() => {});
