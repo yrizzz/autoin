@@ -11,13 +11,15 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'google_id', 'avatar', 'api_key', 'api_key_created_at'];
+    protected $fillable = ['name', 'email', 'google_id', 'avatar', 'api_key', 'api_key_created_at', 'api_ip_whitelist'];
 
     protected $hidden = ['remember_token'];
 
     protected function casts(): array
     {
-        return [];
+        return [
+            'api_ip_whitelist' => 'array',
+        ];
     }
 
     public function getJWTIdentifier()

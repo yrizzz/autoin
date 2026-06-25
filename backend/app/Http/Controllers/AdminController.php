@@ -142,4 +142,37 @@ class AdminController extends Controller
             'message' => 'Langganan pengguna berhasil dihapus/dibatalkan.'
         ]);
     }
+
+    public function getAdminBroadcasts(Request $request)
+    {
+        abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
+
+        $broadcasts = \App\Models\Broadcast::with(['user:id,name,email', 'channel:id,name,platform'])
+            ->latest()
+            ->paginate(50);
+
+        return response()->json($broadcasts);
+    }
+
+    public function getAdminApiLogs(Request $request)
+    {
+        abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
+
+        $apiLogs = \App\Models\ApiLog::with(['user:id,name,email', 'channel:id,name,platform'])
+            ->latest()
+            ->paginate(50);
+
+        return response()->json($apiLogs);
+    }
+
+    public function getAdminChannels(Request $request)
+    {
+        abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
+
+        $channels = \App\Models\Channel::with('user:id,name,email')
+            ->latest()
+            ->get();
+
+        return response()->json($channels);
+    }
 }

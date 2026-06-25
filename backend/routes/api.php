@@ -76,6 +76,7 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('/api-key', [AuthController::class, 'getApiKey']);
     Route::post('/api-key', [AuthController::class, 'generateApiKey']);
     Route::delete('/api-key', [AuthController::class, 'revokeApiKey']);
+    Route::post('/api-key/whitelist', [AuthController::class, 'updateApiKeyWhitelist']);
     Route::get('/me/limits', function (\Illuminate\Http\Request $r) {
         return response()->json(PlanLimits::usageSummary($r->user()));
     });
@@ -142,6 +143,9 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::post('admin/subscribers/{user}/extend', [\App\Http\Controllers\AdminController::class, 'extendSubscription']);
     Route::delete('admin/subscribers/{user}', [\App\Http\Controllers\AdminController::class, 'deleteUser']);
     Route::delete('admin/subscribers/{user}/subscription', [\App\Http\Controllers\AdminController::class, 'cancelSubscription']);
+    Route::get('admin/broadcasts', [\App\Http\Controllers\AdminController::class, 'getAdminBroadcasts']);
+    Route::get('admin/api-logs', [\App\Http\Controllers\AdminController::class, 'getAdminApiLogs']);
+    Route::get('admin/channels', [\App\Http\Controllers\AdminController::class, 'getAdminChannels']);
     Route::get('announcement', [\App\Http\Controllers\AdminController::class, 'getPublicAnnouncement']);
 
     // Promo Codes API

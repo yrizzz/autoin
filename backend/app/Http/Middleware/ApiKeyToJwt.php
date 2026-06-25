@@ -27,6 +27,17 @@ class ApiKeyToJwt
             $user = User::where('api_key', $apiKey)->first();
 
             if ($user) {
+                // Enforce IP Whitelist if configured
+                $whitelist = $user->api_ip_whitelist;
+                if (is_array($whitelist) && !empty($whitelist)) {
+                    $clientIp = $request->ip();
+                    if (!in_array($clientIp, $whitelist)) {
+                        return response()->json([
+                            'message' => 'Forbidden: Client IP address (' . $clientIp . ') is not whitelisted.'
+                        ], 403);
+                    }
+                }
+
                 try {
                     // Generate a valid JWT token for the user
                     $jwtToken = JWTAuth::fromUser($user);

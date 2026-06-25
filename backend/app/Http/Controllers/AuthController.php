@@ -119,6 +119,7 @@ class AuthController extends Controller
         return response()->json([
             'api_key' => $user->api_key,
             'created' => $user->api_key_created_at,
+            'whitelist' => $user->api_ip_whitelist ?? [],
         ]);
     }
 
@@ -137,6 +138,7 @@ class AuthController extends Controller
         return response()->json([
             'api_key' => $key,
             'created' => $user->api_key_created_at,
+            'whitelist' => $user->api_ip_whitelist ?? [],
         ]);
     }
 
@@ -152,6 +154,24 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'API Key revoked successfully.'
+        ]);
+    }
+
+    public function updateApiKeyWhitelist(Request $request)
+    {
+        $request->validate([
+            'whitelist' => 'present|array',
+            'whitelist.*' => 'string',
+        ]);
+
+        $user = $request->user();
+        $user->update([
+            'api_ip_whitelist' => $request->input('whitelist'),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'whitelist' => $user->api_ip_whitelist ?? [],
         ]);
     }
 }

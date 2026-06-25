@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock
+  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock, Activity
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -299,6 +299,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   ];
   if (user?.email?.toLowerCase() === 'arisedyhandoko@gmail.com') {
     settingsItems.unshift({ id: 'admin_plugins', label: 'Kelola Plugin', icon: Puzzle, href: '/admin-plugins' });
+    settingsItems.unshift({ id: 'admin_monitor', label: 'Monitor Aktivitas', icon: Activity, href: '/admin-monitor' });
     settingsItems.unshift({ id: 'promo_codes', label: 'Kode Promo', icon: Ticket, href: '/promo-codes' });
     settingsItems.unshift({ id: 'users', label: 'Daftar Pelanggan', icon: Users, href: '/users' });
     settingsItems.unshift({ id: 'admin_settings', label: 'Sistem Admin', icon: Settings, href: '/admin-settings' });

@@ -26,22 +26,23 @@ export default function ApiKeyManager() {
   const [ipError, setIpError] = useState('');
 
   useEffect(() => {
-    api.get<{ api_key: string | null; created: string | null }>('/api/api-key')
+    api.get<{ api_key: string | null; created: string | null; whitelist?: string[] }>('/api/api-key')
       .then(res => {
         if (res.api_key) {
           setApiKey(res.api_key);
           setKeyMeta({ created: res.created || new Date().toISOString(), requests: 0 });
+          if (res.whitelist) {
+            setWhitelist(res.whitelist);
+          }
         } else {
           setApiKey('');
           setKeyMeta(null);
+          setWhitelist([]);
         }
       })
       .catch(err => {
         console.error('Gagal mengambil API Key dari server:', err);
       });
-      
-    const savedWl = localStorage.getItem('autoin_api_whitelist');
-    if (savedWl) setWhitelist(JSON.parse(savedWl));
   }, []);
 
   const isValidIP = (ip: string) => {
@@ -50,22 +51,31 @@ export default function ApiKeyManager() {
     return ipv4.test(ip) || ipv6.test(ip) || ip === '*';
   };
 
-  const addIP = () => {
+  const addIP = async () => {
     const ip = ipInput.trim();
     if (!ip) return;
     if (!isValidIP(ip)) { setIpError('Format IP tidak valid. Contoh: 192.168.1.1 atau 103.0.0.0/24'); return; }
     if (whitelist.includes(ip)) { setIpError('IP sudah ada di whitelist'); return; }
     const next = [...whitelist, ip];
-    setWhitelist(next);
-    localStorage.setItem('autoin_api_whitelist', JSON.stringify(next));
-    setIpInput('');
-    setIpError('');
+    
+    try {
+      const res = await api.post<{ whitelist: string[] }>('/api/api-key/whitelist', { whitelist: next });
+      setWhitelist(res.whitelist);
+      setIpInput('');
+      setIpError('');
+    } catch (err: any) {
+      setIpError('Gagal menyimpan whitelist ke server: ' + (err.message || 'Unknown error'));
+    }
   };
 
-  const removeIP = (ip: string) => {
+  const removeIP = async (ip: string) => {
     const next = whitelist.filter(w => w !== ip);
-    setWhitelist(next);
-    localStorage.setItem('autoin_api_whitelist', JSON.stringify(next));
+    try {
+      const res = await api.post<{ whitelist: string[] }>('/api/api-key/whitelist', { whitelist: next });
+      setWhitelist(res.whitelist);
+    } catch (err: any) {
+      alert('Gagal menghapus IP dari server: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleGenerate = async () => {

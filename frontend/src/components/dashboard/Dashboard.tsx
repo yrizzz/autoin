@@ -322,8 +322,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {activeTab === 'overview' ? (
-          <>
+      <div className="relative">
+        <div className={!channels.some(c => c.status === 'active') ? "filter blur-md select-none pointer-events-none opacity-45 transition-all duration-500" : "transition-all duration-500"}>
+          {activeTab === 'overview' ? (
+              <>
             {/* Overview Stats Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
               
@@ -919,6 +921,60 @@ export default function Dashboard() {
             </div>
           </div>
         )}
+        </div>
+
+        {!channels.some(c => c.status === 'active') && (
+          <div className="absolute inset-x-0 top-12 z-20 flex justify-center p-4">
+            <div className="w-full max-w-lg bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl border border-zinc-250 dark:border-zinc-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 relative overflow-hidden">
+              {/* Decorative glow */}
+              <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/10 dark:bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+              
+              {/* Glowing Icon */}
+              <div className="relative w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <span className="absolute -inset-1 rounded-2xl bg-gradient-to-br from-blue-400 to-indigo-500 opacity-30 blur-sm animate-pulse" />
+                <Radio className="w-10 h-10 text-white animate-pulse" />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight font-display">
+                  Hubungkan Perangkat Pertama Anda
+                </h2>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto leading-relaxed">
+                  Untuk mulai menggunakan AutoIn, silakan hubungkan nomor WhatsApp Anda terlebih dahulu. Prosesnya cepat, aman, dan hanya membutuhkan scan QR code.
+                </p>
+              </div>
+              
+              <div className="pt-2">
+                <a
+                  href="/channels"
+                  className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-brand hover:opacity-95 text-white text-xs font-extrabold rounded-2xl transition-all shadow-lg shadow-blue-500/25 cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Hubungkan Perangkat Sekarang
+                </a>
+              </div>
+              
+              <div className="flex items-center justify-center gap-6 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold pt-4 border-t border-zinc-100 dark:border-zinc-800/80">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                  E2E Encrypted
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                  Scan QR Instan
+                </span>
+                <span>•</span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                  Multi-Device
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </AdminLayout>
   );
 }
