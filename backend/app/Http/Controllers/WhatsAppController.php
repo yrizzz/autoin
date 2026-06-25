@@ -564,6 +564,14 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
+        // Enforce daily message limit
+        $todayCount = \App\Models\ApiLog::where('user_id', $request->user()->id)
+            ->whereDate('created_at', today())
+            ->count();
+        if (!\App\Services\PlanLimits::can($request->user(), 'messages_per_day', $todayCount)) {
+            return \App\Services\PlanLimits::denyResponse('messages_per_day');
+        }
+
         $credentials = $channel->credentials;
         $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
         $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');

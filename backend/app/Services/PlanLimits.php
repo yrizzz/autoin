@@ -150,11 +150,12 @@ class PlanLimits
             'plan'   => $plan,
             'limits' => $limits,
             'usage'  => [
-                'channels'      => $user->channels()->count(),
-                'broadcasts'    => $user->broadcasts()->count(),
-                'chatbot_rules' => $user->chatbotRules()->count(),
-                'webhooks'      => $user->webhooks()->count(),
-                'plugins'       => $user->plugins()->count(),
+                'channels'         => $user->channels()->count(),
+                'broadcasts'       => $user->broadcasts()->count(),
+                'chatbot_rules'    => $user->chatbotRules()->count(),
+                'webhooks'         => $user->webhooks()->count(),
+                'plugins'          => $user->plugins()->count(),
+                'messages_per_day' => \App\Models\ApiLog::where('user_id', $user->id)->whereDate('created_at', today())->count(),
             ],
         ];
     }

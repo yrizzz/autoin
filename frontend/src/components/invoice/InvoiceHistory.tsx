@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
-import { Receipt, FileText, Download, CheckCircle, AlertCircle, Clock, CreditCard, Sparkles, Check, QrCode, X, Loader2, Search, ChevronLeft, ChevronRight, Ticket } from 'lucide-react';
+import { Receipt, FileText, Download, CheckCircle, AlertCircle, Clock, CreditCard, Sparkles, Check, QrCode, X, Loader2, Search, ChevronLeft, ChevronRight, Ticket, MessageSquare, Smartphone, Radio, HelpCircle } from 'lucide-react';
 import { api } from '../../lib/api';
 
 interface Invoice {
@@ -32,6 +32,7 @@ export default function InvoiceHistory() {
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [duitkuEnabled, setDuitkuEnabled] = useState(false);
   const [paymentWhatsappNumber, setPaymentWhatsappNumber] = useState('6281296451923');
+  const [usageLimits, setUsageLimits] = useState<any | null>(null);
 
   // Promo code states
   const [promoCode, setPromoCode] = useState('');
@@ -93,11 +94,12 @@ export default function InvoiceHistory() {
   async function loadData() {
     setLoading(true);
     try {
-      const [historyData, activeData, configData, userData] = await Promise.all([
+      const [historyData, activeData, configData, userData, limitsData] = await Promise.all([
         api.get<Invoice[]>('/api/billing/history'),
         api.get<Subscription>('/api/billing/active'),
         api.get<{ duitku_enabled: boolean; payment_whatsapp_number?: string }>('/api/billing/config'),
-        api.get<any>('/api/me')
+        api.get<any>('/api/me'),
+        api.get<any>('/api/me/limits')
       ]);
       setInvoices(historyData || []);
       setActiveSub(activeData || null);
@@ -106,6 +108,7 @@ export default function InvoiceHistory() {
         setPaymentWhatsappNumber(configData.payment_whatsapp_number);
       }
       setCurrentUser(userData);
+      setUsageLimits(limitsData || null);
     } catch (err) {
       console.error('Failed to load billing details:', err);
     } finally {
@@ -327,6 +330,203 @@ export default function InvoiceHistory() {
             </div>
           </div>
         </div>
+
+        {/* Quota & Usage Limits Display */}
+        {usageLimits && (
+          <div className="bg-white dark:bg-[#0c0c0e]/40 border border-zinc-200 dark:border-zinc-850 rounded-3xl p-6 md:p-8 shadow-sm space-y-6 relative overflow-hidden group">
+            {/* Visual glow background */}
+            <div className="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/[0.02] dark:bg-blue-500/[0.04] rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-purple-500/[0.02] dark:bg-purple-500/[0.04] rounded-full blur-3xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2">
+              <div>
+                <h2 className="text-sm font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider font-sans flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-blue-550 dark:text-blue-405 animate-pulse" />
+                  Kuota & Limit Penggunaan Akun
+                </h2>
+                <p className="text-xs text-zinc-550 dark:text-zinc-400 mt-1">
+                  Pantau sisa batas kapasitas fitur dan kuota harian paket aktif Anda saat ini.
+                </p>
+              </div>
+              <div className="bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-2xl border border-zinc-150 dark:border-zinc-800/80 text-center sm:text-right shrink-0">
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Status Paket</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400 capitalize flex items-center gap-1.5 mt-0.5 justify-center sm:justify-end">
+                  {usageLimits.plan} Pass
+                </span>
+              </div>
+            </div>
+
+            {/* Quota Cards Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              
+              {/* Daily Messages Quota */}
+              <div className="bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-855 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                      <MessageSquare className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Pesan Harian (API/Direct)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">Terpakai Hari Ini</span>
+                    <span className="text-xs font-black text-zinc-900 dark:text-white">
+                      {usageLimits.usage?.messages_per_day ?? 0} <span className="text-zinc-400 dark:text-zinc-500 font-bold">/ {usageLimits.limits?.messages_per_day ?? '∞'}</span>
+                    </span>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-850 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        usageLimits.limits?.messages_per_day 
+                          ? ((usageLimits.usage?.messages_per_day ?? 0) / usageLimits.limits.messages_per_day) > 0.8
+                            ? 'bg-rose-500'
+                            : ((usageLimits.usage?.messages_per_day ?? 0) / usageLimits.limits.messages_per_day) > 0.5
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          : 'bg-blue-500'
+                      }`}
+                      style={{ 
+                        width: `${
+                          usageLimits.limits?.messages_per_day 
+                            ? Math.min(((usageLimits.usage?.messages_per_day ?? 0) / usageLimits.limits.messages_per_day) * 100, 100) 
+                            : 100
+                        }%` 
+                      }} 
+                    />
+                  </div>
+                  <div className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-2 flex justify-between">
+                    <span>Reset otomatis setiap tengah malam</span>
+                    {usageLimits.limits?.messages_per_day && (
+                      <span className="font-semibold text-blue-500">
+                        Sisa {Math.max(usageLimits.limits.messages_per_day - (usageLimits.usage?.messages_per_day ?? 0), 0)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* WhatsApp Devices Quota */}
+              <div className="bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-855 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                      <Smartphone className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">WhatsApp Device</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">Menghubungkan Perangkat</span>
+                    <span className="text-xs font-black text-zinc-900 dark:text-white">
+                      {usageLimits.usage?.channels ?? 0} <span className="text-zinc-400 dark:text-zinc-500 font-bold">/ {usageLimits.limits?.channels ?? '∞'}</span>
+                    </span>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-850 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        usageLimits.limits?.channels 
+                          ? ((usageLimits.usage?.channels ?? 0) / usageLimits.limits.channels) >= 1
+                            ? 'bg-amber-500'
+                            : 'bg-indigo-500'
+                          : 'bg-indigo-500'
+                      }`}
+                      style={{ 
+                        width: `${
+                          usageLimits.limits?.channels 
+                            ? Math.min(((usageLimits.usage?.channels ?? 0) / usageLimits.limits.channels) * 100, 100) 
+                            : 100
+                        }%` 
+                      }} 
+                    />
+                  </div>
+                  <div className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-2">
+                    {usageLimits.limits?.channels 
+                      ? `Maksimal ${usageLimits.limits.channels} device terhubung` 
+                      : 'Hubungkan device tanpa batas'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Broadcast Campaigns Quota */}
+              <div className="bg-zinc-50/50 dark:bg-zinc-950/20 border border-zinc-150 dark:border-zinc-855 rounded-2xl p-5 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400">
+                      <Radio className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Kuota Broadcast (Lifetime)</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-baseline justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">Total Kampanye Dibuat</span>
+                    <span className="text-xs font-black text-zinc-900 dark:text-white">
+                      {usageLimits.usage?.broadcasts ?? 0} <span className="text-zinc-400 dark:text-zinc-500 font-bold">/ {usageLimits.limits?.broadcasts ?? '∞'}</span>
+                    </span>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="w-full h-2 bg-zinc-100 dark:bg-zinc-850 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        usageLimits.limits?.broadcasts 
+                          ? ((usageLimits.usage?.broadcasts ?? 0) / usageLimits.limits.broadcasts) >= 1
+                            ? 'bg-rose-500'
+                            : 'bg-purple-500'
+                          : 'bg-purple-500'
+                      }`}
+                      style={{ 
+                        width: `${
+                          usageLimits.limits?.broadcasts 
+                            ? Math.min(((usageLimits.usage?.broadcasts ?? 0) / usageLimits.limits.broadcasts) * 100, 100) 
+                            : 100
+                        }%` 
+                      }} 
+                    />
+                  </div>
+                  <div className="text-[10px] text-zinc-450 dark:text-zinc-500 mt-2">
+                    {usageLimits.limits?.broadcasts 
+                      ? `Batas trial: ${usageLimits.limits.broadcasts} broadcast` 
+                      : 'Siarkan pesan sepuasnya tanpa batas'}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Secondary Quota Items List */}
+            <div className="border-t border-zinc-150 dark:border-zinc-800/80 pt-5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+              <div className="bg-zinc-50/20 dark:bg-zinc-950/10 p-3 rounded-xl border border-zinc-150/40 dark:border-zinc-800/30">
+                <span className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-505 block">Auto-Reply (Chatbot)</span>
+                <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-1 block">
+                  {usageLimits.usage?.chatbot_rules ?? 0} / {usageLimits.limits?.chatbot_rules ?? '∞'} Aturan
+                </span>
+              </div>
+              <div className="bg-zinc-50/20 dark:bg-zinc-950/10 p-3 rounded-xl border border-zinc-150/40 dark:border-zinc-800/30">
+                <span className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-550 block">Integrasi Webhook</span>
+                <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-1 block">
+                  {usageLimits.usage?.webhooks ?? 0} / {usageLimits.limits?.webhooks ?? '∞'} Webhook
+                </span>
+              </div>
+              <div className="bg-zinc-50/20 dark:bg-zinc-950/10 p-3 rounded-xl border border-zinc-150/40 dark:border-zinc-800/30">
+                <span className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-550 block">Plugin Terpasang</span>
+                <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-1 block">
+                  {usageLimits.usage?.plugins ?? 0} / {usageLimits.limits?.plugins ?? '∞'} Plugin
+                </span>
+              </div>
+              <div className="bg-zinc-50/20 dark:bg-zinc-950/10 p-3 rounded-xl border border-zinc-150/40 dark:border-zinc-800/30">
+                <span className="text-[10px] font-semibold text-zinc-450 dark:text-zinc-550 block">Saved Templates</span>
+                <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-1 block">
+                  Tersimpan / {usageLimits.limits?.templates ?? '∞'} Template
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Pricing Upgrade Grid */}
         <div className="space-y-6">
