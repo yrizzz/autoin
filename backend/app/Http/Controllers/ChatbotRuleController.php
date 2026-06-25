@@ -36,11 +36,14 @@ class ChatbotRuleController extends Controller
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
             'is_ai'      => 'sometimes|boolean',
+            'is_active'  => 'sometimes|boolean',
             'plugin_id'  => 'sometimes|nullable|integer',
         ]);
 
         $this->assertOwnsPlugin($user, $data['plugin_id'] ?? null);
         $data['reply'] = $data['reply'] ?? '';
+        // Default: chatbot baru langsung aktif (ON) kecuali diminta lain.
+        $data['is_active'] = $data['is_active'] ?? true;
 
         $rule = $user->chatbotRules()->create($data);
 
