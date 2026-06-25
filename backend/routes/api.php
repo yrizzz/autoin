@@ -73,6 +73,9 @@ Route::get('login', function () {
 Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/api-key', [AuthController::class, 'getApiKey']);
+    Route::post('/api-key', [AuthController::class, 'generateApiKey']);
+    Route::delete('/api-key', [AuthController::class, 'revokeApiKey']);
     Route::get('/me/limits', function (\Illuminate\Http\Request $r) {
         return response()->json(PlanLimits::usageSummary($r->user()));
     });

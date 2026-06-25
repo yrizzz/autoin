@@ -112,4 +112,46 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Logged out'])->withCookie($expired);
     }
+
+    public function getApiKey(Request $request)
+    {
+        $user = $request->user();
+        return response()->json([
+            'api_key' => $user->api_key,
+            'created' => $user->api_key_created_at,
+        ]);
+    }
+
+    public function generateApiKey(Request $request)
+    {
+        $user = $request->user();
+        
+        // Generate a cryptographically secure 48-character API key
+        $key = 'autoin_' . bin2hex(random_bytes(24));
+        
+        $user->update([
+            'api_key' => $key,
+            'api_key_created_at' => now(),
+        ]);
+
+        return response()->json([
+            'api_key' => $key,
+            'created' => $user->api_key_created_at,
+        ]);
+    }
+
+    public function revokeApiKey(Request $request)
+    {
+        $user = $request->user();
+        
+        $user->update([
+            'api_key' => null,
+            'api_key_created_at' => null,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'API Key revoked successfully.'
+        ]);
+    }
 }

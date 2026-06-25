@@ -14,6 +14,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->prependToGroup('api', \App\Http\Middleware\ApiKeyToJwt::class);
         $middleware->prependToGroup('api', \App\Http\Middleware\CookieToJwt::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -14,7 +14,7 @@ import AdminLayout from '../components/layout/AdminLayout';
             Dokumentasi Developer API
           </h1>
           <p class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-            Gunakan REST API AUTOIN untuk mengirim pesan broadcast secara otomatis langsung dari program atau website backend Anda.
+            Gunakan REST API AUTOIN untuk mengirim pesan secara otomatis langsung dari program atau website backend Anda.
           </p>
         </div>
 
@@ -26,7 +26,7 @@ import AdminLayout from '../components/layout/AdminLayout';
           </h2>
           <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
             Seluruh request API wajib menyertakan HTTP header <code class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/80 font-mono text-[10px] text-blue-600 dark:text-blue-400">Authorization: Bearer &lt;YOUR_API_KEY&gt;</code>. 
-            Anda dapat memperoleh API Key melalui halaman pengaturan Kredensial API Key di dashboard ini.
+            Anda dapat memperoleh API Key melalui halaman pengaturan Kredensial API Key di dashboard ini. Key yang dihasilkan akan diawali dengan prefix <code class="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800/80 font-mono text-[10px]">autoin_</code>.
           </p>
         </div>
 
@@ -34,10 +34,10 @@ import AdminLayout from '../components/layout/AdminLayout';
         <div class="space-y-3">
           <h2 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
             <span class="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">2</span>
-            Mendapatkan ID Channel Broadcast
+            Mendapatkan ID Channel
           </h2>
           <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-            Sebelum mengirimkan pesan broadcast, Anda perlu mengetahui list device atau channel sosial media yang aktif di akun Anda. Gunakan endpoint ini untuk list channel beserta parameter ID-nya.
+            Sebelum mengirimkan pesan, Anda perlu mengetahui list device atau channel sosial media yang aktif di akun Anda. Gunakan endpoint ini untuk melihat list channel beserta parameter ID-nya.
           </p>
 
           <div class="bg-zinc-50 dark:bg-[#0e0e11] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-2">
@@ -108,10 +108,63 @@ import AdminLayout from '../components/layout/AdminLayout';
             </div>
           </div>
         </div>
+
+        {/* Section 4: Send Single Message */}
+        <div class="space-y-3">
+          <h2 class="text-sm font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
+            <span class="w-5 h-5 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center text-[10px] font-bold">4</span>
+            Mengirimkan Pesan Tunggal (Single Send)
+          </h2>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+            Gunakan endpoint ini untuk mengirim pesan langsung (teks & media) ke nomor tujuan tunggal secara instan. Sangat ideal untuk kebutuhan notifikasi transaksional, OTP, invoice, atau chatbot.
+          </p>
+
+          <div class="bg-zinc-50 dark:bg-[#0e0e11] p-4 rounded-xl border border-zinc-200 dark:border-zinc-800/80 space-y-3">
+            <div class="flex items-center gap-2">
+              <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 text-[9px] font-extrabold uppercase">POST</span>
+              <span class="font-mono text-xs text-zinc-700 dark:text-zinc-300">/api/whatsapp/&#123;channel_id&#125;/send</span>
+            </div>
+            
+            <div class="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-3 space-y-1.5">
+              <span class="block text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">Parameter Body (JSON)</span>
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="text-[10px] text-zinc-400 dark:text-zinc-500 uppercase tracking-wider border-b border-zinc-200/40 dark:border-zinc-800/40">
+                    <th class="pb-1.5 font-bold">Field</th>
+                    <th class="pb-1.5 font-bold">Tipe</th>
+                    <th class="pb-1.5 font-bold">Deskripsi</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200/20 dark:divide-zinc-800/20 text-[11px] text-zinc-500 dark:text-zinc-455 font-sans">
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300 font-bold">to</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Nomor WhatsApp tujuan (format: <code class="px-1.5 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px]">628xxxxxx</code>). *Wajib</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">message</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Pesan teks utama (dapat dikosongkan jika melampirkan media).</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">mediaUrl</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">URL lampiran file/gambar (Opsional).</td>
+                  </tr>
+                  <tr>
+                    <td class="py-2 font-mono text-zinc-700 dark:text-zinc-300">mediaType</td>
+                    <td class="py-2 text-blue-500 font-mono">string</td>
+                    <td class="py-2">Tipe lampiran: <code class="px-1 py-0.2 rounded bg-zinc-100 dark:bg-zinc-800 text-[10px]">image, video, pdf, document</code>.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Right Column: Code Playgrounds */}
-      <div class="w-full lg:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+      <div class="w-full lg:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit text-left">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5">
             <span class="text-xs font-bold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider">Playground Contoh</span>
@@ -142,11 +195,11 @@ import AdminLayout from '../components/layout/AdminLayout';
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">1. Tes Autentikasi</span>
             
             <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8001/api/me \
-  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+  -H "Authorization: Bearer autoin_YOUR_API_KEY"</pre>
             
             <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/me', &#123;
   headers: &#123;
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
     'Content-Type': 'application/json'
   &#125;
 &#125;)
@@ -157,7 +210,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 $ch = curl_init('http://localhost:8001/api/me');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Bearer YOUR_API_KEY',
+    'Authorization: Bearer autoin_YOUR_API_KEY',
     'Content-Type: application/json'
 ]);
 $response = curl_exec($ch);
@@ -166,7 +219,7 @@ $data = json_decode($response, true);</pre>
             <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
 
 headers = &#123;
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
     'Content-Type': 'application/json'
 &#125;
 response = requests.get('http://localhost:8001/api/me', headers=headers)
@@ -178,10 +231,10 @@ print(response.json())</pre>
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">2. List Channels</span>
             
             <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET http://localhost:8001/api/channels \
-  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+  -H "Authorization: Bearer autoin_YOUR_API_KEY"</pre>
             
             <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/channels', &#123;
-  headers: &#123; 'Authorization': 'Bearer YOUR_API_KEY' &#125;
+  headers: &#123; 'Authorization': 'Bearer autoin_YOUR_API_KEY' &#125;
 &#125;)
 .then(res => res.json())
 .then(channels => console.log(channels));</pre>
@@ -190,14 +243,14 @@ print(response.json())</pre>
 $ch = curl_init('http://localhost:8001/api/channels');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Bearer YOUR_API_KEY'
+    'Authorization: Bearer autoin_YOUR_API_KEY'
 ]);
 $response = curl_exec($ch);
 $channels = json_decode($response, true);</pre>
 
             <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
 
-headers = &#123;'Authorization': 'Bearer YOUR_API_KEY'&#125;
+headers = &#123;'Authorization': 'Bearer autoin_YOUR_API_KEY'&#125;
 response = requests.get('http://localhost:8001/api/channels', headers=headers)
 print(response.json())</pre>
           </div>
@@ -207,7 +260,7 @@ print(response.json())</pre>
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">3. Kirim Broadcast</span>
             
             <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST http://localhost:8001/api/broadcasts \
-  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Authorization: Bearer autoin_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;
     "title": "Promo Weekend",
@@ -220,7 +273,7 @@ print(response.json())</pre>
             <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/broadcasts', &#123;
   method: 'POST',
   headers: &#123;
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
     'Content-Type': 'application/json'
   &#125;,
   body: JSON.stringify(&#123;
@@ -246,7 +299,7 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    'Authorization: Bearer YOUR_API_KEY',
+    'Authorization: Bearer autoin_YOUR_API_KEY',
     'Content-Type: application/json'
 ]);
 $response = curl_exec($ch);
@@ -262,10 +315,73 @@ payload = &#123;
     'media_type': 'image'
 &#125;
 headers = &#123;
-    'Authorization': 'Bearer YOUR_API_KEY',
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
     'Content-Type': 'application/json'
 &#125;
 response = requests.post('http://localhost:8001/api/broadcasts', json=payload, headers=headers)
+print(response.json())</pre>
+          </div>
+
+          {/* 4. Send Single Message */}
+          <div class="space-y-1.5">
+            <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">4. Kirim Pesan Tunggal</span>
+            
+            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST http://localhost:8001/api/whatsapp/YOUR_CHANNEL_ID/send \
+  -H "Authorization: Bearer autoin_YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '&#123;
+    "to": "628123456789",
+    "message": "Halo! Ini adalah notifikasi otomatis.",
+    "mediaUrl": "https://example.com/invoice.pdf",
+    "mediaType": "pdf"
+  &#125;'</pre>
+            
+            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('http://localhost:8001/api/whatsapp/YOUR_CHANNEL_ID/send', &#123;
+  method: 'POST',
+  headers: &#123;
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  &#125;,
+  body: JSON.stringify(&#123;
+    to: '628123456789',
+    message: 'Halo! Ini adalah notifikasi otomatis.',
+    mediaUrl: 'https://example.com/invoice.pdf',
+    mediaType: 'pdf'
+  &#125;)
+&#125;)</pre>
+
+            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+$payload = [
+    'to' => '628123456789',
+    'message' => 'Halo! Ini adalah notifikasi otomatis.',
+    'mediaUrl' => 'https://example.com/invoice.pdf',
+    'mediaType' => 'pdf'
+];
+
+$ch = curl_init('http://localhost:8001/api/whatsapp/YOUR_CHANNEL_ID/send');
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Authorization: Bearer autoin_YOUR_API_KEY',
+    'Content-Type: application/json'
+]);
+$response = curl_exec($ch);
+$result = json_decode($response, true);</pre>
+
+            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+
+payload = &#123;
+    'to': '628123456789',
+    'message': 'Halo! Ini adalah notifikasi otomatis.',
+    'mediaUrl': 'https://example.com/invoice.pdf',
+    'mediaType': 'pdf'
+&#125;
+headers = &#123;
+    'Authorization': 'Bearer autoin_YOUR_API_KEY',
+    'Content-Type': 'application/json'
+&#125;
+response = requests.post('http://localhost:8001/api/whatsapp/YOUR_CHANNEL_ID/send', json=payload, headers=headers)
 print(response.json())</pre>
           </div>
 

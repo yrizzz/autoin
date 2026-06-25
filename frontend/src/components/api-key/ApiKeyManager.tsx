@@ -26,11 +26,21 @@ export default function ApiKeyManager() {
   const [ipError, setIpError] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem('autoin_api_key');
-    const savedMeta = localStorage.getItem('autoin_api_key_meta');
+    api.get<{ api_key: string | null; created: string | null }>('/api/api-key')
+      .then(res => {
+        if (res.api_key) {
+          setApiKey(res.api_key);
+          setKeyMeta({ created: res.created || new Date().toISOString(), requests: 0 });
+        } else {
+          setApiKey('');
+          setKeyMeta(null);
+        }
+      })
+      .catch(err => {
+        console.error('Gagal mengambil API Key dari server:', err);
+      });
+      
     const savedWl = localStorage.getItem('autoin_api_whitelist');
-    if (saved) setApiKey(saved);
-    if (savedMeta) setKeyMeta(JSON.parse(savedMeta));
     if (savedWl) setWhitelist(JSON.parse(savedWl));
   }, []);
 
@@ -60,16 +70,15 @@ export default function ApiKeyManager() {
 
   const handleGenerate = async () => {
     setGenerating(true);
-    await new Promise(r => setTimeout(r, 600));
-    const key = 'autoin_' + Array.from({ length: 48 }, () =>
-      Math.floor(Math.random() * 36).toString(36)
-    ).join('');
-    const meta = { created: new Date().toISOString(), requests: 0 };
-    setApiKey(key);
-    setKeyMeta(meta);
-    localStorage.setItem('autoin_api_key', key);
-    localStorage.setItem('autoin_api_key_meta', JSON.stringify(meta));
-    setGenerating(false);
+    try {
+      const res = await api.post<{ api_key: string; created: string }>('/api/api-key');
+      setApiKey(res.api_key);
+      setKeyMeta({ created: res.created, requests: 0 });
+    } catch (err: any) {
+      alert('Gagal membuat API Key: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleCopy = () => {
@@ -85,12 +94,15 @@ export default function ApiKeyManager() {
     setTimeout(() => setCopiedSnippet(null), 2000);
   };
 
-  const handleRevoke = () => {
-    setApiKey('');
-    setKeyMeta(null);
-    localStorage.removeItem('autoin_api_key');
-    localStorage.removeItem('autoin_api_key_meta');
-    setDeleteConfirm(false);
+  const handleRevoke = async () => {
+    try {
+      await api.delete('/api/api-key');
+      setApiKey('');
+      setKeyMeta(null);
+      setDeleteConfirm(false);
+    } catch (err: any) {
+      alert('Gagal menghapus API Key: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const maskedKey = apiKey
