@@ -473,17 +473,49 @@ class WhatsAppController extends Controller
             'font'            => 'nullable|integer',
         ]);
 
-        $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
-            ->post("{$baseUrl}/sessions/{$credentials['session_id']}/send", [
-                'to'              => $data['to'],
-                'message'         => $data['message'] ?? '',
-                'mediaUrl'        => $data['mediaUrl'] ?? null,
-                'mediaType'       => $data['mediaType'] ?? null,
-                'backgroundColor' => $data['backgroundColor'] ?? null,
-                'font'            => $data['font'] ?? null,
+        // Create initial pending log
+        $apiLog = \App\Models\ApiLog::create([
+            'user_id'    => $request->user()->id,
+            'channel_id' => $channel->id,
+            'to'         => $data['to'],
+            'message'    => $data['message'] ?? null,
+            'media_url'  => $data['mediaUrl'] ?? null,
+            'media_type' => $data['mediaType'] ?? null,
+            'status'     => 'pending',
+        ]);
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
+                ->post("{$baseUrl}/sessions/{$credentials['session_id']}/send", [
+                    'to'              => $data['to'],
+                    'message'         => $data['message'] ?? '',
+                    'mediaUrl'        => $data['mediaUrl'] ?? null,
+                    'mediaType'       => $data['mediaType'] ?? null,
+                    'backgroundColor' => $data['backgroundColor'] ?? null,
+                    'font'            => $data['font'] ?? null,
+                ]);
+
+            $resData = $response->json();
+            $isSuccess = $response->successful() && isset($resData['status']) && $resData['status'] === 'success';
+
+            $apiLog->update([
+                'status'   => $isSuccess ? 'success' : 'failed',
+                'response' => $resData,
+                'error'    => !$isSuccess ? ($resData['message'] ?? 'Failed to send message from Node.js service') : null,
             ]);
 
-        return response()->json($response->json() ?? ['status' => 'error']);
+            return response()->json($resData ?? ['status' => 'error']);
+        } catch (\Throwable $e) {
+            $apiLog->update([
+                'status' => 'failed',
+                'error'  => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Connection to WhatsApp service failed: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     public function getMessages(Request $request, Channel $channel, string $chatId)
@@ -583,5 +615,21 @@ class WhatsAppController extends Controller
             'X-Accel-Buffering' => 'no',
             'Connection'        => 'keep-alive',
         ]);
+    }
+
+    public function getApiLogs(Request $request)
+    {
+        $logs = \App\Models\ApiLog::with('channel:id,name')
+            ->where('user_id', $request->user()->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($logs);
+    }
+
+    public function clearApiLogs(Request $request)
+    {
+        \App\Models\ApiLog::where('user_id', $request->user()->id)->delete();
+        return response()->json(['status' => 'success']);
     }
 }

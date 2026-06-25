@@ -95,6 +95,8 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('whatsapp/{channel}/stream/chats', [WhatsAppController::class, 'streamChats']);
     Route::post('whatsapp/{channel}/send', [WhatsAppController::class, 'sendMessage']);
     Route::post('whatsapp/{channel}/sync', [WhatsAppController::class, 'syncChats']);
+    Route::get('api-logs', [WhatsAppController::class, 'getApiLogs']);
+    Route::delete('api-logs', [WhatsAppController::class, 'clearApiLogs']);
 
     Route::apiResource('broadcasts', BroadcastController::class);
     Route::post('broadcasts/{broadcast}/send', [BroadcastController::class, 'send']);

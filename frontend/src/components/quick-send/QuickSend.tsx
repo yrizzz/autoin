@@ -151,31 +151,53 @@ export default function QuickSend() {
     }, 0);
   }
   const [logs, setLogs] = useState<LogEntry[]>([]);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem('autoin_quick_send_logs');
-      if (stored) {
-        setLogs(JSON.parse(stored));
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  }, []);
   const [mediaUrl, setMediaUrl] = useState<string>('');
   const [mediaType, setMediaType] = useState<'image' | 'video' | 'pdf' | 'document'>('image');
   const [uploading, setUploading] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const logsPerPage = 5;
 
+  const fetchLogs = () => {
+    api.get<any[]>('/api/api-logs')
+      .then(res => {
+        const mapped: LogEntry[] = res.map((log: any) => ({
+          id: String(log.id),
+          target: log.to,
+          platform: 'whatsapp',
+          status: log.status,
+          time: new Date(log.created_at).toLocaleString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+          }),
+          message: log.message,
+          mediaUrl: log.media_url,
+          mediaType: log.media_type
+        }));
+        setLogs(mapped);
+      })
+      .catch(err => {
+        console.error('Gagal memuat log API:', err);
+      });
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
   const handleClearLogs = () => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus semua riwayat pengiriman cepat ini?')) {
-      setLogs([]);
-      try {
-        localStorage.removeItem('autoin_quick_send_logs');
-      } catch (e) {
-        console.error(e);
-      }
+    if (window.confirm('Apakah Anda yakin ingin menghapus semua riwayat pengiriman cepat ini dari database?')) {
+      api.delete('/api/api-logs')
+        .then(() => {
+          setLogs([]);
+          showToast('Semua riwayat pengiriman berhasil dihapus!', 'success');
+        })
+        .catch(err => {
+          alert('Gagal menghapus riwayat: ' + (err.message ?? 'Unknown error'));
+        });
     }
   };
 
@@ -194,14 +216,7 @@ export default function QuickSend() {
       return;
     }
     
-    // Set status to sending
-    setLogs(prev => {
-      const updated = prev.map(l => l.id === log.id ? { ...l, status: 'sending' as const } : l);
-      try {
-        localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
+    setLogs(prev => prev.map(l => l.id === log.id ? { ...l, status: 'sending' as const } : l));
 
     try {
       await api.post(`/api/whatsapp/${selectedChannel}/send`, {
@@ -210,25 +225,11 @@ export default function QuickSend() {
         mediaUrl: log.mediaUrl || undefined,
         mediaType: log.mediaUrl ? log.mediaType : undefined
       });
-
-      // Update log to success
-      setLogs(prev => {
-        const updated = prev.map(l => l.id === log.id ? { ...l, status: 'success' as const } : l);
-        try {
-          localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-        } catch (e) {}
-        return updated;
-      });
+      showToast('Berhasil mengirim ulang pesan!', 'success');
     } catch (err) {
-      // Update log to failed
-      setLogs(prev => {
-        const updated = prev.map(l => l.id === log.id ? { ...l, status: 'failed' as const } : l);
-        try {
-          localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-        } catch (e) {}
-        return updated;
-      });
+      console.error(err);
     }
+    fetchLogs();
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -305,7 +306,6 @@ export default function QuickSend() {
     if (!selectedChannel || !destinations.trim() || (!message.trim() && !mediaUrl)) return;
 
     setSending(true);
-    const channelObj = channels.find(c => c.id === selectedChannel);
     
     // Parse target destinations
     const lines = destinations.split('\n').map(l => l.trim()).filter(l => l.length > 0);
@@ -327,8 +327,9 @@ export default function QuickSend() {
       }).filter(d => d.phone.length > 0);
     }
 
-    // Initial logs as sending (with dynamic variable replacement)
-    const newLogs: LogEntry[] = parsedDestinations.map((targetObj, idx) => {
+    // Send messages sequentially
+    for (let i = 0; i < parsedDestinations.length; i++) {
+      const targetObj = parsedDestinations[i];
       let personalizedMessage = message || '';
       personalizedMessage = personalizedMessage.replace(/\{\{nama\}\}/gi, targetObj.name || 'Pelanggan');
       personalizedMessage = personalizedMessage.replace(/\{\{nomor\}\}/gi, targetObj.phone);
@@ -339,70 +340,26 @@ export default function QuickSend() {
       personalizedMessage = personalizedMessage.replace(/\{\{tanggal\}\}/gi, dateStr);
       personalizedMessage = personalizedMessage.replace(/\{\{waktu\}\}/gi, timeStr);
 
-      return {
-        id: `${Date.now()}-${idx}`,
-        target: targetObj.phone,
-        platform: channelObj?.platform || 'unknown',
-        status: 'sending' as const,
-        time: now.toLocaleString('id-ID', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        }),
-        message: personalizedMessage,
-        mediaUrl: mediaUrl || '',
-        mediaType: mediaUrl ? mediaType : ''
-      };
-    });
-
-    setLogs(prev => {
-      const updated = [...newLogs, ...prev];
-      try {
-        localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-      } catch (e) {}
-      return updated;
-    });
-
-    // Send messages
-    for (let i = 0; i < parsedDestinations.length; i++) {
-      const logId = newLogs[i].id;
-      const logItem = newLogs[i];
-
       try {
         await api.post(`/api/whatsapp/${selectedChannel}/send`, {
-          to: logItem.target.includes('@') ? logItem.target : `${logItem.target}@s.whatsapp.net`,
-          message: logItem.message,
+          to: targetObj.phone.includes('@') ? targetObj.phone : `${targetObj.phone}@s.whatsapp.net`,
+          message: personalizedMessage,
           mediaUrl: mediaUrl || undefined,
           mediaType: mediaUrl ? mediaType : undefined
         });
-
-        // Update log as success
-        setLogs(prev => {
-          const updated = prev.map(log => log.id === logId ? { ...log, status: 'success' as const } : log);
-          try {
-            localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-          } catch (e) {}
-          return updated;
-        });
       } catch (err) {
-        // Update log as failed
-        setLogs(prev => {
-          const updated = prev.map(log => log.id === logId ? { ...log, status: 'failed' as const } : log);
-          try {
-            localStorage.setItem('autoin_quick_send_logs', JSON.stringify(updated));
-          } catch (e) {}
-          return updated;
-        });
+        console.error("Gagal mengirim ke", targetObj.phone, err);
       }
     }
+
+    // Refresh logs
+    fetchLogs();
 
     setSending(false);
     setDestinations('');
     setMessage('');
     setMediaUrl('');
+    showToast('Pesan berhasil dikirim!', 'success');
   };
 
   const getPlatformIcon = (platform: string) => {

@@ -61,7 +61,7 @@ export default function ApiKeyManager() {
   const handleGenerate = async () => {
     setGenerating(true);
     await new Promise(r => setTimeout(r, 600));
-    const key = 'atk_' + Array.from({ length: 48 }, () =>
+    const key = 'autoin_' + Array.from({ length: 48 }, () =>
       Math.floor(Math.random() * 36).toString(36)
     ).join('');
     const meta = { created: new Date().toISOString(), requests: 0 };

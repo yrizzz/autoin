@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle
+  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -365,7 +365,13 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
             )}
             {group.items.map(item => {
               const Icon = item.icon;
-              const active = activePage === item.id;
+              let active = activePage === item.id;
+              if (item.id === 'subscription' && activePage === 'invoice') {
+                active = true;
+              }
+              if (item.id === 'users' && activePage === 'subscribers') {
+                active = true;
+              }
               return (
                 <a
                   key={item.id}
@@ -611,7 +617,67 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
               </div>
             </div>
           )}
-          {children}
+          
+          {(() => {
+            const isPublic = activePage === 'api_docs' || (typeof window !== 'undefined' && (window.location.pathname.includes('/docs') || window.location.pathname.includes('/plugin-docs')));
+            
+            if (!user && !loading && !isPublic) {
+              return (
+                <div className="flex-1 flex items-center justify-center py-12 px-4">
+                  <div className="w-full max-w-md bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 text-center shadow-xl relative overflow-hidden group">
+                    {/* Visual background accents */}
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.03] dark:bg-blue-500/[0.05] rounded-full blur-2xl pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/[0.03] dark:bg-purple-500/[0.05] rounded-full blur-2xl pointer-events-none" />
+
+                    {/* Lock Icon with Gradient */}
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-600/20 to-indigo-600/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                      <Lock className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                    </div>
+
+                    {/* Heading */}
+                    <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight font-display mb-3">
+                      Sesi Anda Telah Berakhir
+                    </h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed mb-8">
+                      Untuk alasan keamanan dan kenyamanan, silakan masuk menggunakan akun Google Anda kembali guna melanjutkan akses ke dashboard AUTOIN.
+                    </p>
+
+                    {/* Terms Acceptance checkbox */}
+                    <div className="flex items-start gap-2.5 text-left bg-zinc-50 dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800/80 mb-6">
+                      <input
+                        type="checkbox"
+                        id="agree-restricted"
+                        checked={loginAgreed}
+                        onChange={(e) => setLoginAgreed(e.target.checked)}
+                        className="mt-0.5 rounded border-zinc-300 dark:border-zinc-800 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                      <label htmlFor="agree-restricted" className="cursor-pointer select-none text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                        Saya menyetujui <a href="/terms" target="_blank" className="text-blue-500 hover:underline font-bold">Syarat & Ketentuan</a> dan <a href="/privacy" target="_blank" className="text-blue-500 hover:underline font-bold">Kebijakan Privasi</a> yang berlaku.
+                      </label>
+                    </div>
+
+                    {/* Google Login Button */}
+                    <a
+                      href={getGoogleAuthUrl()}
+                      onClick={handleGoogleLogin}
+                      className={`w-full flex items-center justify-center gap-3 py-3.5 px-4 text-xs font-bold border rounded-2xl transition-all shadow-md active:scale-[0.99] ${
+                        loginAgreed
+                          ? 'bg-gradient-brand hover:opacity-95 text-white border-transparent cursor-pointer'
+                          : 'text-zinc-400 bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 cursor-not-allowed opacity-50'
+                      }`}
+                    >
+                      <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+                        <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.859-3.578-7.859-8s3.53-8 7.859-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1 5.92 1 1 5.92 1 12s4.92 11 11.24 11c6.6 0 11-4.647 11-11.19 0-.756-.08-1.333-.177-1.905H12.24z" />
+                      </svg>
+                      Masuk dengan Google
+                    </a>
+                  </div>
+                </div>
+              );
+            }
+            
+            return children;
+          })()}
         </main>
 
         {/* Universal Footer */}
@@ -642,7 +708,13 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
         <div className="flex items-center justify-around h-[72px]">
           {mobileNav.map(item => {
             const Icon = item.icon;
-            const active = activePage === item.id;
+            let active = activePage === item.id;
+            if (item.id === 'broadcast') {
+              active = ['broadcast', 'history', 'schedule', 'schedule_status', 'templates'].includes(activePage);
+            }
+            if (item.id === 'dashboard') {
+              active = ['dashboard', 'quick_send', 'chatbot', 'plugins', 'webhook'].includes(activePage);
+            }
             if (item.id === 'sidebar') {
               return (
                 <button
