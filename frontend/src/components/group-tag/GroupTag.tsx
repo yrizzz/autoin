@@ -623,6 +623,7 @@ export default function GroupTag() {
         </div>
 
       </div>
-    </AdminLayout>
-  );
+    </div>
+  </AdminLayout>
+);
 }
