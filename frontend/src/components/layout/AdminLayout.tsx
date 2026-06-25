@@ -514,7 +514,10 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
     { id: 'sidebar', icon: Menu, href: '#', label: 'Menu' },
   ];
 
-  const SidebarContent = ({ onNav }: { onNav?: () => void }) => (
+  // Dipanggil sebagai fungsi (bukan <SidebarContent/>) supaya JSX-nya menyatu ke
+  // pohon AdminLayout. Kalau dibuat komponen inline, tiap re-render tipe komponen
+  // dianggap baru → sidebar remount → scroll balik ke atas sendiri.
+  const renderSidebar = (onNav?: () => void) => (
     <>
       <div className="h-16 px-5 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between shrink-0 bg-white dark:bg-[#09090b]">
         <div className="flex items-center gap-3">
@@ -646,7 +649,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-[220px] fixed top-0 bottom-0 left-0 border-r border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] z-20">
-        <SidebarContent />
+        {renderSidebar()}
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -660,7 +663,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
             className="absolute left-0 top-0 bottom-0 w-[220px] flex flex-col bg-white dark:bg-[#09090b] border-r border-zinc-200 dark:border-zinc-800 shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
-            <SidebarContent onNav={() => setSidebarOpen(false)} />
+            {renderSidebar(() => setSidebarOpen(false))}
           </aside>
         </div>
       )}
@@ -984,9 +987,11 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
                       className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition disabled:opacity-50">
                       <Upload className="w-3 h-3" /> Ubah Foto
                     </button>
-                    {user.google_avatar && profileAvatar !== user.google_avatar && (
-                      <button type="button" onClick={() => setProfileAvatar(user.google_avatar ?? null)} disabled={avatarUploading}
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-50">
+                    {user.google_avatar && (
+                      <button type="button" onClick={() => setProfileAvatar(user.google_avatar ?? null)}
+                        disabled={avatarUploading || profileAvatar === user.google_avatar}
+                        title={profileAvatar === user.google_avatar ? 'Sudah memakai foto Google' : 'Kembalikan ke foto Google'}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-50 disabled:cursor-not-allowed">
                         <RefreshCw className="w-3 h-3" /> Kembalikan ke Google
                       </button>
                     )}

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
 import AdminLayout from '../layout/AdminLayout';
+import CodeEditor from '../ui/CodeEditor';
 import {
   Puzzle, Search, Trash2, ToggleLeft, ToggleRight, Loader2, Play, Terminal,
   AlertTriangle, Check, X, Code2, User as UserIcon, Clock, ShieldCheck,
@@ -313,8 +314,8 @@ export default function AdminPlugins() {
               {viewing.description && <p className="text-sm text-zinc-600 dark:text-zinc-300">{viewing.description}</p>}
 
               <div>
-                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Terminal className="w-3.5 h-3.5" /> Kode (read-only)</label>
-                <pre className="mt-1 w-full px-3.5 py-3 rounded-xl bg-blue-50/50 dark:bg-zinc-950 text-blue-950 dark:text-emerald-300 border border-blue-100 dark:border-zinc-800 text-[12px] font-mono leading-relaxed overflow-x-auto max-h-72">{viewing.code}</pre>
+                <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-1 mb-1.5"><Terminal className="w-3.5 h-3.5" /> Kode (read-only)</label>
+                <CodeEditor value={viewing.code} onChange={() => {}} readOnly minRows={6} />
               </div>
 
               {/* Test */}

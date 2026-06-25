@@ -59,9 +59,10 @@ interface Props {
   placeholder?: string;
   minRows?: number;
   className?: string;
+  readOnly?: boolean;
 }
 
-export default function CodeEditor({ value, onChange, placeholder, minRows = 14, className = '' }: Props) {
+export default function CodeEditor({ value, onChange, placeholder, minRows = 14, className = '', readOnly = false }: Props) {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const preRef = useRef<HTMLPreElement>(null);
   const [focused, setFocused] = useState(false);
@@ -96,6 +97,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
     const ta = e.currentTarget;
     const { selectionStart: s, selectionEnd: en, value: v } = ta;
 
@@ -158,14 +160,15 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
           <textarea
             ref={taRef}
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => { if (!readOnly) onChange(e.target.value); }}
             onScroll={syncScroll}
             onKeyDown={handleKeyDown}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             spellCheck={false}
             placeholder={placeholder}
-            className="relative block w-full resize-none overflow-x-auto overflow-y-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent caret-white placeholder:text-zinc-650 whitespace-pre focus:outline-none"
+            readOnly={readOnly}
+            className={`relative block w-full resize-none overflow-x-auto overflow-y-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent placeholder:text-zinc-650 whitespace-pre focus:outline-none ${readOnly ? 'caret-transparent' : 'caret-white'}`}
             style={{ tabSize: 2, minHeight: `${minRows * 1.6 + 1.5}em` }}
           />
         </div>
