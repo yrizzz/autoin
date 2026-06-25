@@ -27,15 +27,22 @@ class ApiKeyToJwt
             $user = User::where('api_key', $apiKey)->first();
 
             if ($user) {
-                // Enforce IP Whitelist if configured
+                // Enforce IP Whitelist
                 $whitelist = $user->api_ip_whitelist;
-                if (is_array($whitelist) && !empty($whitelist)) {
-                    $clientIp = $request->ip();
-                    if (!in_array($clientIp, $whitelist)) {
-                        return response()->json([
-                            'message' => 'Forbidden: Client IP address (' . $clientIp . ') is not whitelisted.'
-                        ], 403);
-                    }
+                $clientIp = $request->ip();
+
+                // If whitelist is not configured/empty, block access by default
+                if (!is_array($whitelist) || empty($whitelist)) {
+                    return response()->json([
+                        'message' => 'Forbidden: API Key IP Whitelist is not configured. Please whitelist specific IPs or set "*" to allow any IP.'
+                    ], 403);
+                }
+
+                // Allow if wildcard '*' is present; otherwise, match the client IP
+                if (!in_array('*', $whitelist) && !in_array($clientIp, $whitelist)) {
+                    return response()->json([
+                        'message' => 'Forbidden: Client IP address (' . $clientIp . ') is not in the whitelist.'
+                    ], 403);
                 }
 
                 try {
