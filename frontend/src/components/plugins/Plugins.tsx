@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
 import AdminLayout from '../layout/AdminLayout';
 import CodeEditor from '../ui/CodeEditor';
+import Toast from '../ui/Toast';
 import {
   Plus, Search, Puzzle, ToggleLeft, ToggleRight, Trash2, Edit3,
   Loader2, Play, Terminal, AlertTriangle, Check, X, Image as ImageIcon,
@@ -98,6 +99,12 @@ export default function Plugins() {
   // Delete confirm
   const [toDelete, setToDelete] = useState<Plugin | null>(null);
 
+  // Toast notifications
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+  };
+
   useEffect(() => { load(); }, []);
 
   // Tutup modal dengan tombol Esc.
@@ -155,8 +162,9 @@ export default function Plugins() {
     try {
       const updated = await api.put<Plugin>(`/api/plugins/${p.id}`, { is_active: !p.is_active });
       setPlugins(prev => prev.map(x => x.id === p.id ? updated : x));
+      showToast(`Plugin "${p.name}" berhasil ${!p.is_active ? 'diaktifkan' : 'dinonaktifkan'}.`, 'success');
     } catch (e: any) {
-      alert(e.message ?? 'Gagal mengubah status.');
+      showToast(e.message ?? 'Gagal mengubah status.', 'error');
     }
   }
 
@@ -167,8 +175,9 @@ export default function Plugins() {
     try {
       await api.delete(`/api/plugins/${p.id}`);
       setPlugins(prev => prev.filter(x => x.id !== p.id));
+      showToast(`Plugin "${p.name}" berhasil dihapus.`, 'success');
     } catch (e: any) {
-      alert(e.message ?? 'Gagal menghapus.');
+      showToast(e.message ?? 'Gagal menghapus.', 'error');
     }
   }
 
@@ -192,20 +201,23 @@ export default function Plugins() {
         const updated = await api.put<Plugin>(`/api/plugins/${editing.id}`, payload);
         setPlugins(prev => prev.map(x => x.id === editing.id ? updated : x));
         setEditing(updated);
+        showToast('Perubahan plugin berhasil disimpan.', 'success');
       } else {
         const created = await api.post<Plugin>('/api/plugins', payload);
         setPlugins(prev => [created, ...prev]);
-        setEditing(created); // jadi bisa langsung dites
+        setEditing(created);
+        showToast('Plugin baru berhasil ditambahkan.', 'success');
       }
+      setModalOpen(false); // Tutup modal setelah berhasil disimpan
     } catch (e: any) {
-      alert(e.message ?? 'Gagal menyimpan plugin.');
+      showToast(e.message ?? 'Gagal menyimpan plugin.', 'error');
     }
     setSaving(false);
   }
 
   async function handleTest() {
     if (!editing) {
-      alert('Simpan plugin dulu, lalu jalankan tes.');
+      showToast('Simpan plugin dulu, lalu jalankan tes.', 'error');
       return;
     }
     setTesting(true);
@@ -216,8 +228,14 @@ export default function Plugins() {
         code, // tes kode terbaru di editor (boleh belum disimpan)
       }, { timeout: 30000 });
       setTestResult(res);
+      if (res.ok) {
+        showToast('Plugin berhasil diuji.', 'success');
+      } else {
+        showToast('Pengujian plugin mengembalikan error.', 'error');
+      }
     } catch (e: any) {
       setTestResult({ ok: false, error: e.message ?? 'Gagal menjalankan tes.' });
+      showToast(e.message ?? 'Gagal menjalankan tes.', 'error');
     }
     setTesting(false);
   }
@@ -244,12 +262,14 @@ export default function Plugins() {
     if (ids.length === 0) return;
     setBulkBusy(true);
     const results = await Promise.allSettled(ids.map(id => api.put<Plugin>(`/api/plugins/${id}`, { is_active: active })));
+    const successCount = results.filter(r => r.status === 'fulfilled').length;
     setPlugins(prev => prev.map(p => {
       const i = ids.indexOf(p.id);
       return (i >= 0 && results[i].status === 'fulfilled') ? (results[i] as PromiseFulfilledResult<Plugin>).value : p;
     }));
     setBulkBusy(false);
     setSelected(new Set());
+    showToast(`${successCount} plugin berhasil ${active ? 'diaktifkan' : 'dinonaktifkan'}.`, 'success');
   }
 
   async function bulkDelete() {
@@ -262,6 +282,7 @@ export default function Plugins() {
     setPlugins(prev => prev.filter(p => !deleted.includes(p.id)));
     setBulkBusy(false);
     setSelected(new Set());
+    showToast(`${deleted.length} plugin berhasil dihapus.`, 'success');
   }
 
   const inputCls =
@@ -646,6 +667,7 @@ export default function Plugins() {
           </div>
         </div>
       )}
+      <Toast toast={toast} onClose={() => setToast(null)} />
     </AdminLayout>
   );
 }
