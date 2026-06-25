@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AdminLayout from '../layout/AdminLayout';
+import CodeEditor from '../ui/CodeEditor';
 import { Puzzle, Copy, Check, Terminal, Zap, ShieldCheck, AlertTriangle, ArrowRight } from 'lucide-react';
 
 const EX_XPROFILE = `// .xprofile <username>  -> balas info profil X/Twitter + foto
@@ -353,10 +354,10 @@ function Code({ id, code }: { id: string; code: string }) {
     <div className="relative group">
       <button
         onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-        className="absolute top-2 right-2 p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 hover:text-white opacity-0 group-hover:opacity-100 transition">
+        className="absolute top-2 right-2 z-10 p-1.5 rounded-lg bg-zinc-800/80 text-zinc-300 hover:text-white opacity-0 group-hover:opacity-100 transition">
         {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
-      <pre className="bg-zinc-950 text-emerald-200 border border-zinc-700 rounded-xl p-3.5 text-[12px] font-mono leading-relaxed overflow-x-auto">{code}</pre>
+      <CodeEditor value={code} onChange={() => {}} readOnly minRows={Math.max(code.split('\n').length, 1)} />
     </div>
   );
 }
