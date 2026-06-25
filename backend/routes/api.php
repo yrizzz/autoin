@@ -73,6 +73,7 @@ Route::get('login', function () {
 Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
+    Route::get('/notifications', [\App\Http\Controllers\NotificationController::class, 'index']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/api-key', [AuthController::class, 'getApiKey']);
     Route::post('/api-key', [AuthController::class, 'generateApiKey']);

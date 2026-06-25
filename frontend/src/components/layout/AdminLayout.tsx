@@ -329,7 +329,8 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Array<{ id: number; title: string; message: string; time: string; read: boolean }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; type: string; title: string; message: string; time: string; created_at: string }>>([]);
+  const [notifSeen, setNotifSeen] = useState<string>('');
   const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(null);
   const [loginAgreed, setLoginAgreed] = useState(true);
 
@@ -341,7 +342,13 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   const [avatarUploading, setAvatarUploading] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
 
-  const hasUnread = notifications.some(n => !n.read);
+  const hasUnread = notifications.some(n => !notifSeen || n.created_at > notifSeen);
+
+  const markNotifRead = () => {
+    const now = new Date().toISOString();
+    setNotifSeen(now);
+    try { localStorage.setItem('autoin_notif_seen', now); } catch { /* ignore */ }
+  };
 
   const openProfile = () => {
     setProfileName(user?.name ?? '');
@@ -424,6 +431,11 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
           setAnnouncement(res);
         }
       })
+      .catch(() => { });
+
+    try { setNotifSeen(localStorage.getItem('autoin_notif_seen') || ''); } catch { /* ignore */ }
+    api.get<Array<{ id: string; type: string; title: string; message: string; time: string; created_at: string }>>('/api/notifications')
+      .then(res => { if (Array.isArray(res)) setNotifications(res); })
       .catch(() => { });
 
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
@@ -706,25 +718,32 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
                     <div className="px-4 py-3 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-950/60">
                       <span className="text-xs font-extrabold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider">Notifikasi</span>
                       {hasUnread && (
-                        <button onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))} className="text-xs text-blue-500 font-bold hover:underline cursor-pointer">
+                        <button onClick={markNotifRead} className="text-xs text-blue-500 font-bold hover:underline cursor-pointer">
                           Tandai dibaca
                         </button>
                       )}
                     </div>
                     <div className="divide-y divide-zinc-100 dark:divide-zinc-800 max-h-64 overflow-y-auto">
-                      {notifications.map(n => (
-                        <div
-                          key={n.id}
-                          onClick={() => { setNotifications(notifications.map(i => i.id === n.id ? { ...i, read: true } : i)); setNotifOpen(false); }}
-                          className={`px-4 py-3 flex flex-col gap-1 hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer transition-colors ${!n.read ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className={`text-xs font-bold truncate ${!n.read ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
-                            <span className="text-[11px] text-zinc-400 shrink-0">{n.time}</span>
-                          </div>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-snug">{n.message}</p>
+                      {notifications.length === 0 ? (
+                        <div className="px-4 py-8 text-center">
+                          <Bell className="w-7 h-7 mx-auto text-zinc-300 dark:text-zinc-600 mb-2" />
+                          <p className="text-xs text-zinc-400">Belum ada notifikasi.</p>
                         </div>
-                      ))}
+                      ) : notifications.map(n => {
+                        const unread = !notifSeen || n.created_at > notifSeen;
+                        return (
+                          <div
+                            key={n.id}
+                            className={`px-4 py-3 flex flex-col gap-1 transition-colors ${unread ? 'bg-blue-50/60 dark:bg-blue-500/[0.04]' : ''}`}
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className={`text-xs font-bold truncate ${unread ? 'text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}>{n.title}</span>
+                              <span className="text-[11px] text-zinc-400 shrink-0">{n.time}</span>
+                            </div>
+                            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-snug">{n.message}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </>
