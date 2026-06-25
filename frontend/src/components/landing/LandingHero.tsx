@@ -63,6 +63,8 @@ export default function LandingHero() {
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-70 dark:opacity-85">
         <div className="absolute inset-0 aurora-bg-wave-1" />
         <div className="absolute inset-0 aurora-bg-wave-2" />
+        {/* Smooth gradient mask at the bottom of the aurora to blend into the next section */}
+        <div className="absolute inset-x-0 bottom-0 h-96 bg-gradient-to-t from-[#f8fafc] dark:from-[#030712] via-[#f8fafc]/85 dark:via-[#030712]/85 to-transparent pointer-events-none" />
       </div>
       
       {/* Moving Grid Overlay */}

@@ -35,8 +35,10 @@ export default function LandingFAQ() {
 
   return (
     <section id="faq" className="relative py-20 sm:py-28 px-4 sm:px-6 bg-[#f8fafc] dark:bg-[#030712] transition-colors duration-300 overflow-hidden border-t border-zinc-200 dark:border-white/5">
-      {/* Aurora light blur */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[35rem] h-[35rem] bg-blue-500/[0.03] dark:bg-blue-500/[0.05] rounded-full blur-[100px] pointer-events-none" />
+      {/* Wavy Aurora Background (Borealis style) */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-45 dark:opacity-65">
+        <div className="absolute inset-0 aurora-borealis-glow" />
+      </div>
 
       <div className="relative z-10 max-w-4xl mx-auto">
         {/* Title */}
@@ -62,10 +64,10 @@ export default function LandingFAQ() {
             return (
               <div
                 key={index}
-                className={`rounded-2xl border transition-all duration-300 ${
+                className={`rounded-2xl border transition-all duration-300 backdrop-blur-md ${
                   isOpen
-                    ? 'border-blue-500/30 bg-white dark:bg-white/[0.02] shadow-md shadow-blue-500/[0.01]'
-                    : 'border-zinc-200 dark:border-white/5 bg-white dark:bg-[#0a0f1d]/30 hover:border-zinc-300 dark:hover:border-white/10'
+                    ? 'border-blue-500/50 dark:border-blue-500/40 bg-white/90 dark:bg-white/[0.04] shadow-md shadow-blue-500/[0.03]'
+                    : 'border-zinc-200 dark:border-white/10 bg-white/70 dark:bg-[#0a0f1d]/50 hover:border-blue-500/35 dark:hover:border-purple-500/35'
                 }`}
               >
                 {/* Accordion Trigger Button */}

@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 
-const plainTheme = 'bg-white dark:bg-[#0a0f1d]/40 border-zinc-200 dark:border-zinc-800/60 text-zinc-900 dark:text-white hover:border-zinc-300 dark:hover:border-zinc-700';
+const plainTheme = 'bg-white/70 dark:bg-[#0a0f1d]/55 border-zinc-200 dark:border-white/10 text-zinc-900 dark:text-white hover:border-blue-500/35 dark:hover:border-purple-500/35 hover:-translate-y-1 hover:shadow-[0_15px_30px_-10px_rgba(37,99,235,0.15)] backdrop-blur-md';
 
 const plans = [
   {
@@ -37,7 +37,7 @@ const plans = [
     ],
     cta: 'Aktifkan Daily Pass',
     highlight: true,
-    themeClass: 'bg-gradient-to-b from-blue-50/50 via-white to-white dark:from-[#141b35]/80 dark:via-[#0b1022]/80 dark:to-[#0b1022]/80 border-blue-500/50 dark:border-blue-500/40 shadow-[0_15px_40px_rgba(37,99,235,0.08)] dark:shadow-[0_20px_50px_rgba(37,99,235,0.15)] lg:scale-[1.03] z-10 text-zinc-900 dark:text-white'
+    themeClass: 'bg-gradient-to-b from-blue-50/70 via-white/80 to-white/90 dark:from-[#141b35]/80 dark:via-[#0b1022]/75 dark:to-[#0b1022]/80 border-blue-500/50 dark:border-blue-500/55 shadow-[0_15px_40px_rgba(37,99,235,0.1)] dark:shadow-[0_20px_50px_rgba(37,99,235,0.22)] lg:scale-[1.03] hover:scale-[1.05] z-10 text-zinc-900 dark:text-white backdrop-blur-md hover:-translate-y-1'
   },
   {
     name: 'Weekly Pass',
@@ -79,9 +79,11 @@ const plans = [
 export default function LandingPricing() {
   return (
     <section id="pricing" className="relative py-16 sm:py-28 px-4 sm:px-6 bg-[#f8fafc] dark:bg-[#030712] transition-colors duration-300 overflow-hidden">
-      {/* Background decorations */}
-      <div className="absolute top-[20%] left-[-10%] w-[400px] h-[400px] bg-blue-900/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[-10%] w-[400px] h-[400px] bg-purple-900/5 rounded-full blur-[100px] pointer-events-none" />
+      {/* Cosmic Aurora Glow */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 opacity-45 dark:opacity-65">
+        <div className="absolute inset-0 aurora-cosmic-glow-1" />
+        <div className="absolute inset-0 aurora-cosmic-glow-2" />
+      </div>
 
       <div className="max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-20">
@@ -109,9 +111,9 @@ export default function LandingPricing() {
               <h3 className="font-extrabold text-xl mb-2">{plan.name}</h3>
               <p className="text-zinc-500 dark:text-white/40 text-xs mb-6 leading-relaxed">{plan.description}</p>
               
-              <div className="flex items-baseline gap-1 mb-8">
-                <span className="text-4xl font-black tracking-tight">{plan.price}</span>
-                <span className="text-zinc-500 dark:text-white/45 text-sm font-semibold">{plan.period}</span>
+              <div className="flex items-baseline gap-1 mb-8 flex-wrap">
+                <span className="text-3xl sm:text-4xl font-black tracking-tight whitespace-nowrap">{plan.price}</span>
+                <span className="text-zinc-500 dark:text-white/45 text-sm font-semibold whitespace-nowrap">{plan.period}</span>
               </div>
 
               <div className="h-px bg-zinc-200 dark:bg-white/5 w-full mb-8" />
