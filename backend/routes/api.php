@@ -109,6 +109,8 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::post('broadcasts/{broadcast}/cancel', [BroadcastController::class, 'cancel']);
     Route::get('broadcasts/{broadcast}/logs', [BroadcastController::class, 'logs']);
 
+    Route::get('chatbot-settings', [ChatbotRuleController::class, 'getSettings']);
+    Route::post('chatbot-settings', [ChatbotRuleController::class, 'saveSettings']);
     Route::apiResource('chatbot-rules', ChatbotRuleController::class)->except(['show']);
 
     Route::apiResource('plugins', PluginController::class)->except(['show']);

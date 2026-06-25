@@ -97,6 +97,33 @@ class ChatbotRuleController extends Controller
         abort_unless($owns, 422, 'Plugin tidak ditemukan.');
     }
 
+    // ── Pengaturan chatbot per-akun ───────────────────────────────────────────
+
+    public function getSettings(Request $request)
+    {
+        $settings = $request->user()->settings ?? [];
+        return response()->json([
+            'plugin_react_feedback' => (bool) data_get($settings, 'plugin_react_feedback', false),
+        ]);
+    }
+
+    public function saveSettings(Request $request)
+    {
+        $data = $request->validate([
+            'plugin_react_feedback' => 'required|boolean',
+        ]);
+
+        $user = $request->user();
+        $settings = $user->settings ?? [];
+        $settings['plugin_react_feedback'] = $data['plugin_react_feedback'];
+        $user->settings = $settings;
+        $user->save();
+
+        return response()->json([
+            'plugin_react_feedback' => (bool) $settings['plugin_react_feedback'],
+        ]);
+    }
+
     // ── Internal: called by Node services on every incoming message ───────────
 
     public function matchInternal(Request $request)
@@ -125,6 +152,11 @@ class ChatbotRuleController extends Controller
         // Plugin TIDAK lagi punya prefix/command sendiri. Pemicunya diatur lewat
         // chatbot rule (prefix + trigger + plugin_id) yang dicek di loop di bawah.
 
+        // Setting per-akun: beri reaction feedback (⏳ saat command terdeteksi,
+        // ✅ saat balasan plugin terkirim). Dibaca service WhatsApp dari respons ini.
+        $owner = \App\Models\User::find($channel->user_id);
+        $reactFeedback = (bool) data_get($owner?->settings, 'plugin_react_feedback', false);
+
         $rules = ChatbotRule::where('user_id', $channel->user_id)
             ->where('is_active', true)
             ->where(function ($q) use ($platform) {
@@ -148,9 +180,10 @@ class ChatbotRuleController extends Controller
                                 'code'       => $plugin->code,
                                 'timeout_ms' => $plugin->timeout_ms,
                             ],
-                            'args'     => $extracted['args'],
-                            'raw_args' => $extracted['raw_args'],
-                            'sender'   => $request->input('sender'),
+                            'args'           => $extracted['args'],
+                            'raw_args'       => $extracted['raw_args'],
+                            'sender'         => $request->input('sender'),
+                            'react_feedback' => $reactFeedback,
                         ]);
                     }
                     // plugin nonaktif/terhapus -> lanjut pakai reply biasa

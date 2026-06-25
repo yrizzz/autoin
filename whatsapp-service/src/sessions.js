@@ -957,9 +957,26 @@ class SessionManager extends EventEmitter {
     }
   }
 
+  // Kirim/ubah emoji reaction pada pesan command. Best-effort: gagal = diabaikan.
+  // emoji '' menghapus reaction.
+  async _react(sessionId, key, emoji) {
+    if (!key) return;
+    const sock = this._sessions.get(sessionId);
+    if (!sock) return;
+    try {
+      await sock.sendMessage(key.remoteJid, { react: { text: emoji, key } });
+    } catch (err) {
+      console.warn(`[Plugin] Gagal kirim reaction "${emoji}":`, err?.message || err);
+    }
+  }
+
   async _runPluginReply(sessionId, chatId, data, rawMessage, sender) {
     const plugin = data.plugin;
     console.log(`[Plugin] Running "${plugin.name}" (#${plugin.id}) for ${sender}, args:`, data.args);
+
+    // Reaction feedback (setting per-akun): ⏳ saat command terdeteksi.
+    const reactKey = data.react_feedback ? (rawMessage?.key || null) : null;
+    if (reactKey) await this._react(sessionId, reactKey, '⏳');
     const ctx = {
       args: data.args || [],
       rawArgs: data.raw_args || '',
@@ -987,6 +1004,7 @@ class SessionManager extends EventEmitter {
 
     if (!result.ok) {
       console.error(`[Plugin] Error (#${plugin.id}):`, result.error);
+      if (reactKey) await this._react(sessionId, reactKey, '❌');
       this._reportPluginRun(plugin.id, result.error).catch(() => {});
       await new Promise(r => setTimeout(r, 500));
       await this.send(sessionId, chatId, `⚠️ Plugin "${plugin.name}" gagal: ${result.error}`, null, null, rawMessage).catch(() => {});
@@ -996,6 +1014,7 @@ class SessionManager extends EventEmitter {
     const out = result.output || {};
     if (!out.text && !out.mediaUrl) {
       console.log(`[Plugin] (#${plugin.id}) selesai tanpa output, tidak mengirim balasan.`);
+      if (reactKey) await this._react(sessionId, reactKey, '✅');
       this._reportPluginRun(plugin.id, null).catch(() => {});
       return;
     }
@@ -1003,6 +1022,7 @@ class SessionManager extends EventEmitter {
     await new Promise(r => setTimeout(r, 500));
     await this.send(sessionId, chatId, out.text || '', out.mediaUrl || null, out.mediaType || null, rawMessage);
     console.log(`[Plugin] (#${plugin.id}) reply sent.`);
+    if (reactKey) await this._react(sessionId, reactKey, '✅');
     this._reportPluginRun(plugin.id, null).catch(() => {});
   }
 

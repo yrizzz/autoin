@@ -82,7 +82,32 @@ export default function ChatbotRules() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState<ChatbotRule | null>(null);
 
-  useEffect(() => { loadRules(); loadPlugins(); }, []);
+  // Pengaturan: reaction feedback (⏳→✅) saat plugin command dijalankan
+  const [reactFeedback, setReactFeedback] = useState(false);
+  const [reactSaving, setReactSaving] = useState(false);
+
+  useEffect(() => { loadRules(); loadPlugins(); loadSettings(); }, []);
+
+  async function loadSettings() {
+    try {
+      const s = await api.get<{ plugin_react_feedback: boolean }>('/api/chatbot-settings');
+      setReactFeedback(!!s.plugin_react_feedback);
+    } catch { /* ignore */ }
+  }
+
+  async function handleToggleReactFeedback() {
+    const next = !reactFeedback;
+    setReactFeedback(next); // optimistic
+    setReactSaving(true);
+    try {
+      await api.post('/api/chatbot-settings', { plugin_react_feedback: next });
+    } catch (e: any) {
+      setReactFeedback(!next); // rollback
+      alert(e.message ?? 'Gagal menyimpan pengaturan.');
+    } finally {
+      setReactSaving(false);
+    }
+  }
 
   async function loadRules() {
     setLoading(true);
@@ -324,6 +349,33 @@ export default function ChatbotRules() {
         <button onClick={handleOpenCreate}
           className="btn-primary inline-flex items-center justify-center gap-2 px-5 py-2.5 font-bold text-xs rounded-xl shadow-md cursor-pointer shrink-0 text-white">
           <Plus className="w-4 h-4" /> Aturan Baru
+        </button>
+      </div>
+
+      {/* Pengaturan: reaction feedback plugin */}
+      <div className="flex items-center justify-between gap-4 mb-6 p-4 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+            <Puzzle className="w-4.5 h-4.5 text-blue-500" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+              Reaksi status plugin <span className="text-base leading-none">⏳→✅</span>
+            </p>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 max-w-xl">
+              Saat command plugin terdeteksi, pesan diberi reaksi ⏳ (loading) lalu berubah jadi ✅ ketika balasan terkirim (atau ❌ bila gagal).
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={reactFeedback}
+          disabled={reactSaving}
+          onClick={handleToggleReactFeedback}
+          className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors disabled:opacity-60 cursor-pointer ${reactFeedback ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${reactFeedback ? 'translate-x-6' : 'translate-x-1'}`} />
         </button>
       </div>
 

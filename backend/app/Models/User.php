@@ -11,7 +11,7 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = ['name', 'email', 'google_id', 'avatar', 'api_key', 'api_key_created_at', 'api_ip_whitelist'];
+    protected $fillable = ['name', 'email', 'google_id', 'avatar', 'api_key', 'api_key_created_at', 'api_ip_whitelist', 'settings'];
 
     protected $hidden = ['remember_token'];
 
@@ -19,6 +19,7 @@ class User extends Authenticatable implements JWTSubject
     {
         return [
             'api_ip_whitelist' => 'array',
+            'settings' => 'array',
         ];
     }
 
