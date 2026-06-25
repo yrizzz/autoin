@@ -62,8 +62,8 @@ export default function InvoiceHistory() {
     {
       id: 'weekly',
       name: 'Weekly Pass',
-      price: 5000,
-      priceLabel: 'Rp 5.000',
+      price: 7000,
+      priceLabel: 'Rp 7.000',
       period: '/ minggu',
       desc: 'Hemat untuk pemakaian rutin sepanjang minggu.',
       features: ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '10 Chatbot & 10 Plugin', '5 Webhook'],

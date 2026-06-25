@@ -41,7 +41,7 @@ const plans = [
   },
   {
     name: 'Weekly Pass',
-    price: 'Rp 5.000',
+    price: 'Rp 7.000',
     period: '/ minggu',
     description: 'Hemat untuk pemakaian rutin mingguan.',
     features: [

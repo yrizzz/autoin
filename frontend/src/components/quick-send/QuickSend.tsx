@@ -20,6 +20,7 @@ interface LogEntry {
   message?: string;
   mediaUrl?: string;
   mediaType?: string;
+  via?: 'web' | 'api';
 }
 
 export default function QuickSend() {
@@ -175,7 +176,8 @@ export default function QuickSend() {
           }),
           message: log.message,
           mediaUrl: log.media_url,
-          mediaType: log.media_type
+          mediaType: log.media_type,
+          via: log.via || 'api'
         }));
         setLogs(mapped);
       })
@@ -788,6 +790,15 @@ export default function QuickSend() {
                       <div className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 truncate font-mono">
                         {log.target}
                       </div>
+                      {log.via && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider ${
+                          log.via === 'web' 
+                            ? 'bg-blue-500/15 text-blue-500' 
+                            : 'bg-indigo-500/15 text-indigo-500'
+                        }`}>
+                          {log.via}
+                        </span>
+                      )}
                     </div>
 
                     <div className="shrink-0">

@@ -126,6 +126,17 @@ app.get('/sessions/:sessionId/groups', auth, async (req, res) => {
   }
 });
 
+// Get group metadata (including participants)
+app.get('/sessions/:sessionId/groups/:groupId', auth, async (req, res) => {
+  const { sessionId, groupId } = req.params;
+  try {
+    const metadata = await sessionManager.getGroupMetadata(sessionId, decodeURIComponent(groupId));
+    res.json({ metadata });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get message history for a specific chat
 app.get('/sessions/:sessionId/messages/:chatId', auth, (req, res) => {
   const { sessionId, chatId } = req.params;
@@ -162,8 +173,8 @@ app.delete('/sessions/:sessionId', auth, (req, res) => {
 // Send a message
 app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   const { sessionId } = req.params;
-  const { to, message, mediaUrl, mediaType, backgroundColor, font, statusJidList } = req.body;
-  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType} backgroundColor:${backgroundColor} font:${font} statusJidListLength:${statusJidList?.length ?? 0}`);
+  const { to, message, mediaUrl, mediaType, backgroundColor, font, statusJidList, mentions } = req.body;
+  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType} backgroundColor:${backgroundColor} font:${font} statusJidListLength:${statusJidList?.length ?? 0} mentionsLength=${mentions?.length ?? 0}`);
 
   if (!sessionManager.isConnected(sessionId)) {
     console.warn(`[index] Session ${sessionId} not connected`);
@@ -171,7 +182,7 @@ app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   }
 
   try {
-    const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType, null, backgroundColor, font, statusJidList);
+    const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType, null, backgroundColor, font, statusJidList, mentions);
     console.log(`[index] Send success for ${sessionId}`);
     res.json({ ok: true, result });
   } catch (err) {

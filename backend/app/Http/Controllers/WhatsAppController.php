@@ -233,6 +233,70 @@ class WhatsAppController extends Controller
         return response()->json(['groups' => $synced['groups'] ?? []]);
     }
 
+    public function getGroupsRealtime(Request $request, Channel $channel)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
+
+        $credentials = $channel->credentials;
+        if (!$credentials || !isset($credentials['session_id'])) {
+            return response()->json(['status' => 'error', 'message' => 'Channel is not connected.'], 400);
+        }
+
+        $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+        $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups");
+
+            return response()->json($response->json());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to fetch groups in real-time: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function getGroupMetadata(Request $request, Channel $channel, $groupId)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
+
+        // Check if user has premium plan
+        $user = $request->user();
+        $isPremium = $user->subscription && $user->subscription->plan !== 'free' && 
+                     (!$user->subscription->expires_at || now()->lt($user->subscription->expires_at));
+        
+        if (!$isPremium) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Fitur Auto Tag Group hanya tersedia untuk pengguna premium.'
+            ], 403);
+        }
+
+        $credentials = $channel->credentials;
+        if (!$credentials || !isset($credentials['session_id'])) {
+            return response()->json(['status' => 'error', 'message' => 'Channel is not connected.'], 400);
+        }
+
+        $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+        $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+
+        try {
+            $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
+                ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups/" . urlencode($groupId));
+
+            return response()->json($response->json());
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Failed to fetch group metadata: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function syncInternal(Request $request)
     {
         $secret = $request->header('X-Internal-Secret');
@@ -471,7 +535,10 @@ class WhatsAppController extends Controller
             'mediaType'       => 'nullable|string',
             'backgroundColor' => 'nullable|string',
             'font'            => 'nullable|integer',
+            'mentions'        => 'nullable|array',
         ]);
+
+        $via = $request->attributes->get('is_api_key') ? 'api' : 'web';
 
         // Create initial pending log
         $apiLog = \App\Models\ApiLog::create([
@@ -482,6 +549,7 @@ class WhatsAppController extends Controller
             'media_url'  => $data['mediaUrl'] ?? null,
             'media_type' => $data['mediaType'] ?? null,
             'status'     => 'pending',
+            'via'        => $via,
         ]);
 
         try {
@@ -493,10 +561,14 @@ class WhatsAppController extends Controller
                     'mediaType'       => $data['mediaType'] ?? null,
                     'backgroundColor' => $data['backgroundColor'] ?? null,
                     'font'            => $data['font'] ?? null,
+                    'mentions'        => $data['mentions'] ?? null,
                 ]);
 
             $resData = $response->json();
-            $isSuccess = $response->successful() && isset($resData['status']) && $resData['status'] === 'success';
+            $isSuccess = $response->successful() && (
+                (isset($resData['ok']) && $resData['ok'] === true) ||
+                (isset($resData['status']) && $resData['status'] === 'success')
+            );
 
             $apiLog->update([
                 'status'   => $isSuccess ? 'success' : 'failed',

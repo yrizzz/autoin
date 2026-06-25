@@ -33,6 +33,9 @@ class ApiKeyToJwt
 
                     // Replace the Authorization header with the JWT token
                     $request->headers->set('Authorization', 'Bearer ' . $jwtToken);
+                    
+                    // Mark the request as coming from API Key
+                    $request->attributes->set('is_api_key', true);
                 } catch (\Throwable $e) {
                     // Fallback silently if JWT generation fails
                 }

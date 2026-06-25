@@ -602,6 +602,12 @@ class SessionManager extends EventEmitter {
     } catch { return []; }
   }
 
+  async getGroupMetadata(id, groupId) {
+    const sock = this._sessions.get(id);
+    if (!sock) throw new Error('Session not found');
+    return await sock.groupMetadata(groupId);
+  }
+
   async create(sessionId, usePairingCode = false, phoneNumber = '') {
     // Load any persisted data before connecting
     await this._loadFromDb(sessionId);
@@ -1011,8 +1017,8 @@ class SessionManager extends EventEmitter {
     } catch { /* non-fatal */ }
   }
 
-  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null) {
-    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font} statusJidListLength=${statusJidList?.length ?? 0}`);
+  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null, mentions = null) {
+    console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font} statusJidListLength=${statusJidList?.length ?? 0} mentionsLength=${mentions?.length ?? 0}`);
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
     if (!message && !mediaUrl) throw new Error('Message or media required');
@@ -1341,7 +1347,9 @@ class SessionManager extends EventEmitter {
         content = { text: message || '' };
       }
 
-      if (senderJid) {
+      if (Array.isArray(mentions) && mentions.length > 0) {
+        content.mentions = mentions.map(m => m.includes('@') ? m : `${m}@s.whatsapp.net`);
+      } else if (senderJid) {
         content.mentions = [senderJid];
       }
 

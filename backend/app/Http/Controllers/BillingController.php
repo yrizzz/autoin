@@ -27,7 +27,7 @@ class BillingController extends Controller
         [
             'id'       => 'weekly',
             'name'     => 'Weekly Pass',
-            'price'    => 5000,
+            'price'    => 7000,
             'period'   => 'week',
             'features' => ['1 Device WhatsApp', 'Broadcast & Pesan Tanpa Batas', '10 Chatbot & 10 Plugin', '5 Webhook', 'Akses Penuh Asisten AI'],
         ],
@@ -69,7 +69,7 @@ class BillingController extends Controller
 
         $plans = [
             'daily' => ['price' => 1000, 'name' => 'Daily Pass'],
-            'weekly' => ['price' => 5000, 'name' => 'Weekly Pass'],
+            'weekly' => ['price' => 7000, 'name' => 'Weekly Pass'],
             'monthly' => ['price' => 25000, 'name' => 'Monthly Pass'],
             'yearly' => ['price' => 199000, 'name' => 'Yearly Pass'],
         ];
@@ -319,7 +319,7 @@ class BillingController extends Controller
 
                     $planPrices = [
                         'daily' => 1000,
-                        'weekly' => 5000,
+                        'weekly' => 7000,
                         'monthly' => 25000,
                         'yearly' => 199000,
                     ];

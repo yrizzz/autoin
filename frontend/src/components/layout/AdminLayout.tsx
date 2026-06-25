@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle
+  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -320,6 +320,8 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
       title: null,
       items: [
         { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '/quick-send' },
+        { id: 'single_message_history', label: 'Riwayat Pesan', icon: Clock, href: '/single-message-history' },
+        { id: 'group_tag', label: 'Auto Tag Group', icon: Tag, href: '/group-tag' },
         { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '/chatbot' },
         { id: 'plugins', label: 'Plugin / Extension', icon: Puzzle, href: '/plugins' },
         { id: 'webhook', label: 'Webhook App', icon: Link, href: '/webhook' },

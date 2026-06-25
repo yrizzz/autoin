@@ -192,6 +192,7 @@ class PromoCodeController extends Controller
 
         $planPrices = [
             'daily' => 1000,
+            'weekly' => 7000,
             'monthly' => 25000,
             'yearly' => 199000,
         ];

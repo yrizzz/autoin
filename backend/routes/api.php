@@ -93,6 +93,8 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::post('whatsapp/{channel}/contacts', [WhatsAppController::class, 'updateContacts']);
     Route::get('whatsapp/{channel}/chats', [WhatsAppController::class, 'getChats']);
     Route::get('whatsapp/{channel}/groups', [WhatsAppController::class, 'getGroups']);
+    Route::get('whatsapp/{channel}/groups-realtime', [WhatsAppController::class, 'getGroupsRealtime']);
+    Route::get('whatsapp/{channel}/groups/{groupId}', [WhatsAppController::class, 'getGroupMetadata']);
     Route::get('whatsapp/{channel}/messages/{chatId}', [WhatsAppController::class, 'getMessages']);
     Route::get('whatsapp/{channel}/stream/messages/{chatId}', [WhatsAppController::class, 'streamMessages']);
     Route::get('whatsapp/{channel}/stream/chats', [WhatsAppController::class, 'streamChats']);
