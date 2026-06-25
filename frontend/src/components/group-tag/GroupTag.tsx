@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../lib/api';
+import AdminLayout from '../layout/AdminLayout';
 import type { User, Channel } from '../../types';
 import {
   Smartphone, Users, User as UserIcon, Send, Search, CheckSquare, Square,
@@ -226,88 +227,93 @@ export default function GroupTag() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-      </div>
+      <AdminLayout activePage="group_tag" title="Setting Auto Tag Member">
+        <div className="flex-1 flex items-center justify-center min-h-[400px]">
+          <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        </div>
+      </AdminLayout>
     );
   }
 
   // --- PREMIUM PAYWALL RENDER ---
   if (!isPremium) {
     return (
-      <div className="max-w-4xl mx-auto py-10 px-4">
-        <div className="bg-zinc-900/50 dark:bg-zinc-950/40 border border-zinc-800 rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden shadow-2xl backdrop-blur-xl">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
+      <AdminLayout activePage="group_tag" title="Setting Auto Tag Member">
+        <div className="max-w-4xl mx-auto py-10 px-4">
+          <div className="bg-zinc-900/50 dark:bg-zinc-950/40 border border-zinc-800 rounded-3xl p-8 sm:p-12 text-center relative overflow-hidden shadow-2xl backdrop-blur-xl">
+            <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl" />
+            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl" />
 
-          <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center mb-8 shadow-xl shadow-blue-500/20 relative">
-            <Lock className="w-8 h-8 text-white animate-pulse" />
-            <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">PRO</div>
-          </div>
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center mb-8 shadow-xl shadow-blue-500/20 relative">
+              <Lock className="w-8 h-8 text-white animate-pulse" />
+              <div className="absolute -top-1.5 -right-1.5 bg-amber-500 text-black text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">PRO</div>
+            </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
-            Setting Auto Tag Member (Group Mention)
-          </h1>
-          <p className="text-zinc-400 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base mb-8">
-            Tingkatkan efektivitas promosi grup Anda hingga 10x lipat! Fitur terobosan ini memungkinkan Anda untuk me-mention (tag) seluruh atau sebagian anggota grup secara otomatis dalam sekali kirim pesan. Anggota grup akan mendapatkan notifikasi langsung (tag biru) sehingga tingkat keterbacaan pesan meningkat pesat.
-          </p>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
+              Setting Auto Tag Member (Group Mention)
+            </h1>
+            <p className="text-zinc-400 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base mb-8">
+              Tingkatkan efektivitas promosi grup Anda hingga 10x lipat! Fitur terobosan ini memungkinkan Anda untuk me-mention (tag) seluruh atau sebagian anggota grup secara otomatis dalam sekali kirim pesan. Anggota grup akan mendapatkan notifikasi langsung (tag biru) sehingga tingkat keterbacaan pesan meningkat pesat.
+            </p>
 
-          {/* Benefits Grid */}
-          <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left mb-10">
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-emerald-450" />
+            {/* Benefits Grid */}
+            <div className="grid sm:grid-cols-3 gap-4 max-w-3xl mx-auto text-left mb-10">
+              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 text-emerald-450" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white mb-1">Tag Semua Anggota</h4>
+                  <p className="text-[11px] text-zinc-500">Tag seluruh anggota grup sekaligus secara otomatis.</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-white mb-1">Tag Semua Anggota</h4>
-                <p className="text-[11px] text-zinc-500">Tag seluruh anggota grup sekaligus secara otomatis.</p>
+              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 text-emerald-450" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white mb-1">Pilih Admin Saja</h4>
+                  <p className="text-[11px] text-zinc-500">Hubungi atau tag admin grup dengan sekali klik cepat.</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
+                  <Check className="w-4 h-4 text-emerald-450" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white mb-1">Filter Anggota Kustom</h4>
+                  <p className="text-[11px] text-zinc-500">Cari nomor anggota dan pilih secara spesifik siapa saja yang di-tag.</p>
+                </div>
               </div>
             </div>
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-emerald-450" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white mb-1">Pilih Admin Saja</h4>
-                <p className="text-[11px] text-zinc-500">Hubungi atau tag admin grup dengan sekali klik cepat.</p>
-              </div>
-            </div>
-            <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0">
-                <Check className="w-4 h-4 text-emerald-450" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-white mb-1">Filter Anggota Kustom</h4>
-                <p className="text-[11px] text-zinc-500">Cari nomor anggota dan pilih secara spesifik siapa saja yang di-tag.</p>
-              </div>
-            </div>
-          </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href="/subscription"
-              className="w-full sm:w-auto bg-gradient-brand hover:opacity-95 text-white font-bold px-8 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-98 transition-all cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4" />
-              Berlangganan Premium Sekarang
-              <ArrowUpRight className="w-4 h-4" />
-            </a>
-            <a
-              href="/dashboard"
-              className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-bold px-8 py-3.5 rounded-2xl border border-zinc-800 flex items-center justify-center gap-2 active:scale-98 transition-all"
-            >
-              Kembali ke Dashboard
-            </a>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <a
+                href="/subscription"
+                className="w-full sm:w-auto bg-gradient-brand hover:opacity-95 text-white font-bold px-8 py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-98 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                Berlangganan Premium Sekarang
+                <ArrowUpRight className="w-4 h-4" />
+              </a>
+              <a
+                href="/dashboard"
+                className="w-full sm:w-auto bg-zinc-900 hover:bg-zinc-850 text-zinc-300 font-bold px-8 py-3.5 rounded-2xl border border-zinc-800 flex items-center justify-center gap-2 active:scale-98 transition-all"
+              >
+                Kembali ke Dashboard
+              </a>
+            </div>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   // --- PREMIUM DASHBOARD RENDER ---
   return (
-    <div className="space-y-6">
+    <AdminLayout activePage="group_tag" title="Setting Auto Tag Member">
+      <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
         <div className="space-y-1">
@@ -617,6 +623,6 @@ export default function GroupTag() {
         </div>
 
       </div>
-    </div>
+    </AdminLayout>
   );
 }
