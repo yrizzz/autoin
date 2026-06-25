@@ -4,7 +4,8 @@ import { api } from '../../lib/api';
 import {
   Activity, Rocket, Wifi, Users, Globe, Search, RefreshCw,
   Clock, AlertTriangle, CheckCircle2, ChevronLeft, ChevronRight,
-  Eye, CornerDownRight, Smartphone, Mail, Calendar, MessageSquare, Terminal
+  Eye, CornerDownRight, Smartphone, Mail, Calendar, MessageSquare, Terminal,
+  Trash2, Loader2
 } from 'lucide-react';
 
 interface UserBrief {
@@ -78,6 +79,7 @@ export default function AdminMonitor() {
   const [broadcastsPage, setBroadcastsPage] = useState<PaginatedResponse<BroadcastItem> | null>(null);
   const [apiLogsPage, setApiLogsPage] = useState<PaginatedResponse<ApiLogItem> | null>(null);
   const [channelsList, setChannelsList] = useState<ChannelItem[]>([]);
+  const [deletingChannelId, setDeletingChannelId] = useState<number | null>(null);
 
   // Pagination states
   const [bcCurrentPage, setBcCurrentPage] = useState(1);
@@ -86,6 +88,24 @@ export default function AdminMonitor() {
   // Detail Modal states
   const [selectedBroadcast, setSelectedBroadcast] = useState<BroadcastItem | null>(null);
   const [selectedApiLog, setSelectedApiLog] = useState<ApiLogItem | null>(null);
+
+  const handleDeleteChannel = async (channel: ChannelItem) => {
+    if (!window.confirm(`Apakah Anda yakin ingin menghapus perangkat "${channel.name}" milik ${channel.user?.name || 'User'}? Tindakan ini akan memutuskan koneksi WhatsApp dan menghapus sesi perangkat secara permanen dari server.`)) {
+      return;
+    }
+
+    setDeletingChannelId(channel.id);
+    try {
+      await api.delete(`/api/admin/channels/${channel.id}`);
+      setChannelsList(prev => prev.filter(c => c.id !== channel.id));
+      alert('Perangkat berhasil dihapus dari sistem.');
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Gagal menghapus perangkat.');
+    } finally {
+      setDeletingChannelId(null);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -646,6 +666,27 @@ export default function AdminMonitor() {
                             {new Date(ch.updated_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
+                      </div>
+
+                      {/* Admin Manage Actions */}
+                      <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex justify-end">
+                        <button
+                          onClick={() => handleDeleteChannel(ch)}
+                          disabled={deletingChannelId === ch.id}
+                          className="w-full px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-600 dark:text-rose-400 rounded-xl transition-all font-semibold text-[10px] flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {deletingChannelId === ch.id ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Memutuskan & Menghapus...
+                            </>
+                          ) : (
+                            <>
+                              <Trash2 className="w-3 h-3" />
+                              Hapus & Putuskan Perangkat
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
                   ))}

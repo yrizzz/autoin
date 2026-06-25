@@ -146,6 +146,7 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('admin/broadcasts', [\App\Http\Controllers\AdminController::class, 'getAdminBroadcasts']);
     Route::get('admin/api-logs', [\App\Http\Controllers\AdminController::class, 'getAdminApiLogs']);
     Route::get('admin/channels', [\App\Http\Controllers\AdminController::class, 'getAdminChannels']);
+    Route::delete('admin/channels/{channel}', [\App\Http\Controllers\AdminController::class, 'deleteAdminChannel']);
     Route::get('announcement', [\App\Http\Controllers\AdminController::class, 'getPublicAnnouncement']);
 
     // Promo Codes API

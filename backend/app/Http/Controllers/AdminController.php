@@ -175,4 +175,29 @@ class AdminController extends Controller
 
         return response()->json($channels);
     }
+
+    public function deleteAdminChannel(Request $request, \App\Models\Channel $channel)
+    {
+        abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
+
+        // Clean up WhatsApp session if applicable
+        if ($channel->platform === 'whatsapp' && isset($channel->credentials['session_id'])) {
+            $sessionId = $channel->credentials['session_id'];
+            $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
+            $secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
+
+            try {
+                \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
+                    ->delete("{$baseUrl}/sessions/{$sessionId}");
+            } catch (\Throwable $e) {
+                // Silently ignore Node.js cleanup failure so we can still delete the DB record
+            }
+        }
+
+        $channel->delete();
+
+        return response()->json([
+            'message' => 'Device / Perangkat berhasil dihapus dari sistem.'
+        ]);
+    }
 }
