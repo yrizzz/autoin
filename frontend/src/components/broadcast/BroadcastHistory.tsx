@@ -68,6 +68,14 @@ export default function BroadcastHistory() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [logSearchTerm, setLogSearchTerm] = useState('');
 
+  // Edit States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editScheduledAt, setEditScheduledAt] = useState('');
+  const [editRecurring, setEditRecurring] = useState('none');
+  const [saving, setSaving] = useState(false);
+
   // Delete Confirmation State
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -81,6 +89,24 @@ export default function BroadcastHistory() {
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     setToast({ message, type });
   };
+
+  const formatForInput = (d: string | null | undefined): string => {
+    if (!d) return '';
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return '';
+    const offset = date.getTimezoneOffset();
+    const adjustedDate = new Date(date.getTime() - (offset * 60 * 1000));
+    return adjustedDate.toISOString().slice(0, 16);
+  };
+
+  useEffect(() => {
+    if (selectedBroadcast) {
+      setEditTitle(selectedBroadcast.title || '');
+      setEditContent(selectedBroadcast.content || '');
+      setEditScheduledAt(formatForInput(selectedBroadcast.scheduled_at));
+      setEditRecurring(selectedBroadcast.recurring || 'none');
+    }
+  }, [selectedBroadcast, isEditing]);
 
   useEffect(() => {
     if (toast) {
@@ -152,6 +178,7 @@ export default function BroadcastHistory() {
   const openDetails = async (id: number) => {
     setDetailLoading(true);
     setSelectedBroadcast(null);
+    setIsEditing(false); // Reset edit mode
     setDetailOpen(true);
     setLogSearchTerm('');
 
@@ -163,6 +190,40 @@ export default function BroadcastHistory() {
       setDetailOpen(false);
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedBroadcast) return;
+    if (!editContent.trim()) {
+      showToast('Isi pesan tidak boleh kosong!', 'error');
+      return;
+    }
+    setSaving(true);
+    try {
+      const scheduledAtUtc = editScheduledAt && !isNaN(new Date(editScheduledAt).getTime())
+        ? new Date(editScheduledAt).toISOString()
+        : null;
+
+      const updated = await api.put<DetailedBroadcast>(`/api/broadcasts/${selectedBroadcast.id}`, {
+        title: editTitle || null,
+        content: editContent,
+        scheduled_at: scheduledAtUtc,
+        recurring: scheduledAtUtc ? editRecurring : 'none',
+      });
+      
+      showToast('Perubahan broadcast berhasil disimpan!', 'success');
+      setIsEditing(false);
+      
+      // Update local detailed broadcast state
+      setSelectedBroadcast(prev => prev ? { ...prev, ...updated } : null);
+      
+      // Refresh the main table list
+      fetchBroadcasts(currentPage);
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal menyimpan perubahan.', 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -537,16 +598,16 @@ export default function BroadcastHistory() {
             onClick={() => setDetailOpen(false)}
           />
 
-          <div className="relative w-full max-w-2xl bg-white dark:bg-[#0e0e11] border-l border-zinc-200 dark:border-zinc-800/80 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-350 z-10">
+          <div className="relative w-full max-w-2xl bg-white dark:bg-[#0e0e11] border-l border-zinc-200 dark:border-zinc-800/80 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-350 z-10 text-zinc-900 dark:text-white">
             
             {/* Header */}
             <div className="flex items-center justify-between p-5 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
               <div>
                 <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest font-mono">
-                  LOG DETAIL PENERIMA
+                  {isEditing ? 'EDIT CAMPAIGN BROADCAST' : 'LOG DETAIL PENERIMA'}
                 </span>
                 <h2 className="font-extrabold text-sm text-zinc-900 dark:text-white uppercase mt-0.5 truncate max-w-md">
-                  {selectedBroadcast?.title || 'Log Detail Campaign'}
+                  {isEditing ? 'Ubah Informasi Broadcast' : (selectedBroadcast?.title || 'Log Detail Campaign')}
                 </h2>
               </div>
               <button 
@@ -565,155 +626,259 @@ export default function BroadcastHistory() {
                   <span className="text-xs text-zinc-650 font-bold">Memuat data penerima...</span>
                 </div>
               ) : selectedBroadcast ? (
-                <>
-                  {/* Message Detail preview */}
-                  <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Isi Pesan Broadcast</span>
-                      <button 
-                        type="button" 
-                        onClick={() => copyToClipboard(selectedBroadcast.content)}
-                        className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg cursor-pointer transition-all"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </button>
+                isEditing ? (
+                  <div className="space-y-4">
+                    {/* Title input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Judul Broadcast</label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={e => setEditTitle(e.target.value)}
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm"
+                        placeholder="Masukkan judul broadcast (opsional)..."
+                        disabled={saving}
+                      />
                     </div>
-                    <div className="text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto pr-2 font-normal">
-                      {selectedBroadcast.content}
-                    </div>
-                  </div>
 
-                  {/* Progress Stats Summary */}
-                  {(() => {
-                    const stats = getLogStats(selectedBroadcast.logs);
-                    return (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl">
-                        <div className="text-center py-1">
-                          <span className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase">Total Target</span>
-                          <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">{stats.total}</span>
-                        </div>
-                        <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Sukses</span>
-                          <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{stats.sent}</span>
-                        </div>
-                        <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-red-650 dark:text-red-400 uppercase">Gagal</span>
-                          <span className="text-sm font-extrabold text-red-600 dark:text-red-450">{stats.failed}</span>
-                        </div>
-                        <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
-                          <span className="block text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Antrean</span>
-                          <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">{stats.pending}</span>
-                        </div>
+                    {/* Content input */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Isi Pesan</label>
+                      <textarea
+                        value={editContent}
+                        onChange={e => setEditContent(e.target.value)}
+                        rows={8}
+                        className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all resize-none leading-relaxed shadow-sm font-sans"
+                        placeholder="Ketik pesan Anda..."
+                        disabled={saving}
+                      />
+                      <div className="flex justify-between items-center text-[10px] text-zinc-400 dark:text-zinc-500 px-1">
+                        <span>Gunakan template tag <code>{`{{nama}}`}</code> untuk nama penerima.</span>
+                        <span>{editContent.length} karakter</span>
                       </div>
-                    );
-                  })()}
+                    </div>
 
-                  {/* Recipients List Header with Search */}
-                  <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">
-                        Daftar Penerima Detail
-                      </h3>
-                      
-                      {/* Search recipients */}
-                      <div className="relative w-full sm:w-64">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                    {/* Scheduled At & Recurring fields */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Waktu Kirim (Kosong = Instan/Draft)</label>
                         <input
-                          type="text"
-                          value={logSearchTerm}
-                          onChange={(e) => setLogSearchTerm(e.target.value)}
-                          placeholder="Cari nama atau nomor..."
-                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-400"
+                          type="datetime-local"
+                          value={editScheduledAt}
+                          onChange={e => setEditScheduledAt(e.target.value)}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-850 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 transition-all shadow-sm"
+                          disabled={saving}
                         />
                       </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">Pola Pengulangan</label>
+                        <select
+                          value={editRecurring}
+                          onChange={e => setEditRecurring(e.target.value)}
+                          disabled={!editScheduledAt || saving}
+                          className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-855 rounded-xl px-3.5 py-2.5 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:opacity-50 cursor-pointer transition-all shadow-sm"
+                        >
+                          <option value="none">Satu Kali (Sekali Kirim)</option>
+                          <option value="daily">Setiap Hari</option>
+                          <option value="weekly">Setiap Minggu</option>
+                          <option value="monthly">Setiap Bulan</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Message Detail preview */}
+                    <div className="p-4 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider">Isi Pesan Broadcast</span>
+                        <button 
+                          type="button" 
+                          onClick={() => copyToClipboard(selectedBroadcast.content)}
+                          className="p-1.5 hover:bg-zinc-200 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 rounded-lg cursor-pointer transition-all"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                      <div className="text-xs text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto pr-2 font-normal">
+                        {selectedBroadcast.content}
+                      </div>
                     </div>
 
-                    {/* Table presentation for log targets */}
+                    {/* Progress Stats Summary */}
                     {(() => {
-                      const list = (selectedBroadcast.logs || []).filter(l => {
-                        const term = logSearchTerm.toLowerCase();
-                        return (
-                          l.recipient_id.includes(term) ||
-                          (l.recipient_name?.toLowerCase().includes(term) ?? false)
-                        );
-                      });
-
-                      if (list.length === 0) {
-                        return (
-                          <div className="text-center py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-950/20">
-                            <User className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400">Tidak ada log penerima yang cocok</p>
-                          </div>
-                        );
-                      }
-
+                      const stats = getLogStats(selectedBroadcast.logs);
                       return (
-                        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                              <thead>
-                                <tr className="bg-zinc-50/50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
-                                  <th className="px-4 py-3">Nama Kontak</th>
-                                  <th className="px-4 py-3">Nomor Telepon</th>
-                                  <th className="px-4 py-3">Status</th>
-                                  <th className="px-4 py-3 text-right">Waktu</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
-                                {list.map((log) => (
-                                  <tr key={log.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-colors">
-                                    {/* Name */}
-                                    <td className="px-4 py-3 font-bold text-zinc-800 dark:text-zinc-200">
-                                      <div className="flex items-center gap-1.5">
-                                        <span>{log.recipient_name || 'Kontak Tanpa Nama'}</span>
-                                        {log.channel && (
-                                          <span className="text-[8px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold px-1 py-0.5 rounded uppercase">
-                                            {log.channel.name}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {log.error && (
-                                        <div className="text-[11px] text-red-500 mt-1 font-semibold flex items-start gap-1 max-w-[200px]">
-                                          <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
-                                          <span>{log.error}</span>
-                                        </div>
-                                      )}
-                                    </td>
-
-                                    {/* Number / ID without JID suffix */}
-                                    <td className="px-4 py-3 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
-                                      {formatPhoneOrJid(log.recipient_id)}
-                                    </td>
-
-                                    {/* Status */}
-                                    <td className="px-4 py-3">
-                                      <span className={`inline-block text-[8px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${
-                                        log.status === 'sent' 
-                                          ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/25'
-                                          : log.status === 'failed'
-                                            ? 'bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400 border-red-100 dark:border-red-500/20'
-                                            : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20'
-                                      }`}>
-                                        {log.status === 'sent' ? 'Sukses' : log.status === 'failed' ? 'Gagal' : log.status}
-                                      </span>
-                                    </td>
-
-                                    {/* Time */}
-                                    <td className="px-4 py-3 text-right text-zinc-400 dark:text-zinc-500 font-mono text-xs">
-                                      {new Date(log.sent_at || log.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 p-4 rounded-2xl">
+                          <div className="text-center py-1">
+                            <span className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase">Total Target</span>
+                            <span className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200">{stats.total}</span>
+                          </div>
+                          <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
+                            <span className="block text-[11px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Sukses</span>
+                            <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{stats.sent}</span>
+                          </div>
+                          <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
+                            <span className="block text-[11px] font-extrabold text-red-650 dark:text-red-400 uppercase">Gagal</span>
+                            <span className="text-sm font-extrabold text-red-600 dark:text-red-450">{stats.failed}</span>
+                          </div>
+                          <div className="text-center py-1 border-l border-zinc-200 dark:border-zinc-800/80">
+                            <span className="block text-[11px] font-extrabold text-blue-600 dark:text-blue-400 uppercase">Antrean</span>
+                            <span className="text-sm font-extrabold text-blue-600 dark:text-blue-400">{stats.pending}</span>
                           </div>
                         </div>
                       );
                     })()}
-                  </div>
-                </>
+
+                    {/* Recipients List Header with Search */}
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">
+                          Daftar Penerima Detail
+                        </h3>
+                        
+                        {/* Search recipients */}
+                        <div className="relative w-full sm:w-64">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                          <input
+                            type="text"
+                            value={logSearchTerm}
+                            onChange={(e) => setLogSearchTerm(e.target.value)}
+                            placeholder="Cari nama atau nomor..."
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-200 focus:outline-none focus:border-blue-500 placeholder-zinc-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Table presentation for log targets */}
+                      {(() => {
+                        const list = (selectedBroadcast.logs || []).filter(l => {
+                          const term = logSearchTerm.toLowerCase();
+                          return (
+                            l.recipient_id.includes(term) ||
+                            (l.recipient_name?.toLowerCase().includes(term) ?? false)
+                          );
+                        });
+
+                        if (list.length === 0) {
+                          return (
+                            <div className="text-center py-10 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl bg-zinc-50/50 dark:bg-zinc-950/20">
+                              <User className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400">Tidak ada log penerima yang cocok</p>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left border-collapse">
+                                <thead>
+                                  <tr className="bg-zinc-50/50 dark:bg-zinc-950/50 border-b border-zinc-200 dark:border-zinc-800 text-[11px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest">
+                                    <th className="px-4 py-3">Nama Kontak</th>
+                                    <th className="px-4 py-3">Nomor Telepon</th>
+                                    <th className="px-4 py-3">Status</th>
+                                    <th className="px-4 py-3 text-right">Waktu</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs">
+                                  {list.map((log) => (
+                                    <tr key={log.id} className="hover:bg-zinc-50/30 dark:hover:bg-zinc-950/20 transition-colors">
+                                      {/* Name */}
+                                      <td className="px-4 py-3 font-bold text-zinc-800 dark:text-zinc-200">
+                                        <div className="flex items-center gap-1.5">
+                                          <span>{log.recipient_name || 'Kontak Tanpa Nama'}</span>
+                                          {log.channel && (
+                                            <span className="text-[8px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-bold px-1 py-0.5 rounded uppercase">
+                                              {log.channel.name}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {log.error && (
+                                          <div className="text-[11px] text-red-500 mt-1 font-semibold flex items-start gap-1 max-w-[200px]">
+                                            <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                                            <span>{log.error}</span>
+                                          </div>
+                                        )}
+                                      </td>
+
+                                      {/* Number / ID without JID suffix */}
+                                      <td className="px-4 py-3 font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+                                        {formatPhoneOrJid(log.recipient_id)}
+                                      </td>
+
+                                      {/* Status */}
+                                      <td className="px-4 py-3">
+                                        <span className={`inline-block text-[8px] font-extrabold px-2 py-0.5 rounded border uppercase tracking-wider ${
+                                          log.status === 'sent' 
+                                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/25'
+                                            : log.status === 'failed'
+                                              ? 'bg-red-50 dark:bg-red-500/10 text-red-650 dark:text-red-400 border-red-100 dark:border-red-500/20'
+                                              : 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-500/20'
+                                        }`}>
+                                          {log.status === 'sent' ? 'Sukses' : log.status === 'failed' ? 'Gagal' : log.status}
+                                        </span>
+                                      </td>
+
+                                      {/* Time */}
+                                      <td className="px-4 py-3 text-right text-zinc-400 dark:text-zinc-500 font-mono text-xs">
+                                        {new Date(log.sent_at || log.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </>
+                )
               ) : null}
             </div>
+
+            {/* Footer */}
+            <div className="px-5 py-4 border-t border-zinc-150 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="text-[10px] text-zinc-450 dark:text-zinc-500 font-semibold text-center sm:text-left">
+                ID: #{selectedBroadcast?.id} · Status: <span className="uppercase font-extrabold text-blue-600 dark:text-blue-400">{selectedBroadcast?.status}</span>
+              </div>
+              <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2">
+                {isEditing ? (
+                  <>
+                    <button type="button" onClick={() => setIsEditing(false)} disabled={saving}
+                      className="px-4 py-2 text-xs font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-100 hover:bg-zinc-250 dark:bg-zinc-800 dark:hover:bg-zinc-750 rounded-xl transition-all cursor-pointer disabled:opacity-50 text-center">
+                      Batal
+                    </button>
+                    <button type="button" onClick={handleSaveEdit} disabled={saving}
+                      className="flex items-center justify-center gap-1.5 px-5 py-2 bg-gradient-brand hover:opacity-95 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/10 hover:shadow-lg transition-all cursor-pointer disabled:opacity-50">
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" /> Menyimpan...
+                        </>
+                      ) : (
+                        'Simpan Perubahan'
+                      )}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* Edit button: only show if broadcast is editable (scheduled, draft, cancelled, failed) */}
+                    {selectedBroadcast && ['scheduled', 'draft', 'cancelled', 'failed'].includes(selectedBroadcast.status) && (
+                      <button type="button" onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-1 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-bold transition-all cursor-pointer border border-blue-200 dark:border-blue-500/20">
+                        Edit Broadcast
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setDetailOpen(false)}
+                      className="px-5 py-2 text-xs font-bold text-zinc-700 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-255 dark:bg-zinc-800 dark:hover:bg-zinc-700 rounded-xl transition-all cursor-pointer text-center border border-zinc-205 dark:border-zinc-705">
+                      Tutup
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}
