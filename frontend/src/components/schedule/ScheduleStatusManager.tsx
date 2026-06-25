@@ -21,6 +21,63 @@ const STATUS_COLORS = [
   { name: 'Ruby Red', hex: '#be123c', class: 'bg-[#be123c]' },
 ];
 
+// Bentuk media status. 'full' = apa adanya (cover, perilaku default WhatsApp).
+type MediaShape = 'full' | 'fit' | 'square' | 'rect';
+const MEDIA_SHAPES: { id: MediaShape; label: string; hint: string }[] = [
+  { id: 'full',   label: 'Penuh',           hint: 'Memenuhi layar (terpotong)' },
+  { id: 'fit',    label: 'Utuh',            hint: 'Seluruh gambar tampil' },
+  { id: 'square', label: 'Kotak',           hint: 'Persegi 1:1 di tengah' },
+  { id: 'rect',   label: 'Persegi panjang', hint: 'Potret 4:5 di tengah' },
+];
+
+// Gambar foto ke kotak target dengan mode "cover" (penuhi kotak, kelebihan dipotong).
+function drawCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, dx: number, dy: number, dw: number, dh: number) {
+  const ir = img.width / img.height;
+  const br = dw / dh;
+  let sw: number, sh: number, sx: number, sy: number;
+  if (ir > br) { sh = img.height; sw = sh * br; sx = (img.width - sw) / 2; sy = 0; }
+  else { sw = img.width; sh = sw / br; sx = 0; sy = (img.height - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+// Render file gambar ke kanvas 9:16 (1080x1920) sesuai bentuk pilihan, latar hitam.
+// Mengembalikan Blob JPEG agar status yang TERKIRIM benar-benar berbentuk demikian.
+function compositeStatusImage(file: File, shape: MediaShape, bg = '#000000'): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const CW = 1080, CH = 1920;
+      const canvas = document.createElement('canvas');
+      canvas.width = CW; canvas.height = CH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('Canvas tidak didukung')); return; }
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, CW, CH);
+
+      if (shape === 'fit') {
+        const ir = img.width / img.height, cr = CW / CH;
+        let dw: number, dh: number;
+        if (ir > cr) { dw = CW; dh = CW / ir; } else { dh = CH; dw = CH * ir; }
+        ctx.drawImage(img, (CW - dw) / 2, (CH - dh) / 2, dw, dh);
+      } else if (shape === 'square') {
+        const box = CW;
+        drawCover(ctx, img, 0, (CH - box) / 2, CW, box);
+      } else if (shape === 'rect') {
+        const boxH = CW * 5 / 4; // rasio 4:5
+        drawCover(ctx, img, 0, (CH - boxH) / 2, CW, boxH);
+      } else {
+        drawCover(ctx, img, 0, 0, CW, CH); // full / cover
+      }
+
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error('Gagal memproses gambar')), 'image/jpeg', 0.92);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Gagal memuat gambar')); };
+    img.src = url;
+  });
+}
+
 interface BroadcastLog {
   id: number;
   channel_id: number;
@@ -96,6 +153,8 @@ export default function ScheduleStatusManager() {
   const [selectedColor, setSelectedColor] = useState(STATUS_COLORS[0].hex);
   const [mediaUrl, setMediaUrl] = useState('');
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [mediaShape, setMediaShape] = useState<MediaShape>('full');
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [sendImmediately, setSendImmediately] = useState(false);
@@ -162,31 +221,32 @@ export default function ScheduleStatusManager() {
     setConfirmModal(opts);
   };
 
+  // Upload sebuah Blob/File ke server, kembalikan URL publiknya.
+  const uploadFile = async (file: Blob, filename: string): Promise<string> => {
+    const token = localStorage.getItem('autoin_token');
+    const formData = new FormData();
+    formData.append('file', file, filename);
+    const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
+      method: 'POST',
+      headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: formData,
+    });
+    if (!res.ok) throw new Error('Upload failed');
+    return (await res.json()).url;
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const token = localStorage.getItem('autoin_token');
-      const formData = new FormData();
-      formData.append('file', files[0]);
-
-      const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: formData,
-      });
-
-      if (!res.ok) throw new Error('Upload failed');
-      const data = await res.json();
-      setMediaUrl(data.url);
-
-      const mime = files[0].type;
-      if (mime.startsWith('video/')) {
-        setMediaType('video');
-      } else {
-        setMediaType('image');
-      }
+      const file = files[0];
+      const isVideo = file.type.startsWith('video/');
+      setOriginalFile(isVideo ? null : file); // simpan file asli (gambar) utk composite
+      setMediaShape('full');
+      const url = await uploadFile(file, file.name);
+      setMediaUrl(url);
+      setMediaType(isVideo ? 'video' : 'image');
     } catch (err: any) {
       alert(err.message ?? 'Gagal mengunggah file.');
     } finally {
@@ -220,8 +280,21 @@ export default function ScheduleStatusManager() {
         ? `Status Text: ${content.substring(0, 20)}...`
         : `Status Media: ${content.substring(0, 20) || 'Attachment'}`;
 
+      // Bentuk media (selain 'full') diproses dulu dari file asli ke kanvas 9:16
+      // lalu diupload, supaya status yang TERKIRIM benar-benar berbentuk pilihan.
+      let finalMediaUrl = mediaUrl;
+      if (statusType === 'media' && mediaType === 'image' && mediaShape !== 'full' && originalFile) {
+        try {
+          const blob = await compositeStatusImage(originalFile, mediaShape);
+          finalMediaUrl = await uploadFile(blob, 'status.jpg');
+        } catch {
+          // Gagal proses -> pakai media asli (fallback aman).
+          finalMediaUrl = mediaUrl;
+        }
+      }
+
       // If text status, we store the background color in media_url (prefixed with #)
-      const targetMediaUrl = statusType === 'text' ? selectedColor : mediaUrl;
+      const targetMediaUrl = statusType === 'text' ? selectedColor : finalMediaUrl;
       const targetMediaType = statusType === 'text' ? null : mediaType;
 
       await api.post('/api/broadcasts', {
@@ -239,6 +312,8 @@ export default function ScheduleStatusManager() {
       // Clear Form
       setContent('');
       setMediaUrl('');
+      setOriginalFile(null);
+      setMediaShape('full');
       setScheduledAt('');
       setSendImmediately(false);
       
@@ -514,7 +589,7 @@ export default function ScheduleStatusManager() {
                         </div>
                         <button
                           type="button"
-                          onClick={() => setMediaUrl('')}
+                          onClick={() => { setMediaUrl(''); setOriginalFile(null); setMediaShape('full'); }}
                           className="p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-250 cursor-pointer"
                         >
                           <X className="w-4 h-4" />
@@ -548,6 +623,40 @@ export default function ScheduleStatusManager() {
                       </div>
                     )}
                   </div>
+
+                  {/* Bentuk media (khusus gambar) */}
+                  {mediaUrl && mediaType === 'image' && (
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                        Bentuk Media
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {MEDIA_SHAPES.map(s => (
+                          <button
+                            key={s.id}
+                            type="button"
+                            onClick={() => setMediaShape(s.id)}
+                            title={s.hint}
+                            className={`flex flex-col items-center gap-1.5 px-1 py-2 rounded-xl border text-[10px] font-bold transition-all ${mediaShape === s.id
+                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                              : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'}`}
+                          >
+                            <span className={`flex items-center justify-center w-7 h-7 rounded ${mediaShape === s.id ? 'bg-blue-500/15' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                              <span className={`bg-current rounded-[2px] ${
+                                s.id === 'full' ? 'w-3.5 h-5'
+                                : s.id === 'fit' ? 'w-4 h-3.5'
+                                : s.id === 'square' ? 'w-4 h-4'
+                                : 'w-3.5 h-4'}`} />
+                            </span>
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                      <p className="text-[9px] text-zinc-400 dark:text-zinc-500 mt-1.5">
+                        {MEDIA_SHAPES.find(s => s.id === mediaShape)?.hint} · area sisa diisi latar hitam.
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
@@ -672,7 +781,16 @@ export default function ScheduleStatusManager() {
                   ) : (
                     mediaUrl ? (
                       mediaType === 'image' ? (
-                        <img src={mediaUrl} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                        mediaShape === 'full' ? (
+                          <img src={mediaUrl} className="absolute inset-0 w-full h-full object-cover" alt="preview" />
+                        ) : mediaShape === 'fit' ? (
+                          <img src={mediaUrl} className="absolute inset-0 w-full h-full object-contain" alt="preview" />
+                        ) : (
+                          // Kotak (1:1) / Persegi panjang (4:5): kotak di tengah, sisanya latar hitam
+                          <div className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 ${mediaShape === 'square' ? 'aspect-square' : 'aspect-[4/5]'}`}>
+                            <img src={mediaUrl} className="w-full h-full object-cover" alt="preview" />
+                          </div>
+                        )
                       ) : (
                         <video src={mediaUrl} className="absolute inset-0 w-full h-full object-cover" autoPlay muted loop />
                       )
