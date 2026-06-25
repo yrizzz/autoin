@@ -9,14 +9,16 @@ class Broadcast extends Model
     protected $fillable = [
         'user_id', 'title', 'content', 'media_url', 'media_type',
         'status', 'scheduled_at', 'recurring', 'sent_at',
-        'delay_min', 'delay_max', 'chunk_size', 'chunk_delay_min', 'chunk_delay_max'
+        'delay_min', 'delay_max', 'chunk_size', 'chunk_delay_min', 'chunk_delay_max',
+        'auto_tag_members'
     ];
 
     protected function casts(): array
     {
         return [
-            'scheduled_at' => 'datetime',
-            'sent_at'      => 'datetime',
+            'scheduled_at'     => 'datetime',
+            'sent_at'          => 'datetime',
+            'auto_tag_members' => 'boolean',
         ];
     }
 

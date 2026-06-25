@@ -8,7 +8,7 @@ import {
   Loader2, Bookmark, Image as ImageIcon, Video, FileText, Plus,
   Trash2, Paperclip, Upload, X, Calendar, Clock, Users, Search,
   Phone, Hash, UserCheck, Wand2, Lightbulb, Copy, CheckCircle2,
-  ArrowRight, Info, Eye, HelpCircle, Shield, ShieldAlert, ShieldCheck
+  ArrowRight, Info, Eye, HelpCircle, Shield, ShieldAlert, ShieldCheck, Tag
 } from 'lucide-react';
 
 interface Recipient { id: string; name: string; phone?: string; type: 'contact' | 'group'; }
@@ -264,6 +264,7 @@ export default function BroadcastCreate() {
 
   const [scheduledAt, setScheduledAt]     = useState('');
   const [recurring, setRecurring]         = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  const [autoTagMembers, setAutoTagMembers] = useState(false);
 
   const [mediaUrls, setMediaUrls]         = useState<string[]>([]);
   const [mediaType, setMediaType]         = useState<'image' | 'video' | 'pdf' | 'document'>('image');
@@ -521,6 +522,7 @@ export default function BroadcastCreate() {
         chunk_size: smartBlastEnabled ? Number(chunkSize) : 999999,
         chunk_delay_min: smartBlastEnabled ? Number(chunkDelayMin) : 0,
         chunk_delay_max: smartBlastEnabled ? Number(chunkDelayMax) : 0,
+        auto_tag_members: autoTagMembers,
       });
 
       if (!isScheduled) {
@@ -532,6 +534,7 @@ export default function BroadcastCreate() {
         setResult({ ok: true, message: `📅 Broadcast dijadwalkan pada ${new Date(scheduledAt).toLocaleString('id-ID')}` });
         setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
         setScheduledAt(''); setRecurring('none'); setRecipientState({});
+        setAutoTagMembers(false);
         setActiveTab('editor');
       }
     } catch (e: any) {
@@ -544,6 +547,7 @@ export default function BroadcastCreate() {
   const resetForm = () => {
     setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
     setScheduledAt(''); setRecurring('none'); setRecipientState({});
+    setAutoTagMembers(false);
     setActiveTab('editor');
     setProgressModalOpen(false);
     setActiveBroadcastId(null);
@@ -1002,6 +1006,26 @@ export default function BroadcastCreate() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Setting Auto Tag Member */}
+            <div className={`bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 ${activeTab === 'editor' ? 'block' : 'hidden md:block'}`}>
+              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+                <div className="flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-blue-500" />
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">Setting Auto Tag Member</h3>
+                    <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Premium</span>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" checked={autoTagMembers} onChange={e => setAutoTagMembers(e.target.checked)} className="sr-only peer" />
+                  <div className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
+                </label>
+              </div>
+              <p className="text-[11px] text-zinc-550 dark:text-zinc-400 leading-relaxed">
+                Jika diaktifkan, saat broadcast dikirimkan ke target <strong>Grup WhatsApp</strong>, sistem akan secara otomatis me-mention (tag) seluruh anggota grup tersebut di dalam pesan sehingga mereka mendapatkan notifikasi langsung (tag biru).
+              </p>
             </div>
 
             {/* AI Assistant Box */}

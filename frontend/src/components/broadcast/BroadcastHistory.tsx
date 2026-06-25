@@ -19,7 +19,8 @@ import {
   User,
   AlertTriangle,
   Send,
-  Sparkles
+  Sparkles,
+  Tag
 } from 'lucide-react';
 
 interface BroadcastLog {
@@ -74,6 +75,7 @@ export default function BroadcastHistory() {
   const [editContent, setEditContent] = useState('');
   const [editScheduledAt, setEditScheduledAt] = useState('');
   const [editRecurring, setEditRecurring] = useState('none');
+  const [editAutoTagMembers, setEditAutoTagMembers] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Delete Confirmation State
@@ -105,6 +107,7 @@ export default function BroadcastHistory() {
       setEditContent(selectedBroadcast.content || '');
       setEditScheduledAt(formatForInput(selectedBroadcast.scheduled_at));
       setEditRecurring(selectedBroadcast.recurring || 'none');
+      setEditAutoTagMembers(selectedBroadcast.auto_tag_members || false);
     }
   }, [selectedBroadcast, isEditing]);
 
@@ -210,6 +213,7 @@ export default function BroadcastHistory() {
         content: editContent,
         scheduled_at: scheduledAtUtc,
         recurring: scheduledAtUtc ? editRecurring : 'none',
+        auto_tag_members: editAutoTagMembers,
       });
       
       showToast('Perubahan broadcast berhasil disimpan!', 'success');
@@ -684,6 +688,26 @@ export default function BroadcastHistory() {
                           <option value="monthly">Setiap Bulan</option>
                         </select>
                       </div>
+                    </div>
+
+                    {/* Setting Auto Tag Member */}
+                    <div className="bg-zinc-50 dark:bg-zinc-955 border border-zinc-200 dark:border-zinc-800 p-4 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Tag className="w-4 h-4 text-blue-500" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider">Setting Auto Tag Member</span>
+                            <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[8px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Premium</span>
+                          </div>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input type="checkbox" checked={editAutoTagMembers} onChange={e => setEditAutoTagMembers(e.target.checked)} className="sr-only peer" disabled={saving} />
+                          <div className="w-8 h-4 bg-zinc-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-500"></div>
+                        </label>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed font-normal">
+                        Jika diaktifkan, saat broadcast dikirimkan ke target <strong>Grup WhatsApp</strong>, sistem akan secara otomatis me-mention (tag) seluruh anggota grup tersebut di dalam pesan.
+                      </p>
                     </div>
                   </div>
                 ) : (

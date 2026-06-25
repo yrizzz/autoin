@@ -246,7 +246,7 @@ export default function GroupTag() {
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight mb-4">
-            Auto Tag Group (Group Mention)
+            Setting Auto Tag Member (Group Mention)
           </h1>
           <p className="text-zinc-400 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base mb-8">
             Tingkatkan efektivitas promosi grup Anda hingga 10x lipat! Fitur terobosan ini memungkinkan Anda untuk me-mention (tag) seluruh atau sebagian anggota grup secara otomatis dalam sekali kirim pesan. Anggota grup akan mendapatkan notifikasi langsung (tag biru) sehingga tingkat keterbacaan pesan meningkat pesat.
@@ -312,7 +312,7 @@ export default function GroupTag() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 p-6 rounded-3xl shadow-sm">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Auto Tag Group</h1>
+            <h1 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Setting Auto Tag Member</h1>
             <span className="bg-blue-500/10 text-blue-650 dark:text-blue-450 text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Premium</span>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">

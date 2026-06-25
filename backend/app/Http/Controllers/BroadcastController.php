@@ -81,6 +81,7 @@ class BroadcastController extends Controller
             'chunk_size'       => 'nullable|integer|min:1',
             'chunk_delay_min'  => 'nullable|integer|min:0',
             'chunk_delay_max'  => 'nullable|integer|min:0',
+            'auto_tag_members' => 'nullable|boolean',
         ]);
 
         $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
@@ -96,18 +97,19 @@ class BroadcastController extends Controller
         }
 
         $broadcast = $request->user()->broadcasts()->create([
-            'title'           => $data['title'] ?? null,
-            'content'         => $data['content'] ?? '',
-            'media_url'       => $mediaUrl,
-            'media_type'      => $mediaType,
-            'scheduled_at'    => $data['scheduled_at'] ?? null,
-            'recurring'       => $data['recurring'] ?? 'none',
-            'status'          => $status,
-            'delay_min'       => $data['delay_min'] ?? 2,
-            'delay_max'       => $data['delay_max'] ?? 5,
-            'chunk_size'      => $data['chunk_size'] ?? 10,
-            'chunk_delay_min' => $data['chunk_delay_min'] ?? 10,
-            'chunk_delay_max' => $data['chunk_delay_max'] ?? 20,
+            'title'            => $data['title'] ?? null,
+            'content'          => $data['content'] ?? '',
+            'media_url'        => $mediaUrl,
+            'media_type'       => $mediaType,
+            'scheduled_at'     => $data['scheduled_at'] ?? null,
+            'recurring'        => $data['recurring'] ?? 'none',
+            'status'           => $status,
+            'delay_min'        => $data['delay_min'] ?? 2,
+            'delay_max'        => $data['delay_max'] ?? 5,
+            'chunk_size'       => $data['chunk_size'] ?? 10,
+            'chunk_delay_min'  => $data['chunk_delay_min'] ?? 10,
+            'chunk_delay_max'  => $data['chunk_delay_max'] ?? 20,
+            'auto_tag_members' => $data['auto_tag_members'] ?? false,
         ]);
 
         $recipientsMap = $data['recipients'] ?? [];
@@ -239,9 +241,10 @@ class BroadcastController extends Controller
         $this->authorize($request->user(), $broadcast);
 
         $rules = [
-            'title'        => 'nullable|string|max:255',
-            'content'      => 'sometimes|nullable|string',
-            'recurring'    => 'nullable|in:none,daily,weekly,monthly',
+            'title'            => 'nullable|string|max:255',
+            'content'          => 'sometimes|nullable|string',
+            'recurring'        => 'nullable|in:none,daily,weekly,monthly',
+            'auto_tag_members' => 'nullable|boolean',
         ];
 
         if ($request->has('scheduled_at') && $request->input('scheduled_at') !== null) {

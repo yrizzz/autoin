@@ -29,6 +29,7 @@ export interface Broadcast {
   status: 'draft' | 'queued' | 'sending' | 'sent' | 'failed' | 'scheduled';
   scheduled_at: string | null;
   recurring: 'none' | 'daily' | 'weekly' | 'monthly';
+  auto_tag_members?: boolean;
   sent_at: string | null;
   created_at: string;
   targets?: BroadcastTarget[];

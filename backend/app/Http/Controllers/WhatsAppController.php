@@ -288,7 +288,47 @@ class WhatsAppController extends Controller
             $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
                 ->get("{$baseUrl}/sessions/{$credentials['session_id']}/groups/" . urlencode($groupId));
 
-            return response()->json($response->json());
+            $data = $response->json();
+            if ($data && isset($data['metadata']) && isset($data['metadata']['participants'])) {
+                $synced = $channel->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $contacts = $synced['contacts'] ?? [];
+                
+                $contactLookup = [];
+                foreach ($contacts as $contact) {
+                    if (isset($contact['id'])) {
+                        $contactLookup[$contact['id']] = $contact;
+                    }
+                }
+
+                foreach ($data['metadata']['participants'] as &$p) {
+                    if (isset($p['id'])) {
+                        if (str_ends_with($p['id'], '@lid')) {
+                            if (isset($lidMap[$p['id']])) {
+                                $p['id'] = $lidMap[$p['id']];
+                            } else {
+                                $pName = strtolower(trim($p['name'] ?? ''));
+                                if ($pName !== '') {
+                                    foreach ($contactLookup as $cId => $c) {
+                                        if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($c['name'] ?? '')) === $pName) {
+                                            $p['id'] = $cId;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (empty($p['name']) || str_contains($p['name'], '@')) {
+                            if (isset($contactLookup[$p['id']])) {
+                                $p['name'] = $contactLookup[$p['id']]['name'] ?? null;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return response()->json($data);
         } catch (\Throwable $e) {
             return response()->json([
                 'status'  => 'error',
@@ -691,10 +731,51 @@ class WhatsAppController extends Controller
 
     public function getApiLogs(Request $request)
     {
-        $logs = \App\Models\ApiLog::with('channel:id,name')
+        $logs = \App\Models\ApiLog::with('channel')
             ->where('user_id', $request->user()->id)
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($request->input('limit', 15));
+
+        foreach ($logs->items() as $log) {
+            if ($log->to && $log->channel) {
+                $synced = $log->channel->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $originalJid = $log->to;
+                $originalJidWithLid = str_contains($originalJid, '@') ? $originalJid : $originalJid . '@lid';
+
+                $resolved = null;
+                if (str_ends_with($originalJidWithLid, '@lid')) {
+                    if (isset($lidMap[$originalJidWithLid])) {
+                        $resolved = $lidMap[$originalJidWithLid];
+                    } else {
+                        $contacts = $synced['contacts'] ?? [];
+                        $originalKey = explode('@', $originalJidWithLid)[0];
+                        $cName = null;
+                        foreach ($contacts as $contact) {
+                            if (($contact['id'] ?? '') === $originalJidWithLid || ($contact['id'] ?? '') === $originalKey) {
+                                $cName = strtolower(trim($contact['name'] ?? ''));
+                                break;
+                            }
+                        }
+                        if ($cName) {
+                            foreach ($contacts as $contact) {
+                                $cId = $contact['id'] ?? '';
+                                if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $cName) {
+                                    $resolved = $cId;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if ($resolved) {
+                    $log->to = explode('@', $resolved)[0];
+                } else {
+                    $log->to = str_replace('@lid', '', $log->to);
+                }
+            }
+        }
 
         return response()->json($logs);
     }

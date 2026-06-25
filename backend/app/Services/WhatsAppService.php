@@ -16,7 +16,7 @@ class WhatsAppService
         $this->secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
     }
 
-    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null): array
+    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null, ?array $mentions = null): array
     {
         $content = $content ?? '';
         $credentials = $channel->credentials;
@@ -43,6 +43,9 @@ class WhatsAppService
             if ($statusJidList !== null) {
                 $payload['statusJidList'] = $statusJidList;
             }
+            if ($mentions !== null) {
+                $payload['mentions'] = $mentions;
+            }
             $response = Http::withHeader('x-api-secret', $this->secret)
                 ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
             return [
@@ -60,6 +63,9 @@ class WhatsAppService
         ];
         if ($statusJidList !== null) {
             $payload['statusJidList'] = $statusJidList;
+        }
+        if ($mentions !== null) {
+            $payload['mentions'] = $mentions;
         }
         $response = Http::withHeader('x-api-secret', $this->secret)
             ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
@@ -86,6 +92,66 @@ class WhatsAppService
             'ok'       => $success,
             'response' => $lastResponse,
         ];
+    }
+
+    public function getGroupMetadata(Channel $channel, string $groupId): ?array
+    {
+        $credentials = $channel->credentials;
+        if (!$credentials || !isset($credentials['session_id'])) {
+            return null;
+        }
+
+        try {
+            $response = Http::withHeader('x-api-secret', $this->secret)
+                ->get("{$this->baseUrl}/sessions/{$credentials['session_id']}/groups/" . urlencode($groupId));
+
+            if ($response->successful()) {
+                $metadata = $response->json('metadata');
+                if ($metadata && isset($metadata['participants'])) {
+                    $synced = $channel->synced_data ?? [];
+                    $lidMap = $synced['lidMap'] ?? [];
+                    $contacts = $synced['contacts'] ?? [];
+
+                    $contactLookup = [];
+                    foreach ($contacts as $contact) {
+                        if (isset($contact['id'])) {
+                            $contactLookup[$contact['id']] = $contact;
+                        }
+                    }
+
+                    foreach ($metadata['participants'] as &$p) {
+                        if (isset($p['id'])) {
+                            if (str_ends_with($p['id'], '@lid')) {
+                                if (isset($lidMap[$p['id']])) {
+                                    $p['id'] = $lidMap[$p['id']];
+                                } else {
+                                    $pName = strtolower(trim($p['name'] ?? ''));
+                                    if ($pName !== '') {
+                                        foreach ($contactLookup as $cId => $c) {
+                                            if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($c['name'] ?? '')) === $pName) {
+                                                $p['id'] = $cId;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (empty($p['name']) || str_contains($p['name'], '@')) {
+                                if (isset($contactLookup[$p['id']])) {
+                                    $p['name'] = $contactLookup[$p['id']]['name'] ?? null;
+                                }
+                            }
+                        }
+                    }
+                }
+                return $metadata;
+            }
+        } catch (\Throwable $e) {
+            // Ignore
+        }
+
+        return null;
     }
 
     public function createSession(string $sessionId, bool $usePairingCode = false, string $phoneNumber = ''): array

@@ -120,8 +120,26 @@ class SendBroadcastJob implements ShouldQueue
         $mediaUrl  = $this->broadcast->media_url;
         $mediaType = $this->broadcast->media_type;
 
+        $mentions = null;
+        if ($channel->platform === 'whatsapp' && $recipientId && str_ends_with($recipientId, '@g.us') && ($this->broadcast->auto_tag_members ?? false)) {
+            $groupMetadata = app(WhatsAppService::class)->getGroupMetadata($channel, $recipientId);
+            if ($groupMetadata && isset($groupMetadata['participants'])) {
+                $participants = $groupMetadata['participants'];
+                $mentions = array_map(function ($p) {
+                    return $p['id'];
+                }, $participants);
+
+                if (!empty($mentions)) {
+                    $tagText = "\n\n" . implode(' ', array_map(function ($jid) {
+                        return '@' . explode('@', $jid)[0];
+                    }, $mentions));
+                    $content .= $tagText;
+                }
+            }
+        }
+
         return match($channel->platform) {
-            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId),
+            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId, null, $mentions),
             'telegram'  => $this->sendTelegram($channel, $content),
             default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };
