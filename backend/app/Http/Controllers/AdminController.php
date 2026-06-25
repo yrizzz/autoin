@@ -147,7 +147,7 @@ class AdminController extends Controller
     {
         abort_if(strtolower($request->user()->email) !== 'arisedyhandoko@gmail.com', 403, 'Unauthorized.');
 
-        $broadcasts = \App\Models\Broadcast::with(['user:id,name,email', 'channel:id,name,platform'])
+        $broadcasts = \App\Models\Broadcast::with(['user:id,name,email', 'channels:id,name,platform'])
             ->latest()
             ->paginate(50);
 

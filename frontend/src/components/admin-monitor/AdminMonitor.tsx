@@ -22,14 +22,13 @@ interface ChannelBrief {
 interface BroadcastItem {
   id: number;
   user_id: number;
-  channel_id: number | null;
   title: string | null;
   content: string;
   status: string;
   scheduled_at: string | null;
   created_at: string;
   user?: UserBrief | null;
-  channel?: ChannelBrief | null;
+  channels?: ChannelBrief[] | null;
 }
 
 interface ApiLogItem {
@@ -152,7 +151,7 @@ export default function AdminMonitor() {
       (item.title && item.title.toLowerCase().includes(q)) ||
       (item.user && item.user.name.toLowerCase().includes(q)) ||
       (item.user && item.user.email.toLowerCase().includes(q)) ||
-      (item.channel && item.channel.name.toLowerCase().includes(q))
+      (item.channels && item.channels.some(c => c.name.toLowerCase().includes(q)))
     );
   });
 
@@ -346,10 +345,10 @@ export default function AdminMonitor() {
                               <div className="flex items-center gap-1.5 text-[9px] text-zinc-400">
                                 <Clock className="w-3 h-3" />
                                 <span>{new Date(item.created_at).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                                {item.channel && (
+                                {item.channels && item.channels.length > 0 && (
                                   <>
                                     <span>•</span>
-                                    <span className="font-semibold text-zinc-500 dark:text-zinc-400">{item.channel.name}</span>
+                                    <span className="font-semibold text-zinc-500 dark:text-zinc-400">{item.channels.map(c => c.name).join(', ')}</span>
                                   </>
                                 )}
                               </div>
@@ -431,10 +430,14 @@ export default function AdminMonitor() {
                               <div className="text-[10px] text-zinc-400 mt-0.5">{item.user?.email || '—'}</div>
                             </td>
                             <td className="px-6 py-4">
-                              {item.channel ? (
+                              {item.channels && item.channels.length > 0 ? (
                                 <div>
-                                  <div className="font-medium text-zinc-800 dark:text-zinc-200">{item.channel.name}</div>
-                                  <div className="text-[9px] text-zinc-400 uppercase font-mono mt-0.5">{item.channel.platform}</div>
+                                  <div className="font-medium text-zinc-800 dark:text-zinc-200">
+                                    {item.channels.map(c => c.name).join(', ')}
+                                  </div>
+                                  <div className="text-[9px] text-zinc-400 uppercase font-mono mt-0.5">
+                                    {item.channels[0].platform}
+                                  </div>
                                 </div>
                               ) : (
                                 <span className="text-zinc-400">—</span>
@@ -682,8 +685,16 @@ export default function AdminMonitor() {
                 </div>
                 <div>
                   <span className="text-zinc-400 block mb-0.5">Device:</span>
-                  <span className="font-bold text-zinc-800 dark:text-zinc-150">{selectedBroadcast.channel?.name || '—'}</span>
-                  <span className="text-[9px] text-zinc-400 block uppercase font-mono mt-0.5">{selectedBroadcast.channel?.platform}</span>
+                  <span className="font-bold text-zinc-800 dark:text-zinc-150">
+                    {selectedBroadcast.channels && selectedBroadcast.channels.length > 0
+                      ? selectedBroadcast.channels.map(c => c.name).join(', ')
+                      : '—'}
+                  </span>
+                  <span className="text-[9px] text-zinc-400 block uppercase font-mono mt-0.5">
+                    {selectedBroadcast.channels && selectedBroadcast.channels.length > 0
+                      ? selectedBroadcast.channels[0].platform
+                      : ''}
+                  </span>
                 </div>
                 <div>
                   <span className="text-zinc-400 block mb-0.5">Status:</span>
