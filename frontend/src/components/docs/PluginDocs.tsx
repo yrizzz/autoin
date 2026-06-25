@@ -366,7 +366,7 @@ function Section({ n, title, icon, children }: { n: string; title: string; icon?
   return (
     <section className="space-y-3">
       <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 flex items-center gap-2">
-        <span className="w-5 h-5 rounded-lg btn-primary text-white flex items-center justify-center text-[10px] font-bold">{n}</span>
+        <span className="w-5 h-5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center text-[10px] font-bold shadow-sm shadow-blue-500/30">{n}</span>
         {icon}{title}
       </h2>
       {children}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
 import { api } from '../../lib/api';
+import CodeEditor from '../ui/CodeEditor';
 import {
   Key, Copy, Check, RefreshCw, Trash2, ShieldCheck, Eye, EyeOff,
   Terminal, Code2, Globe, AlertTriangle, ChevronRight, Zap, Lock,
@@ -433,10 +434,13 @@ print(res.json())`
             </div>
 
             {/* Code block */}
-            <div className="bg-blue-50/40 dark:bg-zinc-955 border-t border-blue-100 dark:border-zinc-800/60 p-6 overflow-x-auto">
-              <pre className="text-[11px] font-mono text-blue-950 dark:text-zinc-300 leading-relaxed whitespace-pre">
-                {snippets[activeSnippet]}
-              </pre>
+            <div className="p-3">
+              <CodeEditor
+                value={snippets[activeSnippet]}
+                onChange={() => {}}
+                readOnly
+                minRows={Math.max(snippets[activeSnippet].split('\n').length, 1)}
+              />
             </div>
           </div>
 
