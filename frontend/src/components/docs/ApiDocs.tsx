@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import AdminLayout from '../layout/AdminLayout';
+import CodeEditor from '../ui/CodeEditor';
 import { BookOpen, Key, Globe, Send, RefreshCw, Check, Copy, Code, Terminal, Server, Upload } from 'lucide-react';
 
 type Lang = 'curl' | 'javascript' | 'php' | 'python';
@@ -443,9 +444,7 @@ print(response.json())`
                   {copiedId === 'auth' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.auth[activeLang]}
-              </pre>
+              <CodeEditor value={codeBlocks.auth[activeLang]} onChange={() => {}} readOnly minRows={Math.max(codeBlocks.auth[activeLang].split('\n').length, 1)} />
             </div>
 
             {/* Upload Media Snippet */}
@@ -459,9 +458,7 @@ print(response.json())`
                   {copiedId === 'upload' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.upload[activeLang]}
-              </pre>
+              <CodeEditor value={codeBlocks.upload[activeLang]} onChange={() => {}} readOnly minRows={Math.max(codeBlocks.upload[activeLang].split('\n').length, 1)} />
             </div>
 
             {/* Send Direct Message Snippet */}
@@ -475,9 +472,7 @@ print(response.json())`
                   {copiedId === 'send_direct' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-600 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.send_direct[activeLang]}
-              </pre>
+              <CodeEditor value={codeBlocks.send_direct[activeLang]} onChange={() => {}} readOnly minRows={Math.max(codeBlocks.send_direct[activeLang].split('\n').length, 1)} />
             </div>
 
             {/* Create Broadcast Snippet */}
@@ -491,9 +486,7 @@ print(response.json())`
                   {copiedId === 'broadcast' ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : 'Salin'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-100 dark:border-zinc-850/60 text-[9px] font-mono text-zinc-605 dark:text-zinc-350 overflow-x-auto">
-                {codeBlocks.broadcast[activeLang]}
-              </pre>
+              <CodeEditor value={codeBlocks.broadcast[activeLang]} onChange={() => {}} readOnly minRows={Math.max(codeBlocks.broadcast[activeLang].split('\n').length, 1)} />
             </div>
           </div>
         </div>
