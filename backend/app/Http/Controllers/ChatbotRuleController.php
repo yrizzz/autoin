@@ -41,6 +41,9 @@ class ChatbotRuleController extends Controller
         ]);
 
         $this->assertOwnsPlugin($user, $data['plugin_id'] ?? null);
+        if ($resp = $this->checkPublicPluginQuota($user, $data['plugin_id'] ?? null)) {
+            return $resp;
+        }
         $data['reply'] = $data['reply'] ?? '';
         // Default: chatbot baru langsung aktif (ON) kecuali diminta lain.
         $data['is_active'] = $data['is_active'] ?? true;
@@ -70,6 +73,9 @@ class ChatbotRuleController extends Controller
 
         if (array_key_exists('plugin_id', $data)) {
             $this->assertOwnsPlugin($request->user(), $data['plugin_id']);
+            if ($resp = $this->checkPublicPluginQuota($request->user(), $data['plugin_id'], $chatbotRule->id)) {
+                return $resp;
+            }
         }
         if (array_key_exists('reply', $data) && $data['reply'] === null) {
             $data['reply'] = '';
@@ -87,14 +93,61 @@ class ChatbotRuleController extends Controller
         return response()->json(null, 204);
     }
 
-    // Pastikan plugin yang dipilih milik user ybs (atau null).
+    // Pastikan plugin yang dipilih milik user ybs ATAU plugin publik (boleh dipakai
+    // lintas user via referensi). null = tidak pakai plugin.
     private function assertOwnsPlugin($user, ?int $pluginId): void
     {
         if ($pluginId === null) {
             return;
         }
-        $owns = Plugin::where('id', $pluginId)->where('user_id', $user->id)->exists();
-        abort_unless($owns, 422, 'Plugin tidak ditemukan.');
+        $canUse = Plugin::where('id', $pluginId)
+            ->where(function ($q) use ($user) {
+                $q->where('user_id', $user->id)
+                  ->orWhere('is_public', true);
+            })
+            ->exists();
+        abort_unless($canUse, 422, 'Plugin tidak ditemukan.');
+    }
+
+    /**
+     * Batasi jumlah plugin PUBLIK (milik orang lain) yang dipakai user di rule-nya,
+     * sesuai paket (free = 5). Mengembalikan JsonResponse penolakan, atau null bila boleh.
+     */
+    private function checkPublicPluginQuota($user, ?int $pluginId, ?int $excludeRuleId = null)
+    {
+        if ($pluginId === null) {
+            return null;
+        }
+
+        // Hanya plugin publik milik orang lain yang dihitung kuota. Plugin sendiri bebas.
+        $plugin = Plugin::find($pluginId);
+        if (!$plugin || !$plugin->is_public || $plugin->user_id === $user->id) {
+            return null;
+        }
+
+        // ID plugin publik-eksternal yang SUDAH dipakai di rule user (selain rule ini).
+        $usedPluginIds = $user->chatbotRules()
+            ->when($excludeRuleId, fn ($q) => $q->where('id', '!=', $excludeRuleId))
+            ->whereNotNull('plugin_id')
+            ->pluck('plugin_id')
+            ->unique();
+
+        $usedExternal = Plugin::whereIn('id', $usedPluginIds)
+            ->where('is_public', true)
+            ->where('user_id', '!=', $user->id)
+            ->pluck('id')
+            ->all();
+
+        // Sudah dipakai sebelumnya -> tidak menambah kuota.
+        if (in_array($pluginId, $usedExternal, true)) {
+            return null;
+        }
+
+        if (!\App\Services\PlanLimits::can($user, 'public_plugins_used', count($usedExternal))) {
+            return \App\Services\PlanLimits::denyResponse('public_plugins_used');
+        }
+
+        return null;
     }
 
     // ── Pengaturan chatbot per-akun ───────────────────────────────────────────
@@ -170,7 +223,13 @@ class ChatbotRuleController extends Controller
                 // Rule memakai plugin dari pustaka -> jalankan plugin sbg balasan
                 if ($rule->plugin_id) {
                     $plugin = $rule->plugin;
-                    if ($plugin && $plugin->is_active) {
+                    // Boleh dijalankan jika: plugin ada, aktif, DAN (milik pemilik rule
+                    // ATAU masih publik). Plugin publik milik orang lain yang kemudian
+                    // di-set privat / dihapus akan otomatis dilewati (skip).
+                    $canRun = $plugin
+                        && $plugin->is_active
+                        && ($plugin->user_id === $rule->user_id || $plugin->is_public);
+                    if ($canRun) {
                         $extracted = $rule->extractArgs($text);
                         return response()->json([
                             'type'   => 'plugin',

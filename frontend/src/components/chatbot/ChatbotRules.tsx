@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api';
 import AdminLayout from '../layout/AdminLayout';
 import {
   Plus, Search, Cpu, Trash2, Edit3, MessageSquare, Loader2,
   Sparkles, X, Upload, Video, FileText, Puzzle, Check, ArrowRight, Quote,
-  LayoutGrid, Table as TableIcon,
+  LayoutGrid, Table as TableIcon, ChevronDown, Globe,
 } from 'lucide-react';
 
 type ViewMode = 'card' | 'table';
@@ -30,6 +30,9 @@ interface PluginLite {
   name: string;
   description?: string | null;
   is_active: boolean;
+  is_public?: boolean;
+  is_owner?: boolean;     // true jika plugin publik ini milik user sendiri
+  author?: string;        // nama pembuat (utk plugin publik milik orang lain)
 }
 
 type ReplyMode = 'text' | 'ai' | 'plugin';
@@ -79,6 +82,11 @@ export default function ChatbotRules() {
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
 
+  // Combobox plugin (searchable, mirip select2)
+  const [pluginPickerOpen, setPluginPickerOpen] = useState(false);
+  const [pluginQuery, setPluginQuery] = useState('');
+  const pluginPickerRef = useRef<HTMLDivElement | null>(null);
+
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [ruleToDelete, setRuleToDelete] = useState<ChatbotRule | null>(null);
 
@@ -87,6 +95,36 @@ export default function ChatbotRules() {
   const [reactSaving, setReactSaving] = useState(false);
 
   useEffect(() => { loadRules(); loadPlugins(); loadSettings(); }, []);
+
+  // Tutup combobox plugin saat klik di luar / tekan Esc.
+  useEffect(() => {
+    if (!pluginPickerOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (pluginPickerRef.current && !pluginPickerRef.current.contains(e.target as Node)) {
+        setPluginPickerOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPluginPickerOpen(false); };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => { document.removeEventListener('mousedown', onDown); document.removeEventListener('keydown', onKey); };
+  }, [pluginPickerOpen]);
+
+  // Deep-link dari galeri publik: /chatbot?plugin=<id> -> buka modal buat-aturan
+  // dengan plugin terpilih.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const pid = Number(new URLSearchParams(window.location.search).get('plugin'));
+    if (!pid) return;
+    setEditingRule(null);
+    resetForm();
+    setMode('plugin');
+    setPrefix('.');
+    setPluginId(pid);
+    setModalOpen(true);
+    // Bersihkan query agar tidak terbuka lagi saat refresh.
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []);
 
   async function loadSettings() {
     try {
@@ -121,7 +159,18 @@ export default function ChatbotRules() {
 
   async function loadPlugins() {
     try {
-      setPlugins(await api.get<PluginLite[]>('/api/plugins'));
+      // Gabungkan pustaka sendiri + plugin publik (bisa dipakai via referensi).
+      const [mine, pub] = await Promise.all([
+        api.get<PluginLite[]>('/api/plugins').catch(() => [] as PluginLite[]),
+        api.get<PluginLite[]>('/api/plugins/public').catch(() => [] as PluginLite[]),
+      ]);
+      const own = mine.map(p => ({ ...p, is_owner: true }));
+      const ownIds = new Set(own.map(p => p.id));
+      // Plugin publik milik orang lain (yang belum ada di pustaka sendiri).
+      const external = pub
+        .filter(p => !ownIds.has(p.id))
+        .map(p => ({ ...p, is_active: true, is_public: true, is_owner: false }));
+      setPlugins([...own, ...external]);
     } catch {
       setPlugins([]);
     }
@@ -147,6 +196,8 @@ export default function ChatbotRules() {
     setMediaUrl(null);
     setMediaType(null);
     setPluginId(null);
+    setPluginPickerOpen(false);
+    setPluginQuery('');
   }
 
   function handleOpenCreate() {
@@ -665,15 +716,82 @@ export default function ChatbotRules() {
                     </div>
                   ) : (
                     <>
-                      <select value={pluginId ?? ''} onChange={e => setPluginId(e.target.value ? Number(e.target.value) : null)}
-                        className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100 cursor-pointer">
-                        <option value="">— pilih plugin —</option>
-                        {plugins.map(p => (
-                          <option key={p.id} value={p.id} disabled={!p.is_active}>
-                            {p.name}{p.is_active ? '' : ' (nonaktif)'}
-                          </option>
-                        ))}
-                      </select>
+                      <div ref={pluginPickerRef} className="relative w-full">
+                        {/* Trigger */}
+                        <button type="button" onClick={() => setPluginPickerOpen(o => !o)}
+                          className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-left cursor-pointer">
+                          {(() => {
+                            const sel = pluginById(pluginId);
+                            if (!sel) return <span className="text-zinc-400 truncate">— pilih plugin —</span>;
+                            return (
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                {!sel.is_owner && <Globe className="w-3.5 h-3.5 text-violet-500 shrink-0" />}
+                                <span className="font-semibold text-zinc-800 dark:text-zinc-100 truncate">{sel.name}</span>
+                                {!sel.is_owner && sel.author && (
+                                  <span className="text-[10px] text-zinc-400 truncate shrink-0">— {sel.author}</span>
+                                )}
+                                {sel.is_owner && !sel.is_active && <span className="text-[10px] text-amber-500 shrink-0">(nonaktif)</span>}
+                              </span>
+                            );
+                          })()}
+                          <ChevronDown className={`w-4 h-4 text-zinc-400 shrink-0 transition-transform ${pluginPickerOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {/* Popover */}
+                        {pluginPickerOpen && (
+                          <div className="absolute z-20 mt-1.5 w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl overflow-hidden">
+                            <div className="p-2 border-b border-zinc-100 dark:border-zinc-800">
+                              <div className="relative">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+                                <input autoFocus value={pluginQuery} onChange={e => setPluginQuery(e.target.value)}
+                                  placeholder="Cari nama / pembuat…"
+                                  className="w-full pl-8 pr-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100" />
+                              </div>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto py-1">
+                              {(() => {
+                                const q = pluginQuery.trim().toLowerCase();
+                                const match = (p: PluginLite) => !q || p.name.toLowerCase().includes(q) || (p.author ?? '').toLowerCase().includes(q);
+                                const own = plugins.filter(p => p.is_owner && match(p));
+                                const pub = plugins.filter(p => !p.is_owner && match(p));
+                                if (own.length === 0 && pub.length === 0) {
+                                  return <div className="px-3 py-6 text-center text-xs text-zinc-400">Tidak ada plugin cocok.</div>;
+                                }
+                                const Item = (p: PluginLite) => {
+                                  const disabled = !!p.is_owner && !p.is_active;
+                                  return (
+                                    <button type="button" key={p.id} disabled={disabled}
+                                      onClick={() => { setPluginId(p.id); setPluginPickerOpen(false); setPluginQuery(''); }}
+                                      className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer'} ${pluginId === p.id ? 'bg-blue-50 dark:bg-blue-500/10' : ''}`}>
+                                      {!p.is_owner ? <Globe className="w-3.5 h-3.5 text-violet-500 shrink-0" /> : <Puzzle className="w-3.5 h-3.5 text-blue-500 shrink-0" />}
+                                      <span className="font-semibold text-zinc-800 dark:text-zinc-100 truncate">{p.name}</span>
+                                      {!p.is_owner && p.author && <span className="text-[10px] text-zinc-400 truncate ml-auto pl-2 shrink-0">{p.author}</span>}
+                                      {disabled && <span className="text-[10px] text-amber-500 ml-auto shrink-0">nonaktif</span>}
+                                      {pluginId === p.id && !disabled && <Check className="w-3.5 h-3.5 text-blue-500 ml-auto shrink-0" />}
+                                    </button>
+                                  );
+                                };
+                                return (
+                                  <>
+                                    {own.length > 0 && (
+                                      <div>
+                                        <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400">Plugin Saya</div>
+                                        {own.map(Item)}
+                                      </div>
+                                    )}
+                                    {pub.length > 0 && (
+                                      <div>
+                                        <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400">Plugin Publik (pengguna lain)</div>
+                                        {pub.map(Item)}
+                                      </div>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-start gap-2 rounded-xl bg-blue-50/60 dark:bg-blue-500/5 border border-blue-200/60 dark:border-blue-500/15 p-2.5">
                         <Puzzle className="w-3.5 h-3.5 text-blue-500 mt-0.5 shrink-0" />
                         <p className="text-[10px] text-zinc-600 dark:text-zinc-400 leading-relaxed">

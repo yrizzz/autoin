@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { api, getApiUrl } from '../../lib/api';
 import type { User } from '../../types';
 import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock, Activity, MessageSquare
+  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock, Activity, MessageSquare,
+  Loader2, Check, Upload
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -332,7 +333,62 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(null);
   const [loginAgreed, setLoginAgreed] = useState(true);
 
+  // Profil akun (ubah nama & foto)
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileName, setProfileName] = useState('');
+  const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
   const hasUnread = notifications.some(n => !n.read);
+
+  const openProfile = () => {
+    setProfileName(user?.name ?? '');
+    setProfileAvatar(user?.avatar ?? null);
+    setProfileOpen(true);
+  };
+
+  const uploadAvatar = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    if (!file.type.startsWith('image/')) { alert('File harus berupa gambar.'); return; }
+    setAvatarUploading(true);
+    try {
+      const token = localStorage.getItem('autoin_token');
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${getApiUrl()}/api/upload`, {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload gagal');
+      const data = await res.json();
+      setProfileAvatar(data.url);
+    } catch (err: any) {
+      alert(err?.message ?? 'Gagal mengunggah foto.');
+    } finally {
+      setAvatarUploading(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
+  const saveProfile = async () => {
+    const name = profileName.trim();
+    if (!name || profileSaving) return;
+    setProfileSaving(true);
+    try {
+      const updated = await api.put<User>('/api/profile', { name, avatar: profileAvatar });
+      setUser(updated);
+      setProfileOpen(false);
+    } catch (e: any) {
+      alert(e?.message ?? 'Gagal memperbarui profil.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -517,16 +573,19 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
 
         {user ? (
           <div className="space-y-2">
-            <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900">
+            <button onClick={openProfile} title="Ubah profil"
+              className="w-full flex items-center gap-3 px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all cursor-pointer text-left group">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                 <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">
                   {formatDisplayName(user.name)}
                 </div>
+                <div className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">{user.email}</div>
               </div>
-            </div>
+              <Settings className="w-3.5 h-3.5 text-zinc-400 group-hover:text-blue-500 transition-colors shrink-0" />
+            </button>
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 border border-red-100 dark:border-red-500/10 rounded-xl transition-all cursor-pointer"
@@ -870,6 +929,72 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
           })}
         </div>
       </nav>
+
+      {/* ── Modal profil: ubah nama ────────────────────────────────────────── */}
+      {profileOpen && user && (
+        <div onClick={() => !profileSaving && setProfileOpen(false)}
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div onClick={e => e.stopPropagation()}
+            className="w-full max-w-sm bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-zinc-100 dark:border-zinc-800">
+              <h2 className="font-extrabold text-zinc-900 dark:text-white flex items-center gap-2">
+                <UserIcon className="w-4 h-4 text-blue-500" /> Profil Akun
+              </h2>
+              <button onClick={() => !profileSaving && setProfileOpen(false)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 overflow-hidden ring-2 ring-zinc-100 dark:ring-zinc-800">
+                    <img src={getAvatarUrl({ ...user, avatar: profileAvatar })} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  {avatarUploading && (
+                    <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs text-zinc-400 truncate">{user.email}</div>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <input ref={avatarInputRef} type="file" accept="image/*" onChange={uploadAvatar} className="hidden" />
+                    <button type="button" onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition disabled:opacity-50">
+                      <Upload className="w-3 h-3" /> Ubah Foto
+                    </button>
+                    {user.google_avatar && profileAvatar !== user.google_avatar && (
+                      <button type="button" onClick={() => setProfileAvatar(user.google_avatar ?? null)} disabled={avatarUploading}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] font-bold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-50">
+                        <RefreshCw className="w-3 h-3" /> Kembalikan ke Google
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Nama Tampilan</label>
+                <input value={profileName} onChange={e => setProfileName(e.target.value)} maxLength={100}
+                  onKeyDown={e => { if (e.key === 'Enter') saveProfile(); }}
+                  placeholder="Nama kamu"
+                  className="w-full px-3.5 py-2.5 text-sm bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100" />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-zinc-100 dark:border-zinc-800">
+              <button onClick={() => setProfileOpen(false)} disabled={profileSaving}
+                className="px-4 py-2 text-xs font-bold text-zinc-600 dark:text-zinc-300 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition disabled:opacity-50">
+                Batal
+              </button>
+              <button onClick={saveProfile} disabled={profileSaving || avatarUploading || !profileName.trim() || (profileName.trim() === user.name && profileAvatar === (user.avatar ?? null))}
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white btn-primary rounded-lg disabled:opacity-50 transition">
+                {profileSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />} Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -72,6 +72,7 @@ Route::get('login', function () {
 
 Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/api-key', [AuthController::class, 'getApiKey']);
     Route::post('/api-key', [AuthController::class, 'generateApiKey']);
@@ -113,6 +114,7 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::post('chatbot-settings', [ChatbotRuleController::class, 'saveSettings']);
     Route::apiResource('chatbot-rules', ChatbotRuleController::class)->except(['show']);
 
+    Route::get('plugins/public', [PluginController::class, 'publicIndex']);
     Route::apiResource('plugins', PluginController::class)->except(['show']);
     Route::post('plugins/{plugin}/test', [PluginController::class, 'test']);
 

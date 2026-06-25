@@ -19,6 +19,7 @@ class PlanLimits
             'chatbot_rules'     => 1,    // 1 chatbot rule for trial
             'webhooks'          => 1,    // 1 webhook
             'plugins'           => 1,    // 1 plugin for trial
+            'public_plugins_used' => 5,  // maks 5 plugin publik (milik orang lain) yg dipakai di rule
         ],
         'daily' => [
             'channels'          => 1,    // 1 device on Daily Pass
@@ -28,6 +29,7 @@ class PlanLimits
             'chatbot_rules'     => 5,
             'webhooks'          => 3,
             'plugins'           => 5,
+            'public_plugins_used' => null,
         ],
         'weekly' => [
             'channels'          => 1,    // 1 device on Weekly Pass
@@ -37,6 +39,7 @@ class PlanLimits
             'chatbot_rules'     => 10,
             'webhooks'          => 5,
             'plugins'           => 10,
+            'public_plugins_used' => null,
         ],
         'monthly' => [
             'channels'          => 5,    // Max 5 devices on Monthly Pass
@@ -46,6 +49,7 @@ class PlanLimits
             'chatbot_rules'     => null,
             'webhooks'          => null,
             'plugins'           => null,
+            'public_plugins_used' => null,
         ],
         'yearly' => [
             'channels'          => 10,   // Max 10 devices on Yearly Pass
@@ -55,6 +59,7 @@ class PlanLimits
             'chatbot_rules'     => null,
             'webhooks'          => null,
             'plugins'           => null,
+            'public_plugins_used' => null,
         ],
     ];
 
@@ -124,6 +129,7 @@ class PlanLimits
             'chatbot_rules'    => 'Batas 1 auto-reply gratis tercapai. Upgrade untuk mengaktifkan lebih banyak Auto-Reply.',
             'webhooks'         => 'Batas webhook tercapai. Upgrade untuk webhook tanpa batas.',
             'plugins'          => 'Batas 1 plugin gratis tercapai. Upgrade untuk memasang lebih banyak plugin.',
+            'public_plugins_used' => 'Batas 5 plugin publik tercapai untuk paket gratis. Upgrade untuk memakai plugin publik tanpa batas.',
         ];
 
         return response()->json([
@@ -155,8 +161,27 @@ class PlanLimits
                 'chatbot_rules'    => $user->chatbotRules()->count(),
                 'webhooks'         => $user->webhooks()->count(),
                 'plugins'          => $user->plugins()->count(),
+                'public_plugins_used' => self::publicPluginsUsedCount($user),
                 'messages_per_day' => \App\Models\ApiLog::where('user_id', $user->id)->whereDate('created_at', today())->count(),
             ],
         ];
+    }
+
+    /**
+     * Jumlah plugin publik (milik orang lain) yang sedang dipakai user di rule-nya.
+     */
+    public static function publicPluginsUsedCount(User $user): int
+    {
+        $usedPluginIds = $user->chatbotRules()
+            ->whereNotNull('plugin_id')
+            ->pluck('plugin_id')
+            ->unique();
+
+        if ($usedPluginIds->isEmpty()) return 0;
+
+        return \App\Models\Plugin::whereIn('id', $usedPluginIds)
+            ->where('is_public', true)
+            ->where('user_id', '!=', $user->id)
+            ->count();
     }
 }

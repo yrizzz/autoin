@@ -56,17 +56,25 @@ class AuthController extends Controller
         $user = User::where('email', $googleUser->getEmail())->first();
 
         if ($user) {
-            $user->update([
-                'google_id' => $googleUser->getId(),
-                'name' => $googleUser->getName(),
-                'avatar' => $googleUser->getAvatar(),
-            ]);
+            $googleAvatar = $googleUser->getAvatar();
+            $update = [
+                'google_id'     => $googleUser->getId(),
+                'google_avatar' => $googleAvatar,
+            ];
+            // Jangan timpa avatar custom: hanya ikut avatar Google bila user memang
+            // masih memakai avatar Google (atau belum punya avatar sama sekali).
+            if (empty($user->avatar) || $user->avatar === $user->google_avatar) {
+                $update['avatar'] = $googleAvatar;
+            }
+            // Nama dibiarkan apa adanya agar nama custom user tidak ter-reset tiap login.
+            $user->update($update);
         } else {
             $user = User::create([
-                'google_id' => $googleUser->getId(),
-                'name' => $googleUser->getName(),
-                'email' => $googleUser->getEmail(),
-                'avatar' => $googleUser->getAvatar(),
+                'google_id'     => $googleUser->getId(),
+                'name'          => $googleUser->getName(),
+                'email'         => $googleUser->getEmail(),
+                'avatar'        => $googleUser->getAvatar(),
+                'google_avatar' => $googleUser->getAvatar(),
             ]);
         }
 
@@ -97,6 +105,28 @@ class AuthController extends Controller
     public function me(Request $request)
     {
         return response()->json($request->user()->load('subscription'));
+    }
+
+    /**
+     * Perbarui profil akun (saat ini: nama tampilan).
+     */
+    public function updateProfile(Request $request)
+    {
+        $data = $request->validate([
+            'name'   => 'required|string|min:1|max:100',
+            // avatar: URL hasil upload, atau URL avatar Google (untuk "kembalikan ke Google"),
+            // atau null untuk pakai fallback (gravatar). 'sometimes' = boleh tidak dikirim.
+            'avatar' => 'sometimes|nullable|string|max:2048',
+        ]);
+
+        $user = $request->user();
+        $user->name = trim($data['name']);
+        if (array_key_exists('avatar', $data)) {
+            $user->avatar = $data['avatar'] ?: null;
+        }
+        $user->save();
+
+        return response()->json($user->load('subscription'));
     }
 
     public function logout()

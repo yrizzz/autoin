@@ -7,6 +7,7 @@ import {
   Plus, Search, Puzzle, ToggleLeft, ToggleRight, Trash2, Edit3,
   Loader2, Play, Terminal, AlertTriangle, Check, X, Image as ImageIcon,
   BookOpen, Sparkles, Clock, LayoutGrid, Table as TableIcon,
+  Globe, Lock, User as UserIcon, ArrowRight,
 } from 'lucide-react';
 
 type ViewMode = 'card' | 'table';
@@ -18,9 +19,22 @@ interface Plugin {
   usage?: string | null;
   code: string;
   is_active: boolean;
+  is_public?: boolean;
   timeout_ms: number;
   last_error?: string | null;
   last_run_at?: string | null;
+  created_at: string;
+}
+
+// Plugin publik milik user lain (black-box: tanpa `code`).
+interface PublicPlugin {
+  id: number;
+  name: string;
+  description?: string | null;
+  usage?: string | null;
+  timeout_ms: number;
+  is_owner: boolean;
+  author: string;
   created_at: string;
 }
 
@@ -90,6 +104,13 @@ export default function Plugins() {
   const [usage, setUsage] = useState('');
   const [timeoutMs, setTimeoutMs] = useState(8000);
   const [code, setCode] = useState('');
+  const [isPublic, setIsPublic] = useState(false);
+
+  // Tab: pustaka sendiri vs galeri publik
+  const [tab, setTab] = useState<'mine' | 'public'>('mine');
+  const [publicPlugins, setPublicPlugins] = useState<PublicPlugin[]>([]);
+  const [publicLoading, setPublicLoading] = useState(false);
+  const [publicSearch, setPublicSearch] = useState('');
 
   // AI builder panel
   const [aiOpen, setAiOpen] = useState(false);
@@ -112,6 +133,13 @@ export default function Plugins() {
 
   useEffect(() => { load(); }, []);
 
+  // Muat galeri publik saat tab dibuka / pencarian berubah (debounce ringan).
+  useEffect(() => {
+    if (tab !== 'public') return;
+    const t = setTimeout(() => loadPublic(publicSearch), 300);
+    return () => clearTimeout(t);
+  }, [tab, publicSearch]);
+
   // Tutup modal dengan tombol Esc.
   useEffect(() => {
     if (!modalOpen) return;
@@ -130,6 +158,17 @@ export default function Plugins() {
     setLoading(false);
   }
 
+  async function loadPublic(q = '') {
+    setPublicLoading(true);
+    try {
+      const path = q.trim() ? `/api/plugins/public?q=${encodeURIComponent(q.trim())}` : '/api/plugins/public';
+      setPublicPlugins(await api.get<PublicPlugin[]>(path));
+    } catch {
+      setPublicPlugins([]);
+    }
+    setPublicLoading(false);
+  }
+
   function openCreate() {
     setEditing(null);
     setName('');
@@ -137,6 +176,7 @@ export default function Plugins() {
     setUsage('');
     setTimeoutMs(8000);
     setCode('');
+    setIsPublic(false);
     setTestArgs('');
     setTestResult(null);
     setAiOpen(false);
@@ -160,6 +200,7 @@ export default function Plugins() {
     setUsage(p.usage || '');
     setTimeoutMs(p.timeout_ms || 8000);
     setCode(p.code);
+    setIsPublic(!!p.is_public);
     setTestArgs('');
     setTestResult(null);
     setAiOpen(false);
@@ -199,6 +240,16 @@ export default function Plugins() {
     }
   }
 
+  async function handleTogglePublic(p: Plugin) {
+    try {
+      const updated = await api.put<Plugin>(`/api/plugins/${p.id}`, { is_public: !p.is_public });
+      setPlugins(prev => prev.map(x => x.id === p.id ? updated : x));
+      showToast(`Plugin "${p.name}" sekarang ${updated.is_public ? 'PUBLIK — bisa dipakai orang lain' : 'privat'}.`, 'success');
+    } catch (e: any) {
+      showToast(e.message ?? 'Gagal mengubah visibilitas.', 'error');
+    }
+  }
+
   async function confirmDelete() {
     if (!toDelete) return;
     const p = toDelete;
@@ -227,6 +278,7 @@ export default function Plugins() {
         usage: usage || null,
         timeout_ms: timeoutMs,
         code,
+        is_public: isPublic,
       };
       if (editing) {
         const updated = await api.put<Plugin>(`/api/plugins/${editing.id}`, payload);
@@ -349,6 +401,19 @@ export default function Plugins() {
         </div>
       </div>
 
+      {/* ── Tab: Pustaka Saya / Jelajahi Publik ────────────────────────────── */}
+      <div className="inline-flex items-center gap-0.5 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1 bg-white dark:bg-zinc-900 mb-4">
+        <button onClick={() => setTab('mine')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition ${tab === 'mine' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
+          <Puzzle className="w-4 h-4" /> Pustaka Saya
+        </button>
+        <button onClick={() => setTab('public')}
+          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition ${tab === 'public' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
+          <Globe className="w-4 h-4" /> Jelajahi Publik
+        </button>
+      </div>
+
+      {tab === 'mine' && (<>
       {/* ── Search + view toggle ───────────────────────────────────────────── */}
       <div className="flex items-center gap-3 mb-4">
         <div className="relative flex-1 max-w-md">
@@ -484,6 +549,11 @@ export default function Plugins() {
                     {!p.is_active && (
                       <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-bold uppercase tracking-wide">Nonaktif</span>
                     )}
+                    {p.is_public && (
+                      <span className="inline-flex items-center gap-1 text-[9.5px] px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-300 font-bold uppercase tracking-wide">
+                        <Globe className="w-2.5 h-2.5" /> Publik
+                      </span>
+                    )}
                   </div>
                   <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300">
@@ -519,6 +589,12 @@ export default function Plugins() {
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-blue-600 dark:hover:text-blue-400 transition">
                   <Edit3 className="w-3.5 h-3.5" /> Edit &amp; Tes
                 </button>
+                <button onClick={() => handleTogglePublic(p)}
+                  title={p.is_public ? 'Jadikan privat' : 'Jadikan publik (orang lain bisa pakai)'}
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition ${p.is_public ? 'text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 hover:bg-violet-100 dark:hover:bg-violet-500/20' : 'text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}>
+                  {p.is_public ? <Globe className="w-3.5 h-3.5" /> : <Lock className="w-3.5 h-3.5" />}
+                  {p.is_public ? 'Publik' : 'Privat'}
+                </button>
                 <button onClick={() => setToDelete(p)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition ml-auto">
                   <Trash2 className="w-3.5 h-3.5" /> Hapus
@@ -526,6 +602,75 @@ export default function Plugins() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      </>)}
+
+      {/* ── Galeri publik ──────────────────────────────────────────────────── */}
+      {tab === 'public' && (
+        <div>
+          <div className="relative max-w-md mb-4">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input value={publicSearch} onChange={e => setPublicSearch(e.target.value)} placeholder="Cari plugin publik…"
+              className="w-full pl-9 pr-3 py-2 rounded-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-sm text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-violet-500/60 focus:border-violet-500 transition" />
+          </div>
+
+          {publicLoading ? (
+            <div className="flex items-center justify-center py-20 text-zinc-400">
+              <Loader2 className="w-6 h-6 animate-spin" />
+            </div>
+          ) : publicPlugins.length === 0 ? (
+            <div className="text-center py-16 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+              <div className="grid place-items-center w-12 h-12 mx-auto rounded-2xl bg-zinc-100 dark:bg-zinc-800/60 mb-3">
+                <Globe className="w-6 h-6 text-zinc-400 dark:text-zinc-500" />
+              </div>
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">Belum ada plugin publik</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">Jadikan plugin-mu publik dari <b>Pustaka Saya</b> agar muncul di sini.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {publicPlugins.map(p => (
+                <div key={p.id}
+                  className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-4 flex flex-col gap-3 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-sm transition">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-zinc-900 dark:text-white truncate">{p.name}</span>
+                        <span className="inline-flex items-center gap-1 text-[9.5px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                          <Globe className="w-2.5 h-2.5" /> Publik
+                        </span>
+                        {p.is_owner && (
+                          <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-300 font-bold uppercase tracking-wide">Punyamu</span>
+                        )}
+                      </div>
+                      <div className="mt-1.5 flex items-center gap-2 flex-wrap text-[10.5px] text-zinc-400 dark:text-zinc-500">
+                        <span className="inline-flex items-center gap-1"><UserIcon className="w-2.5 h-2.5" /> {p.author}</span>
+                        <span className="inline-flex items-center gap-1"><Clock className="w-2.5 h-2.5" /> {(p.timeout_ms / 1000).toFixed(0)}s</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 min-h-[2rem]">
+                    {p.description || <span className="italic text-zinc-400 dark:text-zinc-600">Tanpa deskripsi.</span>}
+                  </p>
+
+                  {p.usage && (
+                    <code className="text-[11px] font-mono text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800/60 rounded-md px-2 py-1 truncate">{p.usage}</code>
+                  )}
+
+                  <div className="flex items-center gap-2 mt-auto pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                    <span className="inline-flex items-center gap-1 text-[10.5px] text-zinc-400 dark:text-zinc-500">
+                      <Lock className="w-3 h-3" /> Kode privat
+                    </span>
+                    <a href={`/chatbot?plugin=${p.id}`}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white btn-primary ml-auto transition">
+                      Pakai di Chatbot <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -585,6 +730,29 @@ export default function Plugins() {
                 <Puzzle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>Plugin ini cuma <b>menyediakan script</b>. Prefix &amp; trigger (mis. <code className="font-mono">.xprofile</code>) diatur di halaman <b>Chatbot</b> saat memilih plugin sebagai balasan.</span>
               </div>
+
+              {/* Visibilitas publik */}
+              <button type="button" onClick={() => setIsPublic(v => !v)}
+                className={`flex items-center justify-between gap-3 w-full text-left rounded-xl border px-3.5 py-3 transition ${isPublic ? 'border-violet-300 dark:border-violet-500/40 bg-violet-50/70 dark:bg-violet-500/10' : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/40'}`}>
+                <div className="flex items-start gap-2.5">
+                  <span className={`grid place-items-center w-8 h-8 rounded-lg shrink-0 ${isPublic ? 'bg-violet-500/15 text-violet-600 dark:text-violet-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400'}`}>
+                    {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-bold text-zinc-900 dark:text-white">
+                      {isPublic ? 'Plugin Publik' : 'Plugin Privat'}
+                    </p>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 max-w-md">
+                      {isPublic
+                        ? 'Muncul di galeri & bisa dipakai orang lain. Kodemu tetap tersembunyi (black-box).'
+                        : 'Hanya kamu yang bisa pakai. Aktifkan untuk membagikannya ke pengguna lain.'}
+                    </p>
+                  </div>
+                </div>
+                <span className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${isPublic ? 'bg-violet-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`} />
+                </span>
+              </button>
 
               {/* Code editor */}
               <div>

@@ -18,6 +18,46 @@ class PluginController extends Controller
         );
     }
 
+    /**
+     * Galeri plugin publik milik semua user. Black-box: TIDAK menyertakan `code`.
+     * Plugin milik sendiri tetap muncul (ditandai is_owner) supaya konsisten.
+     */
+    public function publicIndex(Request $request)
+    {
+        $user = $request->user();
+        $q    = trim((string) $request->query('q', ''));
+
+        $query = Plugin::query()
+            ->where('is_public', true)
+            ->where('is_active', true)
+            ->with('user:id,name');
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('name', 'like', "%{$q}%")
+                    ->orWhere('description', 'like', "%{$q}%")
+                    ->orWhere('usage', 'like', "%{$q}%");
+            });
+        }
+
+        $plugins = $query->orderByDesc('created_at')->get()->map(function ($p) use ($user) {
+            return [
+                'id'          => $p->id,
+                'name'        => $p->name,
+                'description' => $p->description,
+                'usage'       => $p->usage,
+                'timeout_ms'  => $p->timeout_ms,
+                'is_public'   => true,
+                'is_owner'    => $p->user_id === $user->id,
+                'author'      => $p->user?->name ?? 'Anonim',
+                'created_at'  => $p->created_at,
+                // NB: `code` sengaja TIDAK disertakan (black-box).
+            ];
+        });
+
+        return response()->json($plugins);
+    }
+
     public function store(Request $request)
     {
         $user  = $request->user();
@@ -58,6 +98,7 @@ class PluginController extends Controller
             'usage'       => 'nullable|string|max:255',
             'code'        => "$req|string",
             'is_active'   => 'sometimes|boolean',
+            'is_public'   => 'sometimes|boolean',
             'timeout_ms'  => 'sometimes|integer',
         ]);
 

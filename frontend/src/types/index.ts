@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   avatar: string | null;
+  google_avatar?: string | null;
   trial_count: number;
   subscription: Subscription | null;
 }
