@@ -20,6 +20,7 @@ class PlanLimits
             'webhooks'          => 1,    // 1 webhook
             'plugins'           => 1,    // 1 plugin for trial
             'public_plugins_used' => 5,  // maks 5 plugin publik (milik orang lain) yg dipakai di rule
+            'public_plugins'    => 1,    // maks 1 plugin sendiri yg boleh dijadikan global/publik
         ],
         'daily' => [
             'channels'          => 1,    // 1 device on Daily Pass
@@ -30,6 +31,7 @@ class PlanLimits
             'webhooks'          => 3,
             'plugins'           => 5,
             'public_plugins_used' => null,
+            'public_plugins'    => null,
         ],
         'weekly' => [
             'channels'          => 1,    // 1 device on Weekly Pass
@@ -40,6 +42,7 @@ class PlanLimits
             'webhooks'          => 5,
             'plugins'           => 10,
             'public_plugins_used' => null,
+            'public_plugins'    => null,
         ],
         'monthly' => [
             'channels'          => 5,    // Max 5 devices on Monthly Pass
@@ -50,6 +53,7 @@ class PlanLimits
             'webhooks'          => null,
             'plugins'           => null,
             'public_plugins_used' => null,
+            'public_plugins'    => null,
         ],
         'yearly' => [
             'channels'          => 10,   // Max 10 devices on Yearly Pass
@@ -60,6 +64,7 @@ class PlanLimits
             'webhooks'          => null,
             'plugins'           => null,
             'public_plugins_used' => null,
+            'public_plugins'    => null,
         ],
     ];
 
@@ -130,6 +135,7 @@ class PlanLimits
             'webhooks'         => 'Batas webhook tercapai. Upgrade untuk webhook tanpa batas.',
             'plugins'          => 'Batas 1 plugin gratis tercapai. Upgrade untuk memasang lebih banyak plugin.',
             'public_plugins_used' => 'Batas 5 plugin publik tercapai untuk paket gratis. Upgrade untuk memakai plugin publik tanpa batas.',
+            'public_plugins'   => 'Batas plugin global tercapai untuk paket gratis (maks 1). Upgrade untuk menjadikan lebih banyak plugin global.',
         ];
 
         return response()->json([
@@ -161,6 +167,7 @@ class PlanLimits
                 'chatbot_rules'    => $user->chatbotRules()->count(),
                 'webhooks'         => $user->webhooks()->count(),
                 'plugins'          => $user->plugins()->count(),
+                'public_plugins'   => $user->plugins()->where('is_public', true)->count(),
                 'public_plugins_used' => self::publicPluginsUsedCount($user),
                 'messages_per_day' => \App\Models\ApiLog::where('user_id', $user->id)->whereDate('created_at', today())->count(),
             ],

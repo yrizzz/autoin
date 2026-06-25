@@ -67,6 +67,15 @@ class PluginController extends Controller
         }
 
         $data = $this->validateData($request);
+
+        // Batasi jumlah plugin yang boleh dijadikan global/publik per paket.
+        if (($data['is_public'] ?? false) === true) {
+            $publicCount = $user->plugins()->where('is_public', true)->count();
+            if (!PlanLimits::can($user, 'public_plugins', $publicCount)) {
+                return PlanLimits::denyResponse('public_plugins');
+            }
+        }
+
         $plugin = $user->plugins()->create($data);
 
         return response()->json($plugin, 201);
@@ -77,6 +86,15 @@ class PluginController extends Controller
         abort_if($plugin->user_id !== $request->user()->id, 403);
 
         $data = $this->validateData($request, true);
+
+        // Saat mengubah plugin dari privat -> publik, cek kuota plugin global paket.
+        if (array_key_exists('is_public', $data) && $data['is_public'] === true && !$plugin->is_public) {
+            $publicCount = $request->user()->plugins()->where('is_public', true)->count();
+            if (!PlanLimits::can($request->user(), 'public_plugins', $publicCount)) {
+                return PlanLimits::denyResponse('public_plugins');
+            }
+        }
+
         $plugin->update($data);
 
         return response()->json($plugin);
