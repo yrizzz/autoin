@@ -176,13 +176,7 @@ class SendBroadcastJob implements ShouldQueue
                 }
 
                 $mentions = $targetParticipants;
-
-                if (!empty($mentions)) {
-                    $tagText = "\n\n" . implode(' ', array_map(function ($jid) {
-                        return '@' . explode('@', $jid)[0];
-                    }, $mentions));
-                    $content .= $tagText;
-                }
+                // Hidden mentions: We send the mentions array so participants are notified, but do not append visible @tags to the message body text.
             }
         }
 

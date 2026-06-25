@@ -265,14 +265,14 @@ print(res.json())`
                   <div className="space-y-5">
                     {/* Key display */}
                     <div className="relative group">
-                      <div className="flex items-center gap-2 bg-zinc-950 dark:bg-zinc-950 border border-zinc-800 rounded-xl px-3.5 py-3.5 font-mono text-xs overflow-hidden">
-                        <Key className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                        <span className="flex-1 min-w-0 truncate text-zinc-300 tracking-wider select-all text-[10px] sm:text-xs">
+                      <div className="flex items-center gap-2 bg-blue-50/50 dark:bg-zinc-955 border border-blue-100 dark:border-zinc-800 rounded-xl px-3.5 py-3.5 font-mono text-xs overflow-hidden">
+                        <Key className="w-3.5 h-3.5 text-blue-550 dark:text-zinc-500 shrink-0" />
+                        <span className="flex-1 min-w-0 truncate text-blue-950 dark:text-zinc-300 tracking-wider select-all text-[10px] sm:text-xs">
                           {maskedKey}
                         </span>
                         <button
                           onClick={() => setShowKey(!showKey)}
-                          className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer shrink-0 ml-1"
+                          className="text-blue-550 hover:text-blue-750 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors cursor-pointer shrink-0 ml-1"
                           title={showKey ? 'Sembunyikan' : 'Tampilkan'}
                         >
                           {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -433,8 +433,8 @@ print(res.json())`
             </div>
 
             {/* Code block */}
-            <div className="bg-zinc-950 p-6 overflow-x-auto">
-              <pre className="text-[11px] font-mono text-zinc-300 leading-relaxed whitespace-pre">
+            <div className="bg-blue-50/40 dark:bg-zinc-955 border-t border-blue-100 dark:border-zinc-800/60 p-6 overflow-x-auto">
+              <pre className="text-[11px] font-mono text-blue-950 dark:text-zinc-300 leading-relaxed whitespace-pre">
                 {snippets[activeSnippet]}
               </pre>
             </div>

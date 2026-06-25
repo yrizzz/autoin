@@ -314,7 +314,7 @@ export default function AdminPlugins() {
 
               <div>
                 <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 flex items-center gap-1"><Terminal className="w-3.5 h-3.5" /> Kode (read-only)</label>
-                <pre className="mt-1 w-full px-3 py-2 rounded-xl bg-zinc-950 text-emerald-200 border border-zinc-700 text-[12px] font-mono leading-relaxed overflow-x-auto max-h-72">{viewing.code}</pre>
+                <pre className="mt-1 w-full px-3.5 py-3 rounded-xl bg-blue-50/50 dark:bg-zinc-950 text-blue-950 dark:text-emerald-300 border border-blue-100 dark:border-zinc-800 text-[12px] font-mono leading-relaxed overflow-x-auto max-h-72">{viewing.code}</pre>
               </div>
 
               {/* Test */}

@@ -428,12 +428,12 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
       title: null,
       items: [
         { id: 'quick_send', label: 'Kirim Cepat', icon: Send, href: '/quick-send' },
-        { id: 'single_message_history', label: 'Riwayat Pesan', icon: Clock, href: '/single-message-history' },
         { id: 'group_tag', label: 'Setting Auto Tag Member', icon: Tag, href: '/group-tag' },
         { id: 'chatbot', label: 'Chatbot (Auto Reply)', icon: Cpu, href: '/chatbot' },
         { id: 'plugins', label: 'Plugin / Extension', icon: Puzzle, href: '/plugins' },
         { id: 'webhook', label: 'Webhook App', icon: Link, href: '/webhook' },
         { id: 'history', label: 'Riwayat Broadcast', icon: History, href: '/broadcast/history' },
+        { id: 'single_message_history', label: 'Riwayat Pesan', icon: Clock, href: '/single-message-history' },
       ]
     },
     { title: 'PENGATURAN', items: settingsItems }

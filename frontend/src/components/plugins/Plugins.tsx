@@ -564,7 +564,7 @@ export default function Plugins() {
                     className={`flex-1 ${inputCls} font-mono bg-white dark:bg-zinc-900`} />
                   <button type="button" onClick={handleTest} disabled={testing || !editing}
                     title={!editing ? 'Simpan dulu untuk mengetes' : 'Jalankan tes'}
-                    className="inline-flex items-center gap-1.5 px-4 rounded-lg bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-bold disabled:opacity-50 hover:opacity-90 transition shrink-0">
+                    className="inline-flex items-center gap-1.5 px-4 rounded-lg bg-blue-600 hover:bg-blue-700 active:bg-blue-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 text-white text-sm font-bold disabled:opacity-50 transition shrink-0">
                     {testing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />} Tes
                   </button>
                 </div>

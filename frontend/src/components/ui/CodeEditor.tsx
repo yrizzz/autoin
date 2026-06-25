@@ -34,14 +34,14 @@ function highlight(code: string): string {
     if (comment != null) {
       out += `<span class="text-zinc-500 italic">${escapeHtml(comment)}</span>`;
     } else if (str != null) {
-      out += `<span class="text-emerald-300">${escapeHtml(str)}</span>`;
+      out += `<span class="text-emerald-400">${escapeHtml(str)}</span>`;
     } else if (num != null) {
-      out += `<span class="text-amber-300">${escapeHtml(num)}</span>`;
+      out += `<span class="text-amber-400">${escapeHtml(num)}</span>`;
     } else if (ident != null) {
       const cls = KEYWORDS.has(ident)
         ? 'text-sky-400'
         : LITERALS.has(ident)
-          ? 'text-purple-400'
+          ? 'text-purple-405'
           : null;
       out += cls ? `<span class="${cls}">${escapeHtml(ident)}</span>` : escapeHtml(ident);
     }
@@ -86,6 +86,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
   }
   useEffect(() => { autoGrow(); syncScroll(); }, [value]);
 
+  // keydown and caret helpers
   function setValueWithCaret(next: string, caretStart: number, caretEnd = caretStart) {
     onChange(next);
     requestAnimationFrame(() => {
@@ -134,7 +135,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
 
   return (
     <div
-      className={`relative rounded-xl border bg-zinc-950 overflow-hidden ${focused ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-zinc-700'} ${className}`}
+      className={`relative rounded-xl border bg-[#0a0a0c] border-zinc-850/80 overflow-hidden ${focused ? 'border-blue-500 ring-2 ring-blue-500/40' : 'border-blue-100/20 dark:border-zinc-850'} ${className}`}
     >
       <div className="flex">
         {/* Gutter nomor baris */}
@@ -164,7 +165,7 @@ export default function CodeEditor({ value, onChange, placeholder, minRows = 14,
             onBlur={() => setFocused(false)}
             spellCheck={false}
             placeholder={placeholder}
-            className="relative block w-full resize-none overflow-x-auto overflow-y-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent caret-white placeholder:text-zinc-500 whitespace-pre focus:outline-none"
+            className="relative block w-full resize-none overflow-x-auto overflow-y-hidden py-3 px-3 text-[12.5px] font-mono leading-[1.6] bg-transparent text-transparent caret-white placeholder:text-zinc-650 whitespace-pre focus:outline-none"
             style={{ tabSize: 2, minHeight: `${minRows * 1.6 + 1.5}em` }}
           />
         </div>

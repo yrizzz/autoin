@@ -194,10 +194,10 @@ import AdminLayout from '../components/layout/AdminLayout';
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">1. Tes Autentikasi</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET https://api.autoin.my.id/api/me \
+            <pre data-lang-code="curl" class="bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">curl -X GET https://api.autoin.my.id/api/me \
   -H "Authorization: Bearer autoin_YOUR_API_KEY"</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/me', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/me', &#123;
   headers: &#123;
     'Authorization': 'Bearer autoin_YOUR_API_KEY',
     'Content-Type': 'application/json'
@@ -206,7 +206,7 @@ import AdminLayout from '../components/layout/AdminLayout';
 .then(res => res.json())
 .then(data => console.log(data));</pre>
 
-            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+            <pre data-lang-code="php" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">&lt;?php
 $ch = curl_init('https://api.autoin.my.id/api/me');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -216,7 +216,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $response = curl_exec($ch);
 $data = json_decode($response, true);</pre>
 
-            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+            <pre data-lang-code="python" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">import requests
 
 headers = &#123;
     'Authorization': 'Bearer autoin_YOUR_API_KEY',
@@ -230,16 +230,16 @@ print(response.json())</pre>
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">2. List Channels</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X GET https://api.autoin.my.id/api/channels \
+            <pre data-lang-code="curl" class="bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">curl -X GET https://api.autoin.my.id/api/channels \
   -H "Authorization: Bearer autoin_YOUR_API_KEY"</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/channels', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/channels', &#123;
   headers: &#123; 'Authorization': 'Bearer autoin_YOUR_API_KEY' &#125;
 &#125;)
 .then(res => res.json())
 .then(channels => console.log(channels));</pre>
 
-            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+            <pre data-lang-code="php" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">&lt;?php
 $ch = curl_init('https://api.autoin.my.id/api/channels');
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -248,7 +248,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $response = curl_exec($ch);
 $channels = json_decode($response, true);</pre>
 
-            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+            <pre data-lang-code="python" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">import requests
 
 headers = &#123;'Authorization': 'Bearer autoin_YOUR_API_KEY'&#125;
 response = requests.get('https://api.autoin.my.id/api/channels', headers=headers)
@@ -259,7 +259,7 @@ print(response.json())</pre>
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">3. Kirim Broadcast</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST https://api.autoin.my.id/api/broadcasts \
+            <pre data-lang-code="curl" class="bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">curl -X POST https://api.autoin.my.id/api/broadcasts \
   -H "Authorization: Bearer autoin_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;
@@ -270,7 +270,7 @@ print(response.json())</pre>
     "media_type": "image"
   &#125;'</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/broadcasts', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/broadcasts', &#123;
   method: 'POST',
   headers: &#123;
     'Authorization': 'Bearer autoin_YOUR_API_KEY',
@@ -285,7 +285,7 @@ print(response.json())</pre>
   &#125;)
 &#125;)</pre>
 
-            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+            <pre data-lang-code="php" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">&lt;?php
 $payload = [
     'title' => 'Promo Weekend',
     'content' => 'Diskon 50% khusus hari ini!',
@@ -305,7 +305,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $response = curl_exec($ch);
 $result = json_decode($response, true);</pre>
 
-            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+            <pre data-lang-code="python" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">import requests
 
 payload = &#123;
     'title': 'Promo Weekend',
@@ -326,7 +326,7 @@ print(response.json())</pre>
           <div class="space-y-1.5">
             <span class="block text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">4. Kirim Pesan Tunggal</span>
             
-            <pre data-lang-code="curl" class="bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">curl -X POST https://api.autoin.my.id/api/whatsapp/YOUR_CHANNEL_ID/send \
+            <pre data-lang-code="curl" class="bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">curl -X POST https://api.autoin.my.id/api/whatsapp/YOUR_CHANNEL_ID/send \
   -H "Authorization: Bearer autoin_YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '&#123;
@@ -336,7 +336,7 @@ print(response.json())</pre>
     "mediaType": "pdf"
   &#125;'</pre>
             
-            <pre data-lang-code="javascript" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/whatsapp/YOUR_CHANNEL_ID/send', &#123;
+            <pre data-lang-code="javascript" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">fetch('https://api.autoin.my.id/api/whatsapp/YOUR_CHANNEL_ID/send', &#123;
   method: 'POST',
   headers: &#123;
     'Authorization': 'Bearer autoin_YOUR_API_KEY',
@@ -350,7 +350,7 @@ print(response.json())</pre>
   &#125;)
 &#125;)</pre>
 
-            <pre data-lang-code="php" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">&lt;?php
+            <pre data-lang-code="php" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">&lt;?php
 $payload = [
     'to' => '628123456789',
     'message' => 'Halo! Ini adalah notifikasi otomatis.',
@@ -369,7 +369,7 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 $response = curl_exec($ch);
 $result = json_decode($response, true);</pre>
 
-            <pre data-lang-code="python" class="hidden bg-zinc-55 dark:bg-zinc-900 p-3 rounded-xl border border-zinc-200/50 dark:border-zinc-850 text-[9px] font-mono text-zinc-650 dark:text-zinc-350 overflow-x-auto">import requests
+            <pre data-lang-code="python" class="hidden bg-blue-50/50 dark:bg-zinc-900 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-950 dark:text-zinc-350 overflow-x-auto">import requests
 
 payload = &#123;
     'to': '628123456789',
@@ -392,10 +392,10 @@ print(response.json())</pre>
             <p class="text-[11px] text-zinc-550 dark:text-zinc-450 leading-relaxed">
               Jika pesan berhasil dikirimkan ke antrean WhatsApp, API akan mengembalikan status <strong>HTTP 200 OK</strong> dengan response body mengandung <code class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-850 font-mono text-blue-600 dark:text-blue-400">"ok": true</code>.
             </p>
-            <p class="text-[11px] text-zinc-550 dark:text-zinc-450 leading-relaxed">
+            <p class="text-[11px] text-zinc-550 dark:text-zinc-455 leading-relaxed">
               Status <code class="px-1 py-0.5 rounded bg-zinc-100 dark:bg-zinc-850 font-mono">"status": "PENDING"</code> di dalam objek result menandakan bahwa pesan telah sukses terbuat di socket client (Baileys) dan sedang dikirimkan secara instan ke nomor tujuan. Anda dapat menganggap response ini sebagai <strong>transaksi sukses</strong>.
             </p>
-            <pre class="bg-zinc-950 p-3 rounded-xl border border-zinc-850 text-[9px] font-mono text-blue-400/90 overflow-x-auto">&#123;
+            <pre class="bg-blue-50/50 dark:bg-zinc-950 p-3 rounded-xl border border-blue-100 dark:border-zinc-850 text-[9px] font-mono text-blue-900 dark:text-blue-400/90 overflow-x-auto">&#123;23;
   "ok": true,
   "result": &#123;
     "key": &#123;

@@ -1276,29 +1276,27 @@ export default function BroadcastCreate() {
               )}
             </div>
 
-
-
             {/* AI Assistant Box */}
-            <div className={`bg-gradient-to-br from-white to-zinc-50/30 dark:from-[#0c0c0e] dark:to-zinc-950/40 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden ${activeTab === 'ai' ? 'block' : 'hidden md:block'}`}>
+            <div className={`bg-gradient-to-br from-white via-blue-50/20 to-blue-50/40 dark:from-[#0c0c0e] dark:via-zinc-900/30 dark:to-zinc-955 border border-blue-100 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden ${activeTab === 'ai' ? 'block' : 'hidden md:block'}`}>
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
+              <div className="flex items-center justify-between pb-3 border-b border-blue-100/60 dark:border-zinc-800/50">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-blue-500" />
-                  <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">Asisten Penulisan AI</h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400">
+                  <h3 className="font-extrabold text-xs text-blue-950 dark:text-white uppercase tracking-wider">Asisten Penulisan AI</h3>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-blue-500/10 text-blue-600 dark:bg-emerald-500/10 dark:text-emerald-400">
                     ✦ AI Live
                   </span>
                 </div>
               </div>
                {/* AI Inner Tabs */}
-              <div className="flex p-1 bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl">
+              <div className="flex p-1 bg-blue-50/30 dark:bg-zinc-950 border border-blue-100/60 dark:border-zinc-800/80 rounded-2xl">
                 {(['rewrite', 'generate', 'optimize'] as const).map(tab => (
                   <button key={tab} type="button" onClick={() => setAiTab(tab)}
                     className={`flex-1 py-2 text-center rounded-xl text-[10px] font-bold capitalize transition-all cursor-pointer ${
                       aiTab === tab
                         ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                        : 'text-zinc-550 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200'
+                        : 'text-blue-905/70 dark:text-zinc-400 hover:text-blue-955 dark:hover:text-zinc-200'
                     }`}>
                     {tab === 'rewrite' ? 'Gaya Bahasa' : tab === 'generate' ? 'Buat Baru' : 'Audit'}
                   </button>
@@ -1308,7 +1306,7 @@ export default function BroadcastCreate() {
               {/* Rewrite Tone */}
               {aiTab === 'rewrite' && (
                 <div className="space-y-4">
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                  <p className="text-[11px] text-zinc-600 dark:text-zinc-400 leading-relaxed">
                     Tulis pesan Anda di form editor utama terlebih dahulu, lalu klik tombol gaya di bawah untuk memolesnya secara otomatis menggunakan AI.
                   </p>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
@@ -1322,7 +1320,7 @@ export default function BroadcastCreate() {
                     ].map(tone => (
                       <button key={tone.id} type="button" onClick={() => handleAiRewrite(tone.id)}
                         disabled={aiGenerating || !content.trim()}
-                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900/40 hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-700 dark:text-zinc-200 font-bold transition-all disabled:bg-zinc-150/40 dark:disabled:bg-zinc-950/20 disabled:text-zinc-400 dark:disabled:text-zinc-650 disabled:border-zinc-200/50 dark:disabled:border-zinc-900/50 disabled:cursor-not-allowed cursor-pointer shadow-sm">
+                        className="flex items-center justify-center gap-2 py-3 px-3 rounded-2xl bg-white dark:bg-zinc-900/40 hover:bg-blue-50/60 dark:hover:bg-blue-500/10 border border-blue-100/85 dark:border-zinc-800 text-[10px] text-blue-950 dark:text-zinc-200 font-bold transition-all disabled:bg-zinc-100/40 dark:disabled:bg-zinc-950/20 disabled:text-zinc-400 dark:disabled:text-zinc-600 disabled:border-blue-100/20 dark:disabled:border-zinc-900/50 disabled:cursor-not-allowed cursor-pointer shadow-xs">
                         <span className="text-xs">{tone.emoji}</span>
                         <span>{tone.label}</span>
                       </button>

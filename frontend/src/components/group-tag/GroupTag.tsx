@@ -187,13 +187,9 @@ export default function GroupTag() {
     e.preventDefault();
     if (!selectedChannel || !selectedGroupId || selectedMembers.length === 0) return;
     
-    // Construct mentions string in the message text
-    // E.g., adding mention tags at the bottom or letting Baileys trigger them
+    // Hidden mentions: We pass the selectedMembers in the mentions array so they get notified,
+    // but do not append visible @tags to the message body text to keep it neat and avoid spam.
     let finalMessage = message;
-    if (selectedMembers.length > 0) {
-      const tagText = '\n\n' + selectedMembers.map(jid => `@${jid.split('@')[0]}`).join(' ');
-      finalMessage += tagText;
-    }
 
     setSending(true);
     setSendResult(null);
