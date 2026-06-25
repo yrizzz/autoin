@@ -215,6 +215,113 @@ const getAvatarUrl = (user: User | null) => {
   return `https://www.gravatar.com/avatar/${hash}?d=mp`;
 };
 
+const renderMockPreview = () => {
+  return (
+    <div className="w-full space-y-6 p-4">
+      {/* Fake Top Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Broadcasts', value: '124,580', desc: '+12% dari bulan lalu', icon: Rocket, color: 'text-blue-500 bg-blue-500/10' },
+          { label: 'Deliverability Rate', value: '98.9%', desc: 'Sangat Stabil', icon: Activity, color: 'text-emerald-500 bg-emerald-500/10' },
+          { label: 'Device Terkoneksi', value: '8 / 8', desc: 'Semua aktif', icon: Smartphone, color: 'text-cyan-500 bg-cyan-500/10' },
+          { label: 'API Success Rate', value: '99.4%', desc: '1.2M requests', icon: Zap, color: 'text-purple-500 bg-purple-500/10' },
+        ].map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <div key={idx} className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800/40 p-4 rounded-2xl flex items-center justify-between">
+              <div>
+                <span className="text-[10px] uppercase font-black text-zinc-455 dark:text-zinc-500 block tracking-wider">{stat.label}</span>
+                <span className="text-xl font-black text-zinc-800 dark:text-white block mt-1">{stat.value}</span>
+                <span className="text-[9px] text-zinc-400 dark:text-zinc-550 block mt-1">{stat.desc}</span>
+              </div>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${stat.color} shrink-0`}>
+                <Icon className="w-5 h-5" />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fake Chart / Mid section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800/40 p-5 rounded-2xl space-y-3">
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-blue-500" />
+              Statistik Pengiriman 7 Hari Terakhir
+            </span>
+            <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono">Diperbarui 1 menit lalu</span>
+          </div>
+          {/* SVG Wave chart */}
+          <div className="h-32 w-full flex items-end">
+            <svg className="w-full h-full" viewBox="0 0 300 100" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25"/>
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,80 Q30,40 60,60 T120,30 T180,70 T240,40 T300,10 L300,100 L0,100 Z" fill="url(#chartGrad)"/>
+              <path d="M0,80 Q30,40 60,60 T120,30 T180,70 T240,40 T300,10" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round"/>
+            </svg>
+          </div>
+        </div>
+        <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800/40 p-5 rounded-2xl space-y-4">
+          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200 block">Status Akun Anda</span>
+          <div className="space-y-3">
+            {[
+              { label: 'Paket Berlangganan', value: 'Enterprise VIP' },
+              { label: 'Masa Aktif', value: 'Selamanya' },
+              { label: 'Limit Kuota Bulanan', value: 'Unlimited / Unlimited' },
+            ].map((row, idx) => (
+              <div key={idx} className="flex justify-between text-[11px] border-b border-zinc-200/30 dark:border-zinc-800/30 pb-2">
+                <span className="text-zinc-400">{row.label}</span>
+                <span className="font-bold text-zinc-800 dark:text-zinc-200">{row.value}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Fake Table */}
+      <div className="bg-zinc-50 dark:bg-zinc-900 border border-zinc-200/40 dark:border-zinc-800/40 rounded-2xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-zinc-200/40 dark:border-zinc-800/40 flex justify-between items-center bg-zinc-100/30 dark:bg-zinc-900/30">
+          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Riwayat Pesan Broadcast Terakhir</span>
+          <span className="text-[9px] text-zinc-400 dark:text-zinc-500">Menampilkan 5 data terbaru</span>
+        </div>
+        <div className="divide-y divide-zinc-200/30 dark:divide-zinc-800/30 text-[11px] p-2">
+          {[
+            { user: 'Aris Edy H', phone: '6281296451xxx', msg: 'Terima kasih telah bergabung di layanan VIP kami...', status: 'SENT', time: '10:24' },
+            { user: 'Budi Santoso', phone: '6285710294xxx', msg: 'Promo Weekend Sale diskon hingga 50% untuk Anda...', status: 'SENT', time: '09:15' },
+            { user: 'Dewi Lestari', phone: '6289938217xxx', msg: 'Pemberitahuan: Sistem maintenance berkala malam ini...', status: 'SENT', time: 'Yesterday' },
+            { user: 'Ahmad Fauzi', phone: '6281398213xxx', msg: 'Kode verifikasi OTP keamanan Anda adalah 558109...', status: 'SENT', time: '2 days ago' },
+          ].map((row, idx) => (
+            <div key={idx} className="flex items-center justify-between p-3 hover:bg-zinc-100/15 dark:hover:bg-zinc-800/15 rounded-xl transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-[13px]">
+                  {row.user[0]}
+                </div>
+                <div>
+                  <span className="font-bold text-zinc-800 dark:text-zinc-200 block">{row.user}</span>
+                  <span className="text-[9px] text-zinc-400 block">{row.phone}</span>
+                </div>
+              </div>
+              <span className="text-zinc-500 dark:text-zinc-400 max-w-[200px] truncate">{row.msg}</span>
+              <div className="flex items-center gap-3">
+                <span className="bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-[9px] font-black tracking-wider">{row.status}</span>
+                <span className="text-zinc-400 text-[10px] flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {row.time}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminLayout({ children, activePage, title, noPadding, boxed, onRefresh, refreshing }: AdminLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -626,8 +733,14 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
             
             if (!user && !loading && !isPublic) {
               return (
-                <div className="flex-1 flex items-center justify-center py-12 px-4">
-                  <div className="w-full max-w-md bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-8 text-center shadow-xl relative overflow-hidden group">
+                <div className="relative w-full min-h-[580px] flex items-center justify-center py-6 px-4 overflow-hidden rounded-3xl">
+                  {/* Blurred Mock Preview Background */}
+                  <div className="absolute inset-0 w-full h-full filter blur-[8px] opacity-40 dark:opacity-25 pointer-events-none select-none scale-[1.01] overflow-hidden">
+                    {renderMockPreview()}
+                  </div>
+
+                  {/* Glassmorphic Login Card */}
+                  <div className="relative z-10 w-full max-w-md bg-white/80 dark:bg-[#0e0e11]/85 backdrop-blur-md border border-zinc-200/60 dark:border-zinc-800/60 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden group">
                     {/* Visual background accents */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.03] dark:bg-blue-500/[0.05] rounded-full blur-2xl pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/[0.03] dark:bg-purple-500/[0.05] rounded-full blur-2xl pointer-events-none" />
@@ -646,7 +759,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
                     </p>
 
                     {/* Terms Acceptance checkbox */}
-                    <div className="flex items-start gap-2.5 text-left bg-zinc-50 dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800/80 mb-6">
+                    <div className="flex items-start gap-2.5 text-left bg-zinc-50/70 dark:bg-zinc-950/75 p-4 rounded-2xl border border-zinc-150 dark:border-zinc-800/80 mb-6">
                       <input
                         type="checkbox"
                         id="agree-restricted"
