@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
   RefreshCw, Bell, ChevronRight, Menu, X, Sun, Moon,
   Users, Smartphone, FileText, Rocket,
-  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock, Activity
+  Calendar, Cpu, Link, Lock, Tag, Receipt, Key, BookOpen, Heart, Zap, Settings, Ticket, Layers, Puzzle, Clock, Activity, MessageSquare
 } from 'lucide-react';
 
 interface AdminLayoutProps {
@@ -504,9 +504,19 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
+      <div className="shrink-0 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-[#09090b] p-3 space-y-2">
+        <a
+          href="https://wa.me/6281296451923"
+          target="_blank"
+          rel="noreferrer"
+          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 border border-emerald-200/50 dark:border-emerald-500/10 rounded-xl transition-all cursor-pointer"
+        >
+          <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+          Hubungi Support (WA)
+        </a>
+
         {user ? (
-          <div className="p-3 space-y-2">
+          <div className="space-y-2">
             <div className="flex items-center gap-3 px-2 py-2 rounded-xl bg-zinc-50 dark:bg-zinc-900">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 overflow-hidden">
                 <img src={getAvatarUrl(user)} alt={user.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -526,7 +536,7 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
             </button>
           </div>
         ) : (
-          <div className="p-3 space-y-3">
+          <div className="space-y-3">
             <a
               href={getGoogleAuthUrl()}
               onClick={handleGoogleLogin}

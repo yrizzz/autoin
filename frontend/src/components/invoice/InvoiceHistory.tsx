@@ -626,6 +626,29 @@ export default function InvoiceHistory() {
           </div>
         </div>
 
+        {/* Support Banner */}
+        <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 dark:border-emerald-500/10 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden group">
+          <div className="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/[0.03] rounded-full blur-3xl pointer-events-none" />
+          <div className="space-y-2 max-w-xl">
+            <h3 className="text-sm font-extrabold text-zinc-900 dark:text-white uppercase tracking-wider font-sans flex items-center gap-2">
+              <HelpCircle className="w-4 h-4 text-emerald-500 animate-bounce" />
+              Butuh Bantuan & Custom Plan?
+            </h3>
+            <p className="text-xs text-zinc-550 dark:text-zinc-400 leading-relaxed">
+              Jika Anda memiliki pertanyaan seputar pembayaran, kendala teknis, atau membutuhkan paket khusus (Custom Enterprise Plan) dengan limit yang lebih besar, silakan hubungi WhatsApp support kami.
+            </p>
+          </div>
+          <a
+            href="https://wa.me/6281296451923"
+            target="_blank"
+            rel="noreferrer"
+            className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-bold shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 shrink-0 border border-emerald-400/25 hover:scale-[1.02] active:scale-[0.98] duration-300"
+          >
+            <MessageSquare className="w-4 h-4" />
+            Hubungi WhatsApp Support
+          </a>
+        </div>
+
         {/* Invoice Section */}
         <div className="space-y-6">
           <div>
