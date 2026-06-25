@@ -91,6 +91,11 @@ export default function Plugins() {
   const [timeoutMs, setTimeoutMs] = useState(8000);
   const [code, setCode] = useState('');
 
+  // AI builder panel
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiInput, setAiInput] = useState('');
+  const [aiBusy, setAiBusy] = useState(false);
+
   // Test panel
   const [testArgs, setTestArgs] = useState('');
   const [testing, setTesting] = useState(false);
@@ -134,6 +139,8 @@ export default function Plugins() {
     setCode('');
     setTestArgs('');
     setTestResult(null);
+    setAiOpen(false);
+    setAiInput('');
     setModalOpen(true);
   }
 
@@ -155,7 +162,31 @@ export default function Plugins() {
     setCode(p.code);
     setTestArgs('');
     setTestResult(null);
+    setAiOpen(false);
+    setAiInput('');
     setModalOpen(true);
+  }
+
+  async function generateWithAI() {
+    if (!aiInput.trim() || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const res = await api.post<{ code: string | null; error?: string }>('/api/ai/plugin', {
+        input: aiInput,
+        context: code.trim() || undefined, // perbaiki script yang sudah ada bila ada
+      }, { timeout: 60000 });
+      if (res.code) {
+        setCode(res.code);
+        setAiOpen(false);
+        showToast('Script dibuat AI. Cek & tes sebelum simpan ya.', 'success');
+      } else {
+        showToast(res.error || 'AI tidak menghasilkan script.', 'error');
+      }
+    } catch (e: any) {
+      showToast(e.message ?? 'Gagal memanggil AI.', 'error');
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function handleToggle(p: Plugin) {
@@ -561,11 +592,43 @@ export default function Plugins() {
                   <label className={`${labelCls} flex items-center gap-1.5`}>
                     <Terminal className="w-3.5 h-3.5" /> Script <span className="font-normal normal-case text-zinc-400">(body handler JS)</span>
                   </label>
-                  <button type="button" onClick={loadExample}
-                    className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-2 py-1 rounded-md transition">
-                    <Sparkles className="w-3 h-3" /> Sisipkan contoh
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button type="button" onClick={() => setAiOpen(o => !o)}
+                      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-md transition ${aiOpen ? 'bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-300' : 'text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10'}`}>
+                      <Sparkles className="w-3 h-3" /> Buat dengan AI
+                    </button>
+                    <button type="button" onClick={loadExample}
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 px-2 py-1 rounded-md transition">
+                      <Sparkles className="w-3 h-3" /> Sisipkan contoh
+                    </button>
+                  </div>
                 </div>
+
+                {/* AI builder: tempel fetch + contoh respons -> AI bikinkan script siap pakai */}
+                {aiOpen && (
+                  <div className="mb-2 rounded-xl border border-violet-200 dark:border-violet-500/30 bg-violet-50/60 dark:bg-violet-500/10 p-3">
+                    <p className="text-[11px] font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1.5 mb-1.5">
+                      <Sparkles className="w-3.5 h-3.5" /> Tempel <code className="font-mono">fetch</code>/cURL + contoh respons JSON-nya
+                    </p>
+                    <textarea
+                      value={aiInput}
+                      onChange={e => setAiInput(e.target.value)}
+                      rows={6}
+                      placeholder={"Contoh:\nfetch('https://api.contoh.com/cek?nik=123', { headers: { 'x-api-key': 'pk_xxx' } })\n\nResponse:\n{ \"status\": true, \"data\": { \"nama\": \"Budi\", \"alamat\": \"...\" } }\n\nMau: .cek <nik> -> balas nama & alamat"}
+                      className={`w-full ${inputCls} font-mono text-[12px] bg-white dark:bg-zinc-900 resize-y`} />
+                    <div className="flex items-center justify-between gap-2 mt-2">
+                      <span className="text-[10.5px] text-violet-600/80 dark:text-violet-400/70">
+                        {code.trim() ? 'AI akan memperbaiki/melengkapi script yang ada di editor.' : 'AI menulis script baru dari nol.'}
+                      </span>
+                      <button type="button" onClick={generateWithAI} disabled={aiBusy || !aiInput.trim()}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white text-xs font-bold disabled:opacity-50 transition shrink-0">
+                        {aiBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                        {aiBusy ? 'Membuat…' : 'Buatkan Script'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <CodeEditor value={code} onChange={setCode} minRows={13}
                   placeholder={"// Tulis script-mu di sini. Contoh paling sederhana:\n// return 'pong 🏓';\n//\n// Tersedia: ctx (args, sender, ...) & helpers (getJson, getText, ...).\n// Klik \"Sisipkan contoh\" untuk template .xprofile."} />
                 <p className="mt-1.5 text-[11px] text-zinc-400 leading-relaxed">

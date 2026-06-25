@@ -164,6 +164,73 @@ class AIController extends Controller
         ]));
     }
 
+    /**
+     * AI Plugin Script Builder.
+     * User menempel snippet fetch + contoh respons (atau deskripsi), AI mengubahnya
+     * jadi body handler plugin yang siap pakai sesuai kontrak runtime (sandbox worker).
+     */
+    public function generatePlugin(Request $request)
+    {
+        $request->validate([
+            'input'   => 'required|string|max:20000',
+            'context' => 'nullable|string|max:8000', // kode lama (opsional) utk diperbaiki
+        ]);
+
+        $input   = $request->input('input');
+        $context = trim((string) $request->input('context', ''));
+
+        // Kontrak runtime — HARUS sesuai whatsapp-service/src/pluginWorker.js
+        $contract = <<<'TXT'
+Kamu adalah generator script PLUGIN untuk bot WhatsApp. Tugasmu: ubah input user (snippet fetch/cURL + contoh respons JSON, atau deskripsi) menjadi BODY HANDLER JavaScript yang siap dijalankan di sandbox.
+
+ATURAN RUNTIME (WAJIB dipatuhi, sandbox ketat):
+- Kode kamu adalah ISI dari `(async () => { ... })()`. Jadi boleh pakai top-level `await` dan `return`.
+- DILARANG memakai: require, import, fetch, axios, process, fs, Buffer, setTimeout, console, window, global. Tidak ada akses jaringan/file selain lewat `helpers`.
+- Variabel yang TERSEDIA: `ctx`, `helpers`, JSON, Math, Date, Promise, RegExp, Error, String, Number, Boolean, Array, Object, parseInt, parseFloat, isNaN, isFinite, encodeURIComponent, decodeURIComponent, encodeURI, decodeURI.
+- `ctx` = { args: string[], rawArgs: string, text: string, sender, chatId, sessionId, media? }. Argumen setelah trigger ada di `ctx.args` (mis. ".xprofile budi" -> ctx.args[0] = "budi").
+- HTTP HANYA via `helpers`:
+  • `await helpers.getJson(url, { headers })` -> parsed JSON
+  • `await helpers.getText(url, { headers })` -> string
+  • `await helpers.getBuffer(url, { headers })` -> Buffer
+  • `await helpers.post(url, bodyObject, { headers })` -> JSON/teks
+  • `await helpers.upload(url, { data, field, filename, contentType }, { fields, headers })` -> untuk kirim file (mis. ctx.media)
+  • `helpers.log(...)` untuk debug (BUKAN console.log)
+- Output WAJIB: `return` sebuah string, ATAU object `{ text, mediaUrl, mediaType }` (mediaType: 'image' | 'video' | 'audio' | 'document'). mediaUrl boleh URL gambar/file.
+- Validasi argumen: jika argumen wajib kosong, `return` pesan cara pakai (mis. 'Pemakaian: .xprofile <username>').
+- Jika ada API key di snippet user, simpan di `const API_KEY = '...'` lalu kirim lewat headers. Jangan hardcode token rahasia lain.
+- Tangani error/respons kosong dengan ramah (bahasa Indonesia), jangan throw mentah.
+- Format teks balasan rapi untuk WhatsApp (boleh *bold*, emoji secukupnya, baris baru).
+
+PENTING OUTPUT: Balas HANYA kode JavaScript murni (body handler). TANPA penjelasan, TANPA komentar pembuka/penutup berlebihan, TANPA pembungkus ```/markdown, TANPA mendefinisikan fungsi pembungkus async. Mulai langsung dari baris kode pertama.
+TXT;
+
+        $task = $context !== ''
+            ? "Perbaiki / lengkapi script plugin berikut agar sesuai kontrak runtime dan permintaan user.\n\n--- SCRIPT SAAT INI ---\n{$context}\n\n--- PERMINTAAN / INPUT USER (fetch + contoh respons) ---\n{$input}"
+            : "Buat script plugin dari input user berikut (snippet fetch + contoh respons / deskripsi):\n\n{$input}";
+
+        $prompt = $contract . "\n\n" . $task;
+
+        $result = $this->callAI($prompt, 40);
+
+        if (!$result) {
+            return response()->json([
+                'code'  => null,
+                'error' => 'AI tidak merespons. Coba lagi sebentar.',
+            ], 422);
+        }
+
+        // Bersihkan pembungkus markdown bila AI tetap menambahkannya.
+        $code = trim($result);
+        $code = preg_replace('/^```(?:js|javascript)?\s*/i', '', $code);
+        $code = preg_replace('/```\s*$/', '', $code);
+        $code = trim($code);
+
+        return response()->json([
+            'code'         => $code,
+            'is_simulated' => false,
+        ]);
+    }
+
     // ── Local Simulation Engines (fallback) ───────────────────────────────────
 
     private function simulateRewrite(string $text, string $tone): string

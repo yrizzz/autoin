@@ -129,6 +129,7 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
     Route::post('ai/rewrite', [AIController::class, 'rewrite']);
     Route::post('ai/generate', [AIController::class, 'generate']);
     Route::post('ai/optimize', [AIController::class, 'optimize']);
+    Route::post('ai/plugin', [AIController::class, 'generatePlugin']);
 
     Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
     Route::get('analytics/broadcasts', [AnalyticsController::class, 'broadcasts']);
