@@ -18,7 +18,7 @@ class Broadcast extends Model
         return [
             'scheduled_at'     => 'datetime',
             'sent_at'          => 'datetime',
-            'auto_tag_members' => 'boolean',
+            'auto_tag_members' => 'array',
         ];
     }
 

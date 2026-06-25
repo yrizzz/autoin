@@ -121,13 +121,61 @@ class SendBroadcastJob implements ShouldQueue
         $mediaType = $this->broadcast->media_type;
 
         $mentions = null;
-        if ($channel->platform === 'whatsapp' && $recipientId && str_ends_with($recipientId, '@g.us') && ($this->broadcast->auto_tag_members ?? false)) {
+        $autoTag = $this->broadcast->auto_tag_members;
+        
+        $isEnabled = false;
+        $tagMode = 'all';
+        $customMembers = [];
+
+        if ($channel->platform === 'whatsapp' && $recipientId && str_ends_with($recipientId, '@g.us')) {
+            if (is_bool($autoTag) && $autoTag) {
+                $isEnabled = true;
+            } elseif (is_array($autoTag)) {
+                if (isset($autoTag['enabled']) && $autoTag['enabled']) {
+                    $isEnabled = true;
+                }
+                
+                if (isset($autoTag[$recipientId])) {
+                    $groupConf = $autoTag[$recipientId];
+                    $isEnabled = $groupConf['enabled'] ?? true;
+                    $tagMode = $groupConf['mode'] ?? 'all';
+                    $customMembers = $groupConf['custom_members'] ?? [];
+                }
+            }
+        }
+
+        if ($isEnabled) {
             $groupMetadata = app(WhatsAppService::class)->getGroupMetadata($channel, $recipientId);
             if ($groupMetadata && isset($groupMetadata['participants'])) {
                 $participants = $groupMetadata['participants'];
-                $mentions = array_map(function ($p) {
-                    return $p['id'];
-                }, $participants);
+                
+                $targetParticipants = [];
+                foreach ($participants as $p) {
+                    if ($tagMode === 'all') {
+                        $targetParticipants[] = $p['id'];
+                    } elseif ($tagMode === 'admin') {
+                        if (!empty($p['admin'])) {
+                            $targetParticipants[] = $p['id'];
+                        }
+                    } elseif ($tagMode === 'custom') {
+                        $pId = $p['id'];
+                        $pPhone = explode('@', $pId)[0];
+                        
+                        $isMatched = false;
+                        foreach ($customMembers as $cm) {
+                            $cmPhone = explode('@', $cm)[0];
+                            if ($cm === $pId || $cmPhone === $pPhone) {
+                                $isMatched = true;
+                                break;
+                            }
+                        }
+                        if ($isMatched) {
+                            $targetParticipants[] = $pId;
+                        }
+                    }
+                }
+
+                $mentions = $targetParticipants;
 
                 if (!empty($mentions)) {
                     $tagText = "\n\n" . implode(' ', array_map(function ($jid) {

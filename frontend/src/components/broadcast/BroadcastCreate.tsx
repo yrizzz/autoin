@@ -61,15 +61,55 @@ function RecipientModal({
   onClose,
   onToggle,
   onClearAll,
+  autoTagMembers,
+  onUpdateGroupTagSettings,
 }: {
   channel: Channel;
   state: ChannelRecipientState;
   onClose: () => void;
   onToggle: (id: string) => void;
   onClearAll: () => void;
+  autoTagMembers: Record<string, { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }>;
+  onUpdateGroupTagSettings: (groupId: string, settings: { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }) => void;
 }) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'contacts' | 'groups' | 'selected'>('contacts');
+
+  // Sub-view states for group tagging settings
+  const [editingGroupTag, setEditingGroupTag] = useState<Recipient | null>(null);
+  const [tagMode, setTagMode] = useState<'all' | 'admin' | 'custom'>('all');
+  const [customMembers, setCustomMembers] = useState<string[]>([]);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+
+  // Preload group member data when editingGroupTag is active
+  useEffect(() => {
+    if (!editingGroupTag) return;
+
+    const currentConf = autoTagMembers[editingGroupTag.id];
+    if (currentConf) {
+      setTagMode(currentConf.mode || 'all');
+      setCustomMembers(currentConf.custom_members || []);
+    } else {
+      setTagMode('all');
+      setCustomMembers([]);
+    }
+
+    setLoadingMembers(true);
+    api.get<{ metadata: { participants: any[] } }>(`/api/whatsapp/${channel.id}/groups/${encodeURIComponent(editingGroupTag.id)}`)
+      .then(res => {
+        if (res && res.metadata && res.metadata.participants) {
+          setGroupMembers(res.metadata.participants);
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load group members:', err);
+      })
+      .finally(() => {
+        setLoadingMembers(false);
+      });
+  }, [editingGroupTag, channel.id, autoTagMembers]);
 
   const contacts = state.items.filter(r => r.type === 'contact');
   const groups   = state.items.filter(r => r.type === 'group');
@@ -92,8 +132,201 @@ function RecipientModal({
     }
   }
 
-  const platformLabel = 'WhatsApp';
   const platformColor = 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20';
+
+  if (editingGroupTag) {
+    return (
+      <div className="fixed inset-0 z-55 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          
+          {/* Header */}
+          <div className="px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center border bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20 shrink-0">
+                <Tag className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-xs font-bold text-zinc-900 dark:text-white truncate">Setting Auto Tag Member</h3>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">{editingGroupTag.name}</p>
+              </div>
+            </div>
+            <button onClick={() => setEditingGroupTag(null)} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 cursor-pointer">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Settings Body */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {/* Mode Select */}
+            <div className="space-y-2.5">
+              <label className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Metode Tagging</label>
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { id: 'all', label: 'Semua Anggota', desc: 'Tag seluruh anggota' },
+                  { id: 'admin', label: 'Hanya Admin', desc: 'Tag pengelola grup' },
+                  { id: 'custom', label: 'Kustom', desc: 'Pilih anggota bebas' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTagMode(opt.id as any)}
+                    className={`p-3 rounded-xl border text-left flex flex-col justify-between h-20 transition-all cursor-pointer ${
+                      tagMode === opt.id
+                        ? 'border-blue-500 bg-blue-500/5 text-blue-650 dark:text-blue-400 shadow-sm'
+                        : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/30 text-zinc-550 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                    }`}
+                  >
+                    <span className="text-xs font-extrabold">{opt.label}</span>
+                    <span className="text-[9px] leading-normal text-zinc-400 dark:text-zinc-500">{opt.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Members Selection List */}
+            {tagMode === 'custom' && (
+              <div className="space-y-3 border-t border-zinc-100 dark:border-zinc-800/50 pt-4 animate-in fade-in slide-in-from-top-2 duration-250">
+                <div className="flex items-center justify-between gap-3">
+                  <label className="text-[10px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
+                    Pilih Anggota ({customMembers.length} Terpilih)
+                  </label>
+                  {groupMembers.length > 0 && (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomMembers(groupMembers.map(m => m.id))}
+                        className="text-[10px] font-extrabold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
+                      >
+                        Pilih Semua
+                      </button>
+                      <span className="text-zinc-300 dark:text-zinc-700">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setCustomMembers([])}
+                        className="text-[10px] font-extrabold text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Member Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama atau nomor anggota..."
+                    value={memberSearch}
+                    onChange={e => setMemberSearch(e.target.value)}
+                    className="w-full pl-9 pr-4 py-1.5 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                {/* Member List */}
+                <div className="border border-zinc-200 dark:border-zinc-800 rounded-xl max-h-48 overflow-y-auto p-2 bg-zinc-50/30 dark:bg-zinc-950/20 space-y-1">
+                  {loadingMembers ? (
+                    <div className="flex flex-col items-center justify-center py-8 gap-2">
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                      <span className="text-[10px] text-zinc-400">Memuat anggota grup...</span>
+                    </div>
+                  ) : groupMembers.length === 0 ? (
+                    <div className="text-center py-8 text-zinc-400 text-[10px] italic">
+                      Tidak ada anggota ditemukan atau gagal memuat.
+                    </div>
+                  ) : (
+                    (() => {
+                      const q = memberSearch.toLowerCase();
+                      const filteredMembers = groupMembers.filter(m => 
+                        (m.name || '').toLowerCase().includes(q) || 
+                        (m.id || '').includes(q)
+                      );
+
+                      if (filteredMembers.length === 0) {
+                        return <div className="text-center py-8 text-zinc-400 text-[10px]">Anggota tidak ditemukan.</div>;
+                      }
+
+                      return filteredMembers.map(m => {
+                        const isMemberSelected = customMembers.includes(m.id);
+                        const cleanPhone = m.id.replace('@s.whatsapp.net', '').replace('@lid', '');
+                        return (
+                          <label
+                            key={m.id}
+                            className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all cursor-pointer ${
+                              isMemberSelected
+                                ? 'bg-blue-50/30 dark:bg-blue-900/5 border-blue-200/50 dark:border-blue-500/20'
+                                : 'bg-white dark:bg-zinc-900/50 border-zinc-200/50 dark:border-zinc-800/40 hover:bg-zinc-50 dark:hover:bg-zinc-850'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isMemberSelected}
+                              onChange={() => {
+                                if (isMemberSelected) {
+                                  setCustomMembers(prev => prev.filter(x => x !== m.id));
+                                } else {
+                                  setCustomMembers(prev => [...prev, m.id]);
+                                }
+                              }}
+                              className="w-3.5 h-3.5 rounded text-blue-650 accent-blue-600 cursor-pointer"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[11px] font-bold text-zinc-750 dark:text-zinc-300 truncate">
+                                  {m.name || cleanPhone}
+                                </span>
+                                {m.admin && (
+                                  <span className="text-[7px] font-extrabold uppercase px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 shrink-0">
+                                    Admin
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[9px] text-zinc-400 font-mono block truncate mt-0.5">
+                                {cleanPhone}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      });
+                    })()
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 py-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shrink-0 flex items-center justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={() => setEditingGroupTag(null)}
+              className="px-4 py-2 text-xs font-bold text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl cursor-pointer transition-all"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                onUpdateGroupTagSettings(editingGroupTag.id, {
+                  enabled: true,
+                  mode: tagMode,
+                  custom_members: customMembers,
+                });
+                if (!state.selected.has(editingGroupTag.id)) {
+                  onToggle(editingGroupTag.id);
+                }
+                setEditingGroupTag(null);
+              }}
+              className="bg-blue-600 hover:bg-blue-550 text-white px-5 py-2 text-xs font-bold rounded-xl cursor-pointer transition-all shadow-md shadow-blue-500/10"
+            >
+              Simpan Pengaturan
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-sm">
@@ -166,26 +399,54 @@ function RecipientModal({
                 const isSelected = state.selected.has(r.id);
                 const isGroup = r.type === 'group';
                 return (
-                  <label key={r.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
+                  <div key={r.id} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                     isSelected
                       ? 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-200 dark:border-blue-500/30'
                       : 'bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900'
                   }`}>
-                    <input type="checkbox" checked={isSelected} onChange={() => onToggle(r.id)}
-                      className="w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer" />
-                    <div className={`w-8 h-8 rounded-full ${avatarColor(r.id)} flex items-center justify-center text-white text-[10px] font-extrabold uppercase shrink-0`}>
-                      {r.name.slice(0, 2)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-250 truncate">{r.name}</span>
-                        {isGroup && (
-                          <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 shrink-0">Grup</span>
-                        )}
+                    <label className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer">
+                      <input type="checkbox" checked={isSelected} onChange={() => onToggle(r.id)}
+                        className="w-4 h-4 rounded text-blue-650 accent-blue-600 cursor-pointer" />
+                      <div className={`w-8 h-8 rounded-full ${avatarColor(r.id)} flex items-center justify-center text-white text-[10px] font-extrabold uppercase shrink-0`}>
+                        {r.name.slice(0, 2)}
                       </div>
-                      <div className="text-[10px] text-zinc-400 font-mono truncate mt-0.5">{r.phone || r.id}</div>
-                    </div>
-                  </label>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-zinc-800 dark:text-zinc-250 truncate">{r.name}</span>
+                          {isGroup && (
+                            <span className="text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20 shrink-0">Grup</span>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-zinc-400 font-mono truncate mt-0.5">{r.phone || r.id}</div>
+                      </div>
+                    </label>
+
+                    {isGroup && (() => {
+                      const hasTagSettings = autoTagMembers[r.id]?.enabled;
+                      const mode = autoTagMembers[r.id]?.mode;
+                      return (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setEditingGroupTag(r);
+                          }}
+                          className={`ml-2 px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer border shrink-0 ${
+                            hasTagSettings
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450'
+                              : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20'
+                          }`}
+                        >
+                          <Tag className="w-3 h-3" />
+                          {hasTagSettings 
+                            ? `Tag: ${mode === 'all' ? 'Semua' : mode === 'admin' ? 'Admin' : 'Kustom'}`
+                            : 'Tag Member'
+                          }
+                        </button>
+                      );
+                    })()}
+                  </div>
                 );
               })}
             </div>
@@ -264,7 +525,7 @@ export default function BroadcastCreate() {
 
   const [scheduledAt, setScheduledAt]     = useState('');
   const [recurring, setRecurring]         = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
-  const [autoTagMembers, setAutoTagMembers] = useState(false);
+  const [autoTagMembers, setAutoTagMembers] = useState<Record<string, { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }>>({});
 
   const [mediaUrls, setMediaUrls]         = useState<string[]>([]);
   const [mediaType, setMediaType]         = useState<'image' | 'video' | 'pdf' | 'document'>('image');
@@ -534,7 +795,7 @@ export default function BroadcastCreate() {
         setResult({ ok: true, message: `📅 Broadcast dijadwalkan pada ${new Date(scheduledAt).toLocaleString('id-ID')}` });
         setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
         setScheduledAt(''); setRecurring('none'); setRecipientState({});
-        setAutoTagMembers(false);
+        setAutoTagMembers({});
         setActiveTab('editor');
       }
     } catch (e: any) {
@@ -547,7 +808,7 @@ export default function BroadcastCreate() {
   const resetForm = () => {
     setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
     setScheduledAt(''); setRecurring('none'); setRecipientState({});
-    setAutoTagMembers(false);
+    setAutoTagMembers({});
     setActiveTab('editor');
     setProgressModalOpen(false);
     setActiveBroadcastId(null);
@@ -623,6 +884,13 @@ export default function BroadcastCreate() {
           onClose={() => setRecipientModal(null)}
           onToggle={id => toggleRecipient(recipientModal.id, id)}
           onClearAll={() => clearAllRecipients(recipientModal.id)}
+          autoTagMembers={autoTagMembers}
+          onUpdateGroupTagSettings={(groupId, settings) => {
+            setAutoTagMembers(prev => ({
+              ...prev,
+              [groupId]: settings,
+            }));
+          }}
         />
       )}
 
@@ -1008,25 +1276,7 @@ export default function BroadcastCreate() {
               )}
             </div>
 
-            {/* Setting Auto Tag Member */}
-            <div className={`bg-white dark:bg-[#0c0c0e] border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-4 ${activeTab === 'editor' ? 'block' : 'hidden md:block'}`}>
-              <div className="flex items-center justify-between pb-3 border-b border-zinc-100 dark:border-zinc-800/50">
-                <div className="flex items-center gap-2">
-                  <Tag className="w-4 h-4 text-blue-500" />
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-extrabold text-xs text-zinc-900 dark:text-white uppercase tracking-wider">Setting Auto Tag Member</h3>
-                    <span className="bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[9px] font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Premium</span>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" checked={autoTagMembers} onChange={e => setAutoTagMembers(e.target.checked)} className="sr-only peer" />
-                  <div className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500"></div>
-                </label>
-              </div>
-              <p className="text-[11px] text-zinc-550 dark:text-zinc-400 leading-relaxed">
-                Jika diaktifkan, saat broadcast dikirimkan ke target <strong>Grup WhatsApp</strong>, sistem akan secara otomatis me-mention (tag) seluruh anggota grup tersebut di dalam pesan sehingga mereka mendapatkan notifikasi langsung (tag biru).
-              </p>
-            </div>
+
 
             {/* AI Assistant Box */}
             <div className={`bg-gradient-to-br from-white to-zinc-50/30 dark:from-[#0c0c0e] dark:to-zinc-950/40 border border-zinc-200 dark:border-zinc-800/80 rounded-3xl p-5 sm:p-6 shadow-sm space-y-5 relative overflow-hidden ${activeTab === 'ai' ? 'block' : 'hidden md:block'}`}>
