@@ -143,8 +143,13 @@ class BroadcastController extends Controller
             ]);
         }
 
-        // If send_now parameter is set (defaults to true if using developer aliases, false otherwise)
-        $sendNowDefault = ($request->has('message') || $request->has('channel_id'));
+        // When to send immediately (unless scheduled). The public API (called
+        // with an API key) and the developer aliases (message/channel_id) send
+        // right away — matching the docs' "Kirim Campaign Broadcast". The web
+        // dashboard (cookie/JWT) keeps the old behaviour: create a draft, then
+        // call /broadcasts/{id}/send explicitly. `send_now` always wins if sent.
+        $isApiKey = (bool) $request->attributes->get('is_api_key', false);
+        $sendNowDefault = $isApiKey || $request->has('message') || $request->has('channel_id');
         if (empty($data['scheduled_at']) && $request->input('send_now', $sendNowDefault)) {
             $this->service->send($broadcast);
         }

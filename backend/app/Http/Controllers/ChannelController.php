@@ -48,10 +48,14 @@ class ChannelController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
 
         $data = $request->validate([
-            'name'        => 'sometimes|string|max:255',
-            'credentials' => 'sometimes|array',
-            'target_id'   => 'nullable|string',
-            'status'      => 'sometimes|in:active,inactive,error',
+            'name'               => 'sometimes|string|max:255',
+            'credentials'        => 'sometimes|array',
+            'target_id'          => 'nullable|string',
+            'status'             => 'sometimes|in:active,inactive,error',
+            // Persistent status-privacy blacklist: contact numbers/JIDs hidden
+            // from this device's WhatsApp Status ("My contacts except…").
+            'status_blacklist'   => 'sometimes|nullable|array',
+            'status_blacklist.*' => 'string',
         ]);
 
         $channel->update($data);

@@ -234,9 +234,15 @@ print(response.json())`
               Autentikasi Token
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
-              Seluruh request API wajib menyertakan HTTP header <code className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px] text-blue-600 dark:text-blue-400">Authorization: Bearer &lt;YOUR_API_KEY&gt;</code>. 
+              Seluruh request API wajib menyertakan HTTP header <code className="px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 font-mono text-[10px] text-blue-600 dark:text-blue-400">Authorization: Bearer &lt;YOUR_API_KEY&gt;</code>.
               Anda dapat memperoleh API Key melalui halaman pengaturan Kredensial API Key di dashboard ini.
             </p>
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-200 dark:border-amber-500/20 rounded-xl">
+              <span className="text-amber-500 shrink-0 text-sm leading-none mt-0.5">⚠️</span>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium leading-relaxed">
+                <strong>Wajib isi IP Whitelist dulu.</strong> Sebelum API Key bisa dipakai, buka halaman Kredensial API Key lalu isi IP Whitelist — masukkan IP server Anda, atau <code className="font-mono">*</code> untuk mengizinkan semua IP. Kalau dibiarkan kosong, semua request ditolak dengan <code className="font-mono">403</code>.
+              </p>
+            </div>
           </div>
 
           {/* Section 2: Upload File / Media */}
@@ -322,6 +328,21 @@ print(response.json())`
                   </tbody>
                 </table>
               </div>
+
+              <div className="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-3">
+                <span className="block text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Struktur Response Sukses (JSON)</span>
+                <pre className="code-block p-3 text-[10px] font-mono leading-relaxed">
+{`{
+  "ok": true,
+  "result": {
+    "key": { "id": "BAE5XXXX", "remoteJid": "628123456789@s.whatsapp.net" }
+  }
+}`}
+                </pre>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-2">
+                  Jika <code className="font-mono text-[10px]">channel_id</code> salah / kosong / bukan milik akun Anda, response <code className="font-mono text-[10px]">404</code>: <code className="font-mono text-[10px]">{`{ "status": "error", "message": "Channel ID tidak valid atau bukan milik akun Anda." }`}</code>. Lihat ID channel Anda lewat <code className="font-mono text-[10px]">GET /api/channels</code> atau di menu Device.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -333,6 +354,7 @@ print(response.json())`
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
               Gunakan endpoint ini untuk membuat campaign massal yang dapat dikirimkan ke banyak nomor penerima sekaligus melalui satu atau lebih device / channel terhubung secara paralel.
+              Lewat API key, campaign <strong>langsung dikirim</strong> begitu request diterima — kecuali Anda mengisi <code className="font-mono text-[10px]">scheduled_at</code> untuk menjadwalkannya. Semua <code className="font-mono text-[10px]">channel_ids</code> wajib milik akun Anda sendiri.
             </p>
 
             <div className="bg-zinc-50 dark:bg-zinc-900 p-4 rounded-xl border border-zinc-200/50 dark:border-zinc-850 space-y-3">

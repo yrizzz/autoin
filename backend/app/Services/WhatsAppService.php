@@ -16,7 +16,7 @@ class WhatsAppService
         $this->secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
     }
 
-    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null, ?array $mentions = null): array
+    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null, ?array $mentions = null, ?array $statusExcludeJidList = null): array
     {
         $content = $content ?? '';
         $credentials = $channel->credentials;
@@ -43,6 +43,9 @@ class WhatsAppService
             if ($statusJidList !== null) {
                 $payload['statusJidList'] = $statusJidList;
             }
+            if ($statusExcludeJidList !== null) {
+                $payload['statusExcludeJidList'] = $statusExcludeJidList;
+            }
             if ($mentions !== null) {
                 $payload['mentions'] = $mentions;
             }
@@ -64,6 +67,9 @@ class WhatsAppService
         if ($statusJidList !== null) {
             $payload['statusJidList'] = $statusJidList;
         }
+        if ($statusExcludeJidList !== null) {
+            $payload['statusExcludeJidList'] = $statusExcludeJidList;
+        }
         if ($mentions !== null) {
             $payload['mentions'] = $mentions;
         }
@@ -83,6 +89,9 @@ class WhatsAppService
             ];
             if ($statusJidList !== null) {
                 $payload['statusJidList'] = $statusJidList;
+            }
+            if ($statusExcludeJidList !== null) {
+                $payload['statusExcludeJidList'] = $statusExcludeJidList;
             }
             Http::withHeader('x-api-secret', $this->secret)
                 ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);

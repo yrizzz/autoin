@@ -7,13 +7,14 @@ use Illuminate\Support\Facades\Crypt;
 
 class Channel extends Model
 {
-    protected $fillable = ['user_id', 'name', 'platform', 'credentials', 'target_id', 'status', 'synced_data', 'last_used_at'];
+    protected $fillable = ['user_id', 'name', 'platform', 'credentials', 'target_id', 'status', 'synced_data', 'status_blacklist', 'last_used_at'];
 
     protected function casts(): array
     {
         return [
-            'last_used_at' => 'datetime',
-            'synced_data'  => 'array',
+            'last_used_at'     => 'datetime',
+            'synced_data'      => 'array',
+            'status_blacklist' => 'array',
         ];
     }
 

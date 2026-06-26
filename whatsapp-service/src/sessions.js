@@ -1042,7 +1042,7 @@ class SessionManager extends EventEmitter {
     } catch { /* non-fatal */ }
   }
 
-  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null, mentions = null) {
+  async send(sessionId, to, message, mediaUrl = null, mediaType = null, quoted = null, backgroundColor = null, font = null, statusJidList = null, mentions = null, statusExcludeJidList = null) {
     console.log(`[sessions] send: sessionId=${sessionId} to=${to} messageLength=${message?.length ?? 0} mediaUrl=${mediaUrl} mediaType=${mediaType} backgroundColor=${backgroundColor} font=${font} statusJidListLength=${statusJidList?.length ?? 0} mentionsLength=${mentions?.length ?? 0}`);
     const sock = this._sessions.get(sessionId);
     if (!sock) throw new Error('Session not found');
@@ -1142,6 +1142,25 @@ class SessionManager extends EventEmitter {
 
       // Remove duplicates
       finalStatusJidList = Array.from(new Set(finalStatusJidList));
+
+      // Persistent status-privacy blacklist ("My contacts except…"): drop any
+      // recipient whose phone number is on the device's hidden list. Matching is
+      // done on digits only (after LID→phone translation + device-suffix strip)
+      // so it works regardless of JID format the blacklist was saved in.
+      if (Array.isArray(statusExcludeJidList) && statusExcludeJidList.length > 0) {
+        const toNum = (id) => {
+          if (!id || typeof id !== 'string') return '';
+          let v = this.translateJid(sessionId, id.trim());
+          v = v.split('@')[0].split(':')[0];
+          return v.replace(/\D/g, '');
+        };
+        const excludeSet = new Set(statusExcludeJidList.map(toNum).filter(Boolean));
+        if (excludeSet.size > 0) {
+          const before = finalStatusJidList.length;
+          finalStatusJidList = finalStatusJidList.filter(j => !excludeSet.has(toNum(j)));
+          console.log(`[sessions] status blacklist applied: ${before} → ${finalStatusJidList.length} recipients (hidden ${excludeSet.size})`);
+        }
+      }
 
       // Fallback to own JID when contacts not synced
       if (finalStatusJidList.length === 0) {

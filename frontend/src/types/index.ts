@@ -18,6 +18,9 @@ export interface Channel {
   last_used_at: string | null;
   created_at: string;
   credentials?: Record<string, any>;
+  // Persistent status-privacy blacklist: contact JIDs/numbers hidden from this
+  // device's WhatsApp Status ("My contacts except…").
+  status_blacklist?: string[] | null;
 }
 
 export interface Broadcast {

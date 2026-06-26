@@ -180,8 +180,18 @@ class SendBroadcastJob implements ShouldQueue
             }
         }
 
+        // For WhatsApp Status posts, apply the device's persistent privacy
+        // blacklist so hidden contacts are excluded from the audience.
+        $statusExclude = null;
+        if ($recipientId === 'status@broadcast') {
+            $blacklist = $channel->status_blacklist ?? [];
+            if (!empty($blacklist)) {
+                $statusExclude = array_values($blacklist);
+            }
+        }
+
         return match($channel->platform) {
-            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId, null, $mentions),
+            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId, null, $mentions, $statusExclude),
             'telegram'  => $this->sendTelegram($channel, $content),
             default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };

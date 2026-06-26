@@ -5,7 +5,7 @@ import {
   Calendar, Clock, RefreshCw, Trash2, Play, Loader2,
   X, BarChart3, CheckCircle2, AlertCircle, XCircle,
   MessageSquare, Users, FileText, Video,
-  ChevronRight, Send, Hash, Copy, Check, Info, Layers, Smartphone, Upload, Plus, Trash
+  ChevronRight, Send, Hash, Copy, Check, Info, Layers, Smartphone, Upload, Plus, Trash, EyeOff, Search
 } from 'lucide-react';
 import type { Channel } from '../../types';
 
@@ -159,6 +159,14 @@ export default function ScheduleStatusManager() {
   const [scheduledAt, setScheduledAt] = useState('');
   const [sendImmediately, setSendImmediately] = useState(false);
 
+  // Status privacy — persistent per-device blacklist ("Kontak saya, kecuali…")
+  const [privacyOpen, setPrivacyOpen] = useState(false);
+  const [privacyContacts, setPrivacyContacts] = useState<{ id: string; name: string }[]>([]);
+  const [privacyBlacklist, setPrivacyBlacklist] = useState<Set<string>>(new Set());
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [privacySaving, setPrivacySaving] = useState(false);
+  const [privacySearch, setPrivacySearch] = useState('');
+
   // Search Filter
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -219,6 +227,59 @@ export default function ScheduleStatusManager() {
 
   const triggerConfirm = (opts: typeof confirmModal) => {
     setConfirmModal(opts);
+  };
+
+  // Normalise any contact id/JID/number to a digits-only key so the blacklist
+  // matches regardless of stored format (matches the backend's normalisation).
+  const numKey = (id: string) => (id || '').split('@')[0].split(':')[0].replace(/\D/g, '');
+
+  const selectedChannel = channels.find(c => c.id.toString() === selectedChannelId);
+  const hiddenCount = Array.isArray(selectedChannel?.status_blacklist) ? selectedChannel!.status_blacklist!.length : 0;
+
+  const openPrivacy = async () => {
+    if (!selectedChannelId) { alert('Pilih device WhatsApp terlebih dahulu!'); return; }
+    setPrivacyOpen(true);
+    setPrivacyLoading(true);
+    setPrivacySearch('');
+    const current = Array.isArray(selectedChannel?.status_blacklist) ? selectedChannel!.status_blacklist! : [];
+    setPrivacyBlacklist(new Set(current.map(numKey)));
+    try {
+      const res = await api.get<{ contacts: { id: string; name: string }[] }>(`/api/whatsapp/${selectedChannelId}/contacts`);
+      setPrivacyContacts(res.contacts || []);
+    } catch (e) {
+      console.error('Gagal memuat kontak untuk privasi status:', e);
+      setPrivacyContacts([]);
+    } finally {
+      setPrivacyLoading(false);
+    }
+  };
+
+  const togglePrivacyContact = (id: string) => {
+    const key = numKey(id);
+    if (!key) return;
+    setPrivacyBlacklist(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const savePrivacy = async () => {
+    if (!selectedChannelId) return;
+    setPrivacySaving(true);
+    try {
+      const list = Array.from(privacyBlacklist).filter(Boolean);
+      const updated = await api.put<Channel>(`/api/channels/${selectedChannelId}`, { status_blacklist: list });
+      setChannels(prev => prev.map(c =>
+        c.id.toString() === selectedChannelId ? { ...c, status_blacklist: updated.status_blacklist ?? list } : c
+      ));
+      setPrivacyOpen(false);
+    } catch (e) {
+      console.error('Gagal menyimpan privasi status:', e);
+      alert('Gagal menyimpan privasi status. Coba lagi.');
+    } finally {
+      setPrivacySaving(false);
+    }
   };
 
   // Upload sebuah Blob/File ke server, kembalikan URL publiknya.
@@ -495,6 +556,22 @@ export default function ScheduleStatusManager() {
                   )}
                 </select>
               </div>
+
+              {/* Status Privacy — persistent blacklist per device */}
+              <button
+                type="button"
+                onClick={openPrivacy}
+                className="w-full flex items-center justify-between px-3 py-2 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl hover:border-blue-400 dark:hover:border-blue-500/50 transition-all cursor-pointer group"
+              >
+                <span className="flex items-center gap-1.5 text-xs font-bold text-zinc-600 dark:text-zinc-300">
+                  <EyeOff className="w-3.5 h-3.5 text-blue-500" />
+                  Privasi Status
+                </span>
+                <span className="flex items-center gap-1 text-[10px] font-semibold text-zinc-400 group-hover:text-blue-500 transition-colors">
+                  {hiddenCount > 0 ? `${hiddenCount} kontak disembunyikan` : 'Tampil ke semua kontak'}
+                  <ChevronRight className="w-3 h-3" />
+                </span>
+              </button>
 
               {/* Status Type Selector */}
               <div>
@@ -1022,6 +1099,125 @@ export default function ScheduleStatusManager() {
                 }`}
               >
                 {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Status Privacy Modal — "Kontak saya, kecuali…" ── */}
+      {privacyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-zinc-950/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[80vh]">
+            {/* Header */}
+            <div className="p-5 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex items-center justify-between">
+                <h3 className="flex items-center gap-2 text-sm font-extrabold text-zinc-950 dark:text-white">
+                  <EyeOff className="w-4 h-4 text-blue-500" />
+                  Privasi Status
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setPrivacyOpen(false)}
+                  className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1.5 leading-relaxed">
+                Kontak yang dicentang <strong>tidak akan melihat</strong> status dari device <strong>{selectedChannel?.name}</strong>. Berlaku untuk semua status berikutnya.
+              </p>
+              <div className="relative mt-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
+                <input
+                  type="text"
+                  value={privacySearch}
+                  onChange={e => setPrivacySearch(e.target.value)}
+                  placeholder="Cari kontak…"
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-center justify-between mt-2.5 text-[10px] font-semibold">
+                <span className="text-zinc-400">{privacyBlacklist.size} disembunyikan</span>
+                {privacyBlacklist.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setPrivacyBlacklist(new Set())}
+                    className="text-rose-500 hover:text-rose-600 cursor-pointer"
+                  >
+                    Kosongkan
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Contact list */}
+            <div className="flex-1 overflow-y-auto p-2 custom-scrollbar">
+              {privacyLoading ? (
+                <div className="flex items-center justify-center py-12 text-zinc-400">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : privacyContacts.length === 0 ? (
+                <div className="text-center py-10 px-4">
+                  <Users className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mx-auto mb-2" />
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Belum ada kontak tersinkron. Sync device WhatsApp dulu di menu Device.</p>
+                </div>
+              ) : (
+                (() => {
+                  const q = privacySearch.trim().toLowerCase();
+                  const filtered = privacyContacts.filter(c =>
+                    !q || (c.name || '').toLowerCase().includes(q) || numKey(c.id).includes(q.replace(/\D/g, ''))
+                  );
+                  if (filtered.length === 0) {
+                    return <p className="text-center py-10 text-xs text-zinc-400">Kontak tidak ditemukan.</p>;
+                  }
+                  return filtered.map(c => {
+                    const checked = privacyBlacklist.has(numKey(c.id));
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => togglePrivacyContact(c.id)}
+                        className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all cursor-pointer text-left ${
+                          checked ? 'bg-blue-50 dark:bg-blue-500/10' : 'hover:bg-zinc-50 dark:hover:bg-zinc-850'
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+                          checked ? 'bg-blue-500 border-blue-500' : 'border-zinc-300 dark:border-zinc-600'
+                        }`}>
+                          {checked && <Check className="w-3 h-3 text-white" />}
+                        </span>
+                        <span className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase shrink-0">
+                          {(c.name || c.id).charAt(0)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{c.name || numKey(c.id)}</span>
+                          <span className="block text-[10px] text-zinc-400 font-mono truncate">{numKey(c.id)}</span>
+                        </span>
+                      </button>
+                    );
+                  });
+                })()
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setPrivacyOpen(false)}
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={savePrivacy}
+                disabled={privacySaving}
+                className="px-4 py-2 btn-primary text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {privacySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Simpan
               </button>
             </div>
           </div>
