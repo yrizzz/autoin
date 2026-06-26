@@ -559,10 +559,22 @@ class WhatsAppController extends Controller
         }
     }
 
-    public function sendMessage(Request $request, Channel $channel)
+    public function sendMessage(Request $request, $channel)
     {
-        abort_if($channel->user_id !== $request->user()->id, 403);
-        abort_if($channel->platform !== 'whatsapp', 422);
+        // Resolve the channel scoped to the authenticated user. A non-existent
+        // ID and a channel owned by another account both fail identically here,
+        // so the API never sends through someone else's device and never leaks
+        // Laravel's raw "No query results" 404 / generic 403.
+        $channel = $request->user()->channels()
+            ->where('platform', 'whatsapp')
+            ->find($channel);
+
+        if (!$channel) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Channel ID tidak valid atau bukan milik akun Anda. Lihat Channel ID Anda di menu Device atau via GET /api/channels.',
+            ], 404);
+        }
 
         // Enforce daily message limit
         $todayCount = \App\Models\ApiLog::where('user_id', $request->user()->id)

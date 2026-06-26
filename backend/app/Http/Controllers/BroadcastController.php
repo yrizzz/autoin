@@ -7,6 +7,7 @@ use App\Models\BroadcastTarget;
 use App\Services\BroadcastService;
 use App\Services\PlanLimits;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BroadcastController extends Controller
 {
@@ -69,7 +70,13 @@ class BroadcastController extends Controller
             'media_url'        => 'nullable|string',
             'media_type'       => 'nullable|in:image,video,pdf,document',
             'channel_ids'      => 'required|array|min:1',
-            'channel_ids.*'    => 'exists:channels,id',
+            // Only allow channels that belong to the authenticated user. A
+            // non-existent ID or one owned by another account both fail here,
+            // so a user can never broadcast through someone else's device.
+            'channel_ids.*'    => [
+                'required',
+                Rule::exists('channels', 'id')->where('user_id', $user->id),
+            ],
             'recipients'       => 'nullable|array',
             'scheduled_at'     => 'nullable|date|after:now',
             'recurring'        => 'nullable|in:none,daily,weekly,monthly',
@@ -82,6 +89,11 @@ class BroadcastController extends Controller
             'chunk_delay_min'  => 'nullable|integer|min:0',
             'chunk_delay_max'  => 'nullable|integer|min:0',
             'auto_tag_members' => 'nullable|boolean',
+        ], [
+            'channel_ids.required'   => 'Channel tujuan wajib diisi (channel_ids).',
+            'channel_ids.min'        => 'Minimal pilih 1 channel tujuan.',
+            'channel_ids.*.required' => 'Channel ID tidak boleh kosong.',
+            'channel_ids.*.exists'   => 'Channel ID tidak valid atau bukan milik akun Anda.',
         ]);
 
         $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';

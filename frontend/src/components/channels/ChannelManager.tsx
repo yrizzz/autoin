@@ -13,7 +13,9 @@ import {
   MessageSquare,
   Users,
   RefreshCw,
-  X
+  X,
+  Copy,
+  Check
 } from 'lucide-react';
 
 type Platform = Channel['platform'];
@@ -53,6 +55,7 @@ export default function ChannelManager() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<number | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [copiedId, setCopiedId] = useState<number | null>(null);
 
   // Custom delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -237,6 +240,12 @@ export default function ChannelManager() {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  function handleCopyId(id: number) {
+    navigator.clipboard.writeText(String(id));
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1500);
   }
 
   async function handleTest(ch: Channel) {
@@ -734,8 +743,19 @@ export default function ChannelManager() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-0.5">
+                      <div className="flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-1">
                         <span className="text-emerald-600 dark:text-emerald-400">WhatsApp Account</span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyId(ch.id)}
+                          title="Salin Channel ID untuk dipakai di API (endpoint /api/whatsapp/{channel_id}/send & broadcast channel_ids)"
+                          className="inline-flex items-center gap-1 normal-case font-mono px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100/70 dark:hover:bg-blue-500/20 transition-all cursor-pointer"
+                        >
+                          <span>ID: {ch.id}</span>
+                          {copiedId === ch.id
+                            ? <Check className="w-2.5 h-2.5 text-emerald-500" />
+                            : <Copy className="w-2.5 h-2.5" />}
+                        </button>
                       </div>
                     </div>
                     {/* Status badge — always top-right */}
