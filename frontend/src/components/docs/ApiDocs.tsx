@@ -5,7 +5,8 @@ import { BookOpen, Key, Globe, Send, RefreshCw, Check, Copy, Code, Terminal, Ser
 
 type Lang = 'curl' | 'javascript' | 'php' | 'python';
 
-const API_BASE = ((import.meta as any).env?.PUBLIC_API_URL ?? 'http://localhost:8001');
+// URL publik untuk contoh dokumentasi (bukan PUBLIC_API_URL yg bisa localhost saat dev).
+const API_BASE = 'https://api.autoin.my.id';
 
 export default function ApiDocs() {
   const [activeLang, setActiveLang] = useState<Lang>('curl');
@@ -213,10 +214,10 @@ print(response.json())`
 
   return (
     <AdminLayout activePage="api_docs" title="Dokumentasi API">
-      <div className="flex flex-col xl:flex-row gap-8 max-w-7xl mx-auto w-full">
-        
+      <div className="flex flex-col lg:flex-row gap-8 w-full">
+
         {/* Left Side: API Documentation Text */}
-        <div className="flex-1 space-y-8 max-w-4xl">
+        <div className="flex-1 space-y-8 min-w-0">
           <div>
             <h1 className="text-xl font-extrabold text-zinc-900 dark:text-white tracking-tight">
               Dokumentasi Developer API
@@ -407,7 +408,7 @@ print(response.json())`
         </div>
 
         {/* Right Side: Code Playground Box */}
-        <div className="w-full xl:w-96 shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 h-fit">
+        <div className="w-full lg:w-[480px] xl:w-[560px] shrink-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm space-y-4 lg:sticky lg:top-6 self-start">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Terminal className="w-4 h-4 text-blue-500" />
