@@ -8,6 +8,12 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   integrations: [react()],
 
+  // Prefetch halaman saat link di-hover → klik terasa instan.
+  prefetch: {
+    prefetchAll: true,
+    defaultStrategy: 'hover',
+  },
+
   devToolbar: {
     enabled: false
   },

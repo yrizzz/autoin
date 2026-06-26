@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { ClientRouter } from 'astro:transitions';
 
 interface Props {
   title?: string;
@@ -17,7 +18,10 @@ const {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    
+
+    <!-- Navigasi tanpa reload (SPA-like) + state auth tetap hidup antar halaman -->
+    <ClientRouter />
+
     <!-- Primary Meta Tags -->
     <title>{title} — AUTOIN</title>
     <meta name="title" content={`${title} — AUTOIN`} />
@@ -31,20 +35,27 @@ const {
     <link rel="icon" type="image/webp" href="/autoin-logo.webp" />
 
     <script is:inline>
-      const theme = (() => {
-        if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
-          return localStorage.getItem('theme');
+      function applyTheme() {
+        const theme = (() => {
+          if (typeof localStorage !== 'undefined' && localStorage.getItem('theme')) {
+            return localStorage.getItem('theme');
+          }
+          return 'dark'; // default
+        })();
+
+        if (theme === 'light') {
+          document.documentElement.classList.remove('dark');
+          document.documentElement.style.colorScheme = 'light';
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
         }
-        return 'dark'; // default
-      })();
-    
-      if (theme === 'light') {
-        document.documentElement.classList.remove('dark');
-        document.documentElement.style.colorScheme = 'light';
-      } else {
-        document.documentElement.classList.add('dark');
-        document.documentElement.style.colorScheme = 'dark';
       }
+
+      // Jalankan saat load awal, dan ulang tiap navigasi ClientRouter
+      // (atribut <html> ditimpa saat swap, jadi tema harus di-apply ulang).
+      applyTheme();
+      document.addEventListener('astro:after-swap', applyTheme);
     </script>
     <!-- Duitku POP -->
     <script src="https://app-sandbox.duitku.com/lib/js/duitku.js" is:inline></script>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { api, getApiUrl } from '../../lib/api';
+import { sessionCache } from '../../stores/session';
 import type { User } from '../../types';
 import {
   LayoutDashboard, Send, History, LogOut, User as UserIcon,
@@ -324,14 +325,16 @@ const renderMockPreview = () => {
 };
 
 export default function AdminLayout({ children, activePage, title, noPadding, boxed, onRefresh, refreshing }: AdminLayoutProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Init dari cache sesi → kalau sudah pernah dimuat di navigasi sebelumnya,
+  // halaman render instan tanpa spinner (lalu direvalidasi di background).
+  const [user, setUser] = useState<User | null>(sessionCache.user);
+  const [loading, setLoading] = useState(!sessionCache.loaded);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [notifOpen, setNotifOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Array<{ id: string; type: string; title: string; message: string; time: string; created_at: string }>>([]);
+  const [notifications, setNotifications] = useState<Array<{ id: string; type: string; title: string; message: string; time: string; created_at: string }>>(sessionCache.notifications);
   const [notifSeen, setNotifSeen] = useState<string>('');
-  const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ text: string; type: 'info' | 'warning' | 'success' } | null>(sessionCache.announcement);
   const [loginAgreed, setLoginAgreed] = useState(true);
 
   // Profil akun (ubah nama & foto)
@@ -404,38 +407,48 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
       if (tokenFromUrl) {
         localStorage.setItem('autoin_token', tokenFromUrl);
         window.history.replaceState({}, '', window.location.pathname);
+        // Token baru dari OAuth → buang cache sesi lama, muat ulang dari awal.
+        sessionCache.loaded = false;
+        sessionCache.user = null;
       }
     }
 
     const token = localStorage.getItem('autoin_token');
     if (!token) {
+      sessionCache.loaded = true;
+      sessionCache.user = null;
       setLoading(false);
       return;
     }
 
+    // Revalidasi /api/me. Kalau cache sudah ada, ini jalan di background tanpa spinner.
     api.get<User>('/api/me')
       .then(res => {
+        sessionCache.user = res;
+        sessionCache.loaded = true;
         setUser(res);
         setLoading(false);
       })
       .catch((err: any) => {
         if (err && (err.status === 401 || err.status === 403)) {
           localStorage.removeItem('autoin_token');
+          sessionCache.user = null;
         }
+        sessionCache.loaded = true;
         setLoading(false);
       });
 
     api.get<any>('/api/announcement')
       .then(res => {
-        if (res && res.text) {
-          setAnnouncement(res);
-        }
+        const a = (res && res.text) ? res : null;
+        sessionCache.announcement = a;
+        if (a) setAnnouncement(a);
       })
       .catch(() => { });
 
     try { setNotifSeen(localStorage.getItem('autoin_notif_seen') || ''); } catch { /* ignore */ }
     api.get<Array<{ id: string; type: string; title: string; message: string; time: string; created_at: string }>>('/api/notifications')
-      .then(res => { if (Array.isArray(res)) setNotifications(res); })
+      .then(res => { if (Array.isArray(res)) { sessionCache.notifications = res; setNotifications(res); } })
       .catch(() => { });
 
     const savedTheme = localStorage.getItem('theme') as 'dark' | 'light' | null;
