@@ -285,11 +285,12 @@ class ChatbotRuleController extends Controller
                 }
 
                 return response()->json([
-                    'type'       => 'reply',
-                    'reply'      => $finalReply,
-                    'reply_type' => $rule->reply_type ?? 'normal',
-                    'media_url'  => $rule->media_url,
-                    'media_type' => $rule->media_type,
+                    'type'           => 'reply',
+                    'reply'          => $finalReply,
+                    'reply_type'     => $rule->reply_type ?? 'normal',
+                    'media_url'      => $rule->media_url,
+                    'media_type'     => $rule->media_type,
+                    'react_feedback' => $reactFeedback,
                 ]);
             }
         }

@@ -348,10 +348,10 @@ export default function GroupTag() {
       </div>
 
       {/* Main Grid: 3 Columns on Desktop */}
-      <div className="grid lg:grid-cols-12 gap-6 items-start">
+      <div className="grid lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         
         {/* Column 1: Groups List (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-4 flex flex-col h-[550px]">
+        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-500" />
@@ -408,7 +408,7 @@ export default function GroupTag() {
         </div>
 
         {/* Column 2: Members List (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-4 flex flex-col h-[550px]">
+        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-blue-500" />
@@ -517,7 +517,7 @@ export default function GroupTag() {
         </div>
 
         {/* Column 3: Message Composer & Settings (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 shadow-sm space-y-4 h-[550px] flex flex-col">
+        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 h-auto lg:h-[550px] flex flex-col">
           <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shrink-0">
             <Send className="w-4 h-4 text-blue-500" />
             Tulis Pesan Auto Tag
@@ -531,7 +531,7 @@ export default function GroupTag() {
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Masukkan pesan promosi atau pengumuman Anda di sini..."
-                className="w-full flex-1 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 rounded-2xl p-4 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-zinc-800 dark:text-zinc-200 resize-none min-h-[100px]"
+                className="w-full flex-1 bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-850 rounded-2xl p-4 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none text-zinc-800 dark:text-zinc-200 resize-none min-h-[140px]"
                 disabled={!selectedGroupId || selectedMembers.length === 0}
                 required
               />

@@ -4,7 +4,7 @@ import AdminLayout from '../layout/AdminLayout';
 import {
   Plus, Search, Cpu, Trash2, Edit3, MessageSquare, Loader2,
   Sparkles, X, Upload, Video, FileText, Puzzle, Check, ArrowRight, Quote,
-  LayoutGrid, Table as TableIcon, ChevronDown, Globe,
+  LayoutGrid, Table as TableIcon, ChevronDown, Globe, Timer,
 } from 'lucide-react';
 
 type ViewMode = 'card' | 'table';
@@ -410,17 +410,21 @@ export default function ChatbotRules() {
             <Sparkles className="w-5 h-5 text-blue-500" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-zinc-900 dark:text-white">Reaksi status plugin</p>
+            <p className="text-sm font-bold text-zinc-900 dark:text-white">Reaksi status balasan</p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 max-w-xl leading-relaxed">
-              Pesan command otomatis diberi reaksi status: memproses saat dijalankan, lalu berhasil bila balasan terkirim.
+              Setiap pesan yang cocok dengan aturan auto-reply diberi reaksi status: memproses saat dijalankan, berhasil bila balasan terkirim, atau gagal bila terjadi error.
             </p>
-            <div className="flex items-center gap-1.5 mt-2">
+            <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Loader2 className="w-3 h-3" /> Memproses
+                <Timer className="w-3 h-3" /> Memproses
               </span>
               <ArrowRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 shrink-0" />
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <Check className="w-3 h-3" /> Berhasil
+              </span>
+              <ArrowRight className="w-3 h-3 text-zinc-300 dark:text-zinc-600 shrink-0" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <X className="w-3 h-3" /> Gagal
               </span>
             </div>
           </div>

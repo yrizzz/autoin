@@ -947,10 +947,22 @@ class SessionManager extends EventEmitter {
 
       if (data.reply || data.media_url) {
         console.log(`[Chatbot] Matching rule found! Replying with: "${data.reply}", type: ${data.reply_type || 'normal'}, media: ${data.media_url || 'none'}`);
+
+        // Reaksi status (setting per-akun) berlaku utk SEMUA tipe autoreply, bukan
+        // hanya plugin: ⏳ saat diproses, ✅ saat balasan terkirim, ❌ bila gagal.
+        const reactKey = data.react_feedback ? (rawMessage?.key || null) : null;
+        if (reactKey) await this._react(sessionId, reactKey, '⏳');
+
         await new Promise(r => setTimeout(r, 800));
         const quoted = data.reply_type === 'quote' ? rawMessage : null;
-        await this.send(sessionId, chatId, data.reply || '', data.media_url || null, data.media_type || null, quoted);
-        console.log(`[Chatbot] Reply sent successfully.`);
+        try {
+          await this.send(sessionId, chatId, data.reply || '', data.media_url || null, data.media_type || null, quoted);
+          if (reactKey) await this._react(sessionId, reactKey, '✅');
+          console.log(`[Chatbot] Reply sent successfully.`);
+        } catch (sendErr) {
+          if (reactKey) await this._react(sessionId, reactKey, '❌');
+          throw sendErr;
+        }
       } else {
         console.log(`[Chatbot] No matching rule found.`);
       }
@@ -1322,7 +1334,10 @@ class SessionManager extends EventEmitter {
         }
 
         actualMediaType = mediaType;
-        if (!actualMediaType && detectedMime) {
+        // Jangan menentukan tipe dari MIME generik (octet-stream): biarkan jatuh ke
+        // deteksi via ekstensi di bawah supaya gambar/video tidak salah jadi "document".
+        const genericMime = !detectedMime || detectedMime.startsWith('application/octet-stream');
+        if (!actualMediaType && !genericMime) {
           if (detectedMime.startsWith('image/')) {
             actualMediaType = 'image';
           } else if (detectedMime.startsWith('video/')) {
@@ -1348,6 +1363,44 @@ class SessionManager extends EventEmitter {
             actualMediaType = 'pdf';
           } else {
             actualMediaType = 'document';
+          }
+        }
+
+        // Pastikan mimetype cocok dgn kategori media. Sebagian proxy/CDN/S3
+        // mengembalikan content-type generik (mis. application/octet-stream) atau
+        // keliru. WhatsApp Web masih bisa menebak isinya, tapi HP (mobile) lebih
+        // ketat: media tampil di WA Web namun GAGAL terkirim/terbuka di HP. Jadi
+        // kalau mime tidak sesuai kategori, perbaiki berdasarkan ekstensi/ default.
+        if (detectedMime) {
+          const lower = resolvedUrl.toLowerCase();
+          const categoryOk =
+            (actualMediaType === 'image' && detectedMime.startsWith('image/')) ||
+            (actualMediaType === 'video' && detectedMime.startsWith('video/')) ||
+            (actualMediaType === 'audio' && detectedMime.startsWith('audio/')) ||
+            (actualMediaType === 'pdf'   && detectedMime === 'application/pdf') ||
+            (actualMediaType === 'document');
+          if (!categoryOk) {
+            const corrected =
+              actualMediaType === 'image'
+                ? (lower.endsWith('.png') ? 'image/png'
+                  : lower.endsWith('.webp') ? 'image/webp'
+                  : lower.endsWith('.gif') ? 'image/gif'
+                  : 'image/jpeg')
+              : actualMediaType === 'video'
+                ? (lower.endsWith('.webm') ? 'video/webm'
+                  : lower.endsWith('.3gp') ? 'video/3gpp'
+                  : 'video/mp4')
+              : actualMediaType === 'audio'
+                ? (lower.endsWith('.mp3') ? 'audio/mpeg'
+                  : lower.endsWith('.ogg') ? 'audio/ogg; codecs=opus'
+                  : 'audio/mp4')
+              : actualMediaType === 'pdf'
+                ? 'application/pdf'
+                : detectedMime;
+            if (corrected !== detectedMime) {
+              console.log(`[sessions] Normalisasi mimetype ${actualMediaType}: "${detectedMime}" → "${corrected}"`);
+              detectedMime = corrected;
+            }
           }
         }
 
