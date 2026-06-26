@@ -341,7 +341,7 @@ export default function AdminPlugins() {
                     {testResult.output?.mediaUrl && (
                       <div className="text-[11px] text-zinc-500 truncate">media: <a href={testResult.output.mediaUrl} target="_blank" rel="noreferrer" className="text-blue-500 underline">{testResult.output.mediaUrl}</a></div>
                     )}
-                    {!!testResult.logs?.length && <pre className="text-[11px] whitespace-pre-wrap text-zinc-500 bg-zinc-100 dark:bg-zinc-800 p-2 rounded-lg">{testResult.logs.join('\n')}</pre>}
+                    {!!testResult.logs?.length && <pre className="code-block text-[11px] whitespace-pre-wrap p-2.5 font-mono">{testResult.logs.join('\n')}</pre>}
                   </div>
                 )}
               </div>

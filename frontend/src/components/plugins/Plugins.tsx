@@ -391,11 +391,11 @@ export default function Plugins() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <a href="/plugin-docs"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 text-[13px] font-semibold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition whitespace-nowrap">
+            className="btn-action btn-action-outline">
             <BookOpen className="w-4 h-4" /> Panduan
           </a>
           <button onClick={openCreate}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg btn-primary text-white text-[13px] font-semibold shadow-sm transition whitespace-nowrap">
+            className="btn-action btn-primary text-white shadow-md">
             <Plus className="w-4 h-4" /> Tambah Plugin
           </button>
         </div>
@@ -404,12 +404,12 @@ export default function Plugins() {
       {/* ── Tab: Pustaka Saya / Jelajahi Publik ────────────────────────────── */}
       <div className="inline-flex items-center gap-0.5 rounded-xl border border-zinc-200 dark:border-zinc-800 p-1 bg-white dark:bg-zinc-900 mb-4">
         <button onClick={() => setTab('mine')}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition ${tab === 'mine' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
-          <Puzzle className="w-4 h-4" /> Pustaka Saya
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${tab === 'mine' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
+          <Puzzle className="w-3.5 h-3.5" /> Pustaka Saya
         </button>
         <button onClick={() => setTab('public')}
-          className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-[13px] font-semibold transition ${tab === 'public' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
-          <Globe className="w-4 h-4" /> Jelajahi Publik
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition ${tab === 'public' ? 'bg-violet-500/10 text-violet-600 dark:text-violet-400' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'}`}>
+          <Globe className="w-3.5 h-3.5" /> Jelajahi Publik
         </button>
       </div>
 
@@ -852,7 +852,7 @@ export default function Plugins() {
                       </div>
                     )}
                     {!!testResult.logs?.length && (
-                      <pre className="text-[11px] whitespace-pre-wrap text-zinc-500 bg-zinc-100 dark:bg-zinc-800 p-2 rounded-lg overflow-x-auto">{testResult.logs.join('\n')}</pre>
+                      <pre className="code-block text-[11px] whitespace-pre-wrap p-2.5 font-mono">{testResult.logs.join('\n')}</pre>
                     )}
                   </div>
                 )}

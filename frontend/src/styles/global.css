@@ -214,6 +214,32 @@ h1 + p {
   cursor: not-allowed !important;
 }
 
+/* Ukuran tombol aksi standar (header: "Baru", "Tambah X", "Panduan", dll).
+   Acuan: tombol "Webhook Baru". Pakai bareng .btn-primary (utama) atau
+   .btn-action-outline (sekunder) agar konsisten di seluruh app. */
+.btn-action {
+  @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-bold rounded-xl whitespace-nowrap cursor-pointer transition-all;
+}
+.btn-action-outline {
+  @apply border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800;
+}
+
+/* Blok kode statis (contoh JSON / payload / response) — selalu navy gelap
+   menyamai tampilan CodeEditor, supaya konsisten di light & dark mode.
+   Atur padding/ukuran font lewat util Tailwind di elemennya. */
+.code-block {
+  background: #0a0a0c !important;
+  color: #d4d4d8 !important;            /* zinc-300 */
+  border: 1px solid #1f1f23 !important; /* ~zinc-850 */
+  border-radius: 0.75rem;               /* rounded-xl */
+  overflow-x: auto;
+}
+.code-block code {
+  background: transparent !important;
+  color: inherit !important;
+  padding: 0 !important;
+}
+
 /* Global Consistent Gradient Badges & Labels */
 .badge-active {
   background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;

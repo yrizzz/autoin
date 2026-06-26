@@ -213,7 +213,7 @@ print(response.json())`
 
   return (
     <AdminLayout activePage="api_docs" title="Dokumentasi API">
-      <div className="flex flex-col xl:flex-row gap-8">
+      <div className="flex flex-col xl:flex-row gap-8 max-w-7xl mx-auto w-full">
         
         {/* Left Side: API Documentation Text */}
         <div className="flex-1 space-y-8 max-w-4xl">
@@ -258,7 +258,7 @@ print(response.json())`
               </p>
               <div className="border-t border-zinc-205/40 dark:border-zinc-800/40 pt-3">
                 <span className="block text-[10px] font-bold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest mb-1.5">Struktur Response Sukses (JSON)</span>
-                <pre className="bg-white dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-150 dark:border-zinc-900 text-[10px] font-mono text-zinc-600 dark:text-zinc-400">
+                <pre className="code-block p-3 text-[10px] font-mono leading-relaxed">
 {`{
   "url": "${API_BASE}/uploads/abc123xyz.jpg",
   "mediaType": "image", // Nilai: image, video, audio, pdf, document

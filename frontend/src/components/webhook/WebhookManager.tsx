@@ -141,7 +141,7 @@ export default function WebhookManager() {
             <RefreshCw className="w-4 h-4" />
           </button>
           <button onClick={handleOpenCreate}
-            className="btn-primary flex items-center gap-2 px-4 py-2 font-bold text-xs rounded-xl shadow-md cursor-pointer">
+            className="btn-action btn-primary text-white shadow-md">
             <Plus className="w-4 h-4" />
             Webhook Baru
           </button>
@@ -245,7 +245,7 @@ export default function WebhookManager() {
           <div className="space-y-4">
             <div>
               <span className="block text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1.5">Method &amp; Headers</span>
-              <pre className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-[9px] font-mono text-zinc-600 dark:text-zinc-400 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+              <pre className="code-block p-3 text-[9px] font-mono leading-relaxed whitespace-pre-wrap">
 {`POST [Webhook URL]
 Content-Type: application/json
 X-Webhook-Secret: whsec_xxx`}
@@ -259,7 +259,7 @@ X-Webhook-Secret: whsec_xxx`}
                   {copiedPayload ? <><Check className="w-2.5 h-2.5 text-emerald-500" />Disalin!</> : 'Salin JSON'}
                 </button>
               </div>
-              <pre className="bg-zinc-50 dark:bg-zinc-950 p-3 rounded-xl border border-zinc-100 dark:border-zinc-800 text-[9px] font-mono text-zinc-600 dark:text-zinc-400 overflow-x-auto">
+              <pre className="code-block p-3 text-[9px] font-mono">
                 {samplePayload}
               </pre>
             </div>
@@ -268,7 +268,7 @@ X-Webhook-Secret: whsec_xxx`}
                 <Zap className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                 <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Response</span>
               </div>
-              <pre className="text-[9px] font-mono text-zinc-600 dark:text-zinc-400 leading-relaxed">
+              <pre className="code-block p-3 text-[9px] font-mono leading-relaxed">
 {`{
   "ok": true,
   "sent": 1,
