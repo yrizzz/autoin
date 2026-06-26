@@ -1,8 +1,23 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ChannelManager from '../../components/channels/ChannelManager';
+import { serverApiGet } from '../../lib/server-api';
+import type { Channel, User } from '../../types';
+
+// SSR data-as-props: ambil data awal di server (server-to-server, lihat server-api.ts)
+// lalu oper ke island React. Daftar channel & user tertanam di HTML — tidak ada
+// XHR ke jaringan saat halaman pertama dibuka. Null = belum login/gagal → island
+// fallback fetch via proxy.
+const [initialChannels, initialUser] = await Promise.all([
+  serverApiGet<Channel[]>('/api/channels', Astro.cookies),
+  serverApiGet<User>('/api/me', Astro.cookies),
+]);
 ---
 
 <BaseLayout title="Channels">
-  <ChannelManager client:load />
+  <ChannelManager
+    client:load
+    initialChannels={initialChannels ?? undefined}
+    initialUser={initialUser ?? undefined}
+  />
 </BaseLayout>

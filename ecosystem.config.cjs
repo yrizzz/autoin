@@ -49,8 +49,9 @@ module.exports = {
     {
       name: 'autoin-frontend',
       cwd: path.join(ROOT, 'frontend'),
-      script: 'node_modules/.bin/astro',
-      args: 'preview --port 4322 --host 0.0.0.0',
+      // SSR Node standalone server (hasil `npm run build` → dist/server/entry.mjs).
+      // Adapter @astrojs/node membaca HOST & PORT dari env.
+      script: 'dist/server/entry.mjs',
       interpreter: 'node',
       watch: false,
       autorestart: true,
@@ -58,9 +59,13 @@ module.exports = {
       restart_delay: 3000,
       env: {
         NODE_ENV: 'production',
-        // PUBLIC_API_URL is baked into the frontend at build time (npm run build).
-        // Set this in the shell before deploying: export PUBLIC_API_URL=http://autoin.my.id:8001
-        // The runtime fallback in api.ts will use window.location.hostname:8001 if not set.
+        HOST: '0.0.0.0',
+        PORT: '4322',
+        // INTERNAL_API_URL: alamat backend server-to-server (proxy BFF, src/pages/api/[...path].ts).
+        // Server-only — TIDAK pernah dibakar ke bundle client; browser tak melihat URL ini.
+        INTERNAL_API_URL: 'http://127.0.0.1:8001',
+        // PUBLIC_API_URL tetap dibakar saat build (npm run build) — kini hanya dipakai untuk
+        // redirect OAuth (/auth/google) dan URL tampilan media, bukan untuk panggilan data.
       },
       out_file: '/var/log/autoin/frontend.log',
       error_file: '/var/log/autoin/frontend-err.log',

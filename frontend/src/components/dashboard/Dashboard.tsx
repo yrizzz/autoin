@@ -111,14 +111,9 @@ export default function Dashboard() {
   };
 
   const handleLogout = async () => {
-    try {
-      await api.post('/api/logout');
-      localStorage.removeItem('autoin_token');
-      window.location.href = '/';
-    } catch {
-      localStorage.removeItem('autoin_token');
-      window.location.href = '/';
-    }
+    // Proxy /api/logout membersihkan cookie sesi httpOnly di origin app.
+    try { await api.post('/api/logout'); } catch { }
+    window.location.href = '/';
   };
 
   if (loading) {

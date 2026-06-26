@@ -1,3 +1,6 @@
+// Origin backend asli — dipakai HANYA untuk navigasi penuh ke OAuth (`/auth/google`)
+// dan beberapa URL tampilan media. Panggilan data (XHR) TIDAK lagi memakai ini:
+// semuanya lewat origin app sendiri (proxy BFF di src/pages/api/[...path].ts).
 export function getApiUrl(): string {
   // 1. PUBLIC_API_URL is baked in at build time by deploy.sh (highest priority)
   const baked = import.meta.env.PUBLIC_API_URL;
@@ -15,20 +18,12 @@ export function getApiUrl(): string {
   return 'http://localhost:8001';
 }
 
-const API_URL = getApiUrl();
-
-function getToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('autoin_token');
-}
-
-export function setToken(token: string): void {
-  localStorage.setItem('autoin_token', token);
-}
-
-export function clearToken(): void {
-  localStorage.removeItem('autoin_token');
-}
+// Sesi kini dipegang via cookie httpOnly milik origin app (di-set oleh src/middleware.ts
+// saat callback OAuth) dan diteruskan ke backend secara server-side oleh proxy.
+// Token tidak lagi disimpan di localStorage / dikirim sebagai header dari browser.
+// Dua fungsi berikut dipertahankan agar import lama tetap valid (no-op).
+export function setToken(_token: string): void { /* deprecated: sesi via httpOnly cookie */ }
+export function clearToken(): void { /* deprecated: cookie dibersihkan server-side saat logout */ }
 
 export class ApiError extends Error {
   status: number;
@@ -39,7 +34,6 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, options: RequestInit & { timeout?: number } = {}): Promise<T> {
-  const token = getToken();
   const controller = new AbortController();
   const timeoutMs = options.timeout ?? 60000; // Increased to 60 seconds
   const timer = setTimeout(() => {
@@ -48,14 +42,15 @@ async function request<T>(path: string, options: RequestInit & { timeout?: numbe
 
   const { timeout, ...fetchOptions } = options;
 
-  const res = await fetch(`${API_URL}${path}`, {
+  // Same-origin: browser hanya menghubungi server Astro (path relatif `/api/...`);
+  // proxy BFF yang meneruskan ke backend beserta JWT dari cookie httpOnly.
+  const res = await fetch(path, {
     ...fetchOptions,
     credentials: 'include',
     signal: controller.signal,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     },
   }).finally(() => clearTimeout(timer));

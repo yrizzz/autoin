@@ -43,10 +43,17 @@ function PlatformIcon({ platform, className = "w-5 h-5" }: { platform: string; c
   );
 }
 
-export default function ChannelManager() {
-  const [user, setUser] = useState<User | null>(null);
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ChannelManagerProps {
+  // Data awal dari SSR (frontmatter channels/index.astro). Bila ada, state di-seed
+  // dan fetch awal dilewati → daftar channel tampil tanpa XHR di Network.
+  initialChannels?: Channel[];
+  initialUser?: User | null;
+}
+
+export default function ChannelManager({ initialChannels, initialUser }: ChannelManagerProps = {}) {
+  const [user, setUser] = useState<User | null>(initialUser ?? null);
+  const [channels, setChannels] = useState<Channel[]>(initialChannels ?? []);
+  const [loading, setLoading] = useState(initialChannels === undefined);
   const [adding, setAdding] = useState<Platform | null>(null);
   const [form, setForm] = useState<Record<string, string>>({ name: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,7 +78,11 @@ export default function ChannelManager() {
   const [syncLoading, setSyncLoading] = useState(false);
 
   useEffect(() => {
-    fetchChannels();
+    // Data awal sudah datang dari SSR (props) → lewati fetch awal agar tanpa XHR.
+    // Bila tidak ada (belum login / gagal di server), fallback fetch via proxy.
+    if (initialChannels === undefined) {
+      fetchChannels();
+    }
   }, []);
 
   useEffect(() => {

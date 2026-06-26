@@ -242,10 +242,10 @@ export default function QuickSend() {
       const file = files[0];
       const formData = new FormData();
       formData.append('file', file);
-      const token = localStorage.getItem('autoin_token');
-      const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
+      const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
         body: formData,
       });
       if (!res.ok) throw new Error('Upload failed');

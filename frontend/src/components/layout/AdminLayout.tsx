@@ -363,12 +363,12 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
     if (!file.type.startsWith('image/')) { alert('File harus berupa gambar.'); return; }
     setAvatarUploading(true);
     try {
-      const token = localStorage.getItem('autoin_token');
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${getApiUrl()}/api/upload`, {
+      const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
         body: formData,
       });
       if (!res.ok) throw new Error('Upload gagal');
@@ -398,30 +398,14 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   };
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tokenFromUrl = params.get('token');
-      if (tokenFromUrl) {
-        localStorage.setItem('autoin_token', tokenFromUrl);
-        window.history.replaceState({}, '', window.location.pathname);
-      }
-    }
-
-    const token = localStorage.getItem('autoin_token');
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
+    // Sesi via cookie httpOnly (token dari URL ditangani oleh middleware Astro,
+    // lihat src/middleware.ts). Cukup tanya /api/me lewat proxy same-origin.
     api.get<User>('/api/me')
       .then(res => {
         setUser(res);
         setLoading(false);
       })
-      .catch((err: any) => {
-        if (err && (err.status === 401 || err.status === 403)) {
-          localStorage.removeItem('autoin_token');
-        }
+      .catch(() => {
         setLoading(false);
       });
 
@@ -461,8 +445,8 @@ export default function AdminLayout({ children, activePage, title, noPadding, bo
   };
 
   const handleLogout = async () => {
+    // Proxy /api/logout membersihkan cookie sesi httpOnly di origin app.
     try { await api.post('/api/logout'); } catch { }
-    localStorage.removeItem('autoin_token');
     window.location.href = '/';
   };
 

@@ -244,13 +244,12 @@ export default function ChatbotRules() {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const token = localStorage.getItem('autoin_token');
       const formData = new FormData();
       formData.append('file', files[0]);
-      const apiUrl = import.meta.env.PUBLIC_API_URL || 'http://localhost:8001';
-      const res = await fetch(`${apiUrl}/api/upload`, {
+      const res = await fetch('/api/upload', {
         method: 'POST',
-        headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        headers: { 'Accept': 'application/json' },
         body: formData,
       });
       if (!res.ok) throw new Error('Upload failed');

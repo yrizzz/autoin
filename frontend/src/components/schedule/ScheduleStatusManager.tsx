@@ -223,12 +223,12 @@ export default function ScheduleStatusManager() {
 
   // Upload sebuah Blob/File ke server, kembalikan URL publiknya.
   const uploadFile = async (file: Blob, filename: string): Promise<string> => {
-    const token = localStorage.getItem('autoin_token');
     const formData = new FormData();
     formData.append('file', file, filename);
-    const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
+    const res = await fetch('/api/upload', {
       method: 'POST',
-      headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      credentials: 'include',
+      headers: { 'Accept': 'application/json' },
       body: formData,
     });
     if (!res.ok) throw new Error('Upload failed');

@@ -714,14 +714,14 @@ export default function BroadcastCreate() {
     if (!files || files.length === 0) return;
     setUploading(true);
     try {
-      const token = localStorage.getItem('autoin_token');
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const formData = new FormData();
         formData.append('file', file);
-        const res = await fetch(`${import.meta.env.PUBLIC_API_URL ?? 'http://localhost:8001'}/api/upload`, {
+        const res = await fetch('/api/upload', {
           method: 'POST',
-          headers: { 'Accept': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' },
           body: formData,
         });
         if (!res.ok) throw new Error('Upload failed');
