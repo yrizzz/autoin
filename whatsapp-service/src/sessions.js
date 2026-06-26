@@ -26,22 +26,24 @@ if (!fs.existsSync(MEDIA_DIR)) fs.mkdirSync(MEDIA_DIR, { recursive: true });
 
 const logger = pino({ level: 'info' });
 
-async function saveRemoteDebugLog(key, value) {
-  try {
-    await fetch(`${BACKEND_URL}/api/internal/whatsapp/auth`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Internal-Secret': INTERNAL_SECRET,
-      },
-      body: JSON.stringify({
-        session_id: 'debug_logs',
-        data: { [key]: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value) }
-      })
-    });
-  } catch (e) {
-    console.error('Failed to save remote debug log:', e);
-  }
+function saveRemoteDebugLog(key, value) {
+  // Best-effort telemetry. Fire-and-forget with a hard timeout so a slow/stuck
+  // backend can NEVER block or delay a real send response. Previously this was
+  // awaited with no timeout, so a hanging POST here would stall the whole
+  // /send request (message already delivered to WhatsApp) until Laravel's 30s
+  // cURL timeout fired — i.e. "chat masuk tapi result API error".
+  fetch(`${BACKEND_URL}/api/internal/whatsapp/auth`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Internal-Secret': INTERNAL_SECRET,
+    },
+    body: JSON.stringify({
+      session_id: 'debug_logs',
+      data: { [key]: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value) }
+    }),
+    signal: AbortSignal.timeout(5000),
+  }).catch(e => console.error('Failed to save remote debug log:', e?.message || e));
 }
 
 // ── Persisted via Laravel MySQL database API ─────────────────────────────────
