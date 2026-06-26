@@ -95,7 +95,7 @@ class BroadcastTest extends TestCase
             'status'      => 'active',
         ]);
 
-        // Mock Baileys/WhatsApp Node service request
+        // Mock WhatsApp Node service request
         \Illuminate\Support\Facades\Http::fake([
             'http://localhost:3001/*' => \Illuminate\Support\Facades\Http::response(['ok' => true, 'message' => 'sent'], 200),
         ]);

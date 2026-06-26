@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import AdminLayout from '../layout/AdminLayout';
-import { 
-  History, Search, Smartphone, ShieldAlert, CheckCircle2, AlertCircle, 
-  Clock, Trash2, RotateCcw, Eye, ArrowUpDown, ChevronLeft, ChevronRight, 
+import {
+  History, Search, Smartphone, ShieldAlert, CheckCircle2, AlertCircle,
+  Clock, Trash2, RotateCcw, Eye, ArrowUpDown, ChevronLeft, ChevronRight,
   ExternalLink, Code, Info, Terminal, X, MessageSquare, Globe
 } from 'lucide-react';
 import { api } from '../../lib/api';
@@ -53,13 +53,13 @@ export default function SingleMessageHistory() {
   const [channels, setChannels] = useState<Channel[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
-  
+
   // Pagination & Filter States
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [lastPage, setLastPage] = useState<number>(1);
   const [totalLogs, setTotalLogs] = useState<number>(0);
   const [perPage, setPerPage] = useState<number>(15);
-  
+
   const [search, setSearch] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [viaFilter, setViaFilter] = useState<string>('all');
@@ -106,7 +106,7 @@ export default function SingleMessageHistory() {
     // Load channels for filtering
     api.get<Channel[]>('/api/channels')
       .then(res => setChannels(res))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handlePageChange = (page: number) => {
@@ -160,17 +160,17 @@ export default function SingleMessageHistory() {
 
   // Client-side search & filtering of the paginated results for real-time responsiveness
   const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.to.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch =
+      log.to.toLowerCase().includes(search.toLowerCase()) ||
       (log.message && log.message.toLowerCase().includes(search.toLowerCase()));
-      
-    const matchesStatus = 
+
+    const matchesStatus =
       statusFilter === 'all' ? true : log.status === statusFilter;
-      
-    const matchesVia = 
+
+    const matchesVia =
       viaFilter === 'all' ? true : log.via === viaFilter;
-      
-    const matchesChannel = 
+
+    const matchesChannel =
       channelFilter === 'all' ? true : String(log.channel_id) === channelFilter;
 
     return matchesSearch && matchesStatus && matchesVia && matchesChannel;
@@ -298,7 +298,7 @@ export default function SingleMessageHistory() {
                       <td className="py-4 px-5 font-bold text-zinc-800 dark:text-zinc-200 font-mono">
                         {log.to.replace('@s.whatsapp.net', '')}
                       </td>
-                      
+
                       {/* Device */}
                       <td className="py-4 px-4 text-zinc-655 dark:text-zinc-400">
                         <span className="flex items-center gap-1.5">
@@ -323,11 +323,10 @@ export default function SingleMessageHistory() {
 
                       {/* Source/Via */}
                       <td className="py-4 px-4">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${
-                          log.via === 'web' 
-                            ? 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/20' 
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${log.via === 'web'
+                            ? 'bg-blue-500/10 text-blue-500 dark:bg-blue-500/20'
                             : 'bg-indigo-500/10 text-indigo-500 dark:bg-indigo-500/20'
-                        }`}>
+                          }`}>
                           {log.via === 'web' ? '💻 Web' : '🔌 API'}
                         </span>
                       </td>
@@ -437,11 +436,10 @@ export default function SingleMessageHistory() {
                       )}
 
                       {/* Source */}
-                      <span className={`px-1.5 py-0.25 rounded text-[8px] font-extrabold uppercase tracking-wider ${
-                        log.via === 'web' 
-                          ? 'bg-blue-500/10 text-blue-500' 
+                      <span className={`px-1.5 py-0.25 rounded text-[8px] font-extrabold uppercase tracking-wider ${log.via === 'web'
+                          ? 'bg-blue-500/10 text-blue-500'
                           : 'bg-indigo-500/10 text-indigo-500'
-                      }`}>
+                        }`}>
                         {log.via === 'web' ? '💻 Web' : '🔌 API'}
                       </span>
                     </div>
@@ -508,7 +506,7 @@ export default function SingleMessageHistory() {
                 <span className="text-[10px] text-zinc-500 font-bold">
                   Menampilkan {filteredLogs.length} dari {totalLogs} log pesan
                 </span>
-                
+
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -561,17 +559,15 @@ export default function SingleMessageHistory() {
                 </div>
                 <div>
                   <span className="text-zinc-400 block font-bold uppercase tracking-wider text-[9px]">Sumber Kirim</span>
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.25 rounded-full text-[9px] font-extrabold uppercase ${
-                    selectedLog.via === 'web' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'
-                  }`}>
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.25 rounded-full text-[9px] font-extrabold uppercase ${selectedLog.via === 'web' ? 'bg-blue-500/10 text-blue-500' : 'bg-indigo-500/10 text-indigo-500'
+                    }`}>
                     {selectedLog.via === 'web' ? '💻 Web Panel' : '🔌 Developer API'}
                   </span>
                 </div>
                 <div>
                   <span className="text-zinc-400 block font-bold uppercase tracking-wider text-[9px]">Status Response</span>
-                  <span className={`font-bold uppercase text-[10px] ${
-                    selectedLog.status === 'success' ? 'text-emerald-500' : 'text-red-500'
-                  }`}>
+                  <span className={`font-bold uppercase text-[10px] ${selectedLog.status === 'success' ? 'text-emerald-500' : 'text-red-500'
+                    }`}>
                     {selectedLog.status}
                   </span>
                 </div>
@@ -598,9 +594,9 @@ export default function SingleMessageHistory() {
               <div className="space-y-1.5">
                 <span className="block text-[10px] font-extrabold text-zinc-450 dark:text-zinc-500 uppercase tracking-widest flex items-center gap-1 select-none">
                   <Code className="w-3.5 h-3.5 text-zinc-400" />
-                  Payload Response Dari WhatsApp Web (Baileys)
+                  Payload Response Dari WhatsApp Web
                 </span>
-                
+
                 <div className="relative">
                   <pre className="bg-[#09090b] text-blue-400 dark:text-blue-300 p-4 rounded-xl text-[10px] font-mono overflow-x-auto border border-zinc-800 max-h-60 overflow-y-auto leading-relaxed select-text">
                     {JSON.stringify(selectedLog.response || { status: selectedLog.status, message: "No raw payload stored." }, null, 2)}
@@ -611,7 +607,7 @@ export default function SingleMessageHistory() {
               <div className="p-3 bg-blue-500/5 border border-blue-500/15 rounded-xl flex items-start gap-2 text-[11px] text-zinc-550 dark:text-zinc-400">
                 <Info className="w-4 h-4 shrink-0 text-blue-500 mt-0.5" />
                 <p>
-                  Payload response di atas dikembalikan langsung oleh engine WhatsApp Baileys secara real-time. Status <code className="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-blue-600">PENDING</code> atau status objek pesan yang valid menandakan WhatsApp telah menerima & antre pesan untuk dikirimkan.
+                  Payload response di atas dikembalikan langsung oleh engine WhatsApp secara real-time. Status <code className="bg-zinc-100 dark:bg-zinc-800 px-1 py-0.5 rounded font-mono text-blue-600">PENDING</code> atau status objek pesan yang valid menandakan WhatsApp telah menerima & antre pesan untuk dikirimkan.
                 </p>
               </div>
             </div>
