@@ -258,6 +258,19 @@ export default function BroadcastHistory() {
     }
   };
 
+  const handleSendNow = async (id: number) => {
+    setActionLoadingId(id);
+    try {
+      await api.post(`/api/broadcasts/${id}/send`);
+      showToast('Broadcast sedang dikirim sekarang!', 'success');
+      fetchBroadcasts(currentPage);
+    } catch {
+      showToast('Gagal mengirim broadcast', 'error');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
   const handleCancel = async (id: number) => {
     setActionLoadingId(id);
     try {
@@ -495,19 +508,34 @@ export default function BroadcastHistory() {
                           )}
 
                           {bc.status === 'scheduled' && (
-                            <button
-                              type="button"
-                              onClick={() => handleCancel(bc.id)}
-                              disabled={actionLoadingId === bc.id}
-                              className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-xl transition-all cursor-pointer disabled:opacity-50"
-                              title="Batalkan Jadwal"
-                            >
-                              {actionLoadingId === bc.id ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <X className="w-3.5 h-3.5" />
-                              )}
-                            </button>
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleSendNow(bc.id)}
+                                disabled={actionLoadingId === bc.id}
+                                className="p-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                                title="Kirim Sekarang"
+                              >
+                                {actionLoadingId === bc.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleCancel(bc.id)}
+                                disabled={actionLoadingId === bc.id}
+                                className="p-2 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/20 rounded-xl transition-all cursor-pointer disabled:opacity-50"
+                                title="Batalkan Jadwal"
+                              >
+                                {actionLoadingId === bc.id ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <X className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+                            </>
                           )}
 
                           <button

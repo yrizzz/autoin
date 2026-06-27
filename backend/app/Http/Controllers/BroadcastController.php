@@ -81,7 +81,12 @@ class BroadcastController extends Controller
             'chunk_size'       => 'nullable|integer|min:1',
             'chunk_delay_min'  => 'nullable|integer|min:0',
             'chunk_delay_max'  => 'nullable|integer|min:0',
-            'auto_tag_members' => 'nullable|boolean',
+            // Boolean (legacy simple toggle) or array (per-group tag config)
+            'auto_tag_members' => ['nullable', function ($attribute, $value, $fail) {
+                if (!is_bool($value) && !is_array($value)) {
+                    $fail('Pengaturan auto tag members harus berupa boolean atau daftar grup.');
+                }
+            }],
         ]);
 
         $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
@@ -244,7 +249,12 @@ class BroadcastController extends Controller
             'title'            => 'nullable|string|max:255',
             'content'          => 'sometimes|nullable|string',
             'recurring'        => 'nullable|in:none,daily,weekly,monthly',
-            'auto_tag_members' => 'nullable|boolean',
+            // Boolean (legacy simple toggle) or array (per-group tag config)
+            'auto_tag_members' => ['nullable', function ($attribute, $value, $fail) {
+                if (!is_bool($value) && !is_array($value)) {
+                    $fail('Pengaturan auto tag members harus berupa boolean atau daftar grup.');
+                }
+            }],
         ];
 
         if ($request->has('scheduled_at') && $request->input('scheduled_at') !== null) {
@@ -296,6 +306,14 @@ class BroadcastController extends Controller
         if ($plan === 'free') {
             // Free users can send but count against their 3-broadcast limit
             // (already checked at create time — allow send to proceed)
+        }
+
+        // "Kirim Sekarang": this endpoint is an explicit manual send, so cancel any
+        // pending future schedule — otherwise BroadcastService::send() would bail out
+        // on its isFuture() guard and just leave the broadcast scheduled.
+        if ($broadcast->scheduled_at && $broadcast->scheduled_at->isFuture()) {
+            $broadcast->update(['scheduled_at' => null]);
+            $broadcast->refresh();
         }
 
         $this->service->send($broadcast);
