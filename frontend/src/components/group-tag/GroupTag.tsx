@@ -351,7 +351,7 @@ export default function GroupTag() {
       <div className="grid lg:grid-cols-12 gap-4 lg:gap-6 items-start">
         
         {/* Column 1: Groups List (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
+        <div className="lg:col-span-4 min-w-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <Users className="w-4 h-4 text-blue-500" />
@@ -394,11 +394,11 @@ export default function GroupTag() {
                       : 'bg-zinc-50/40 dark:bg-zinc-900/20 border-zinc-200/60 dark:border-zinc-800/50 hover:bg-zinc-100/50 dark:hover:bg-zinc-900/40 text-zinc-700 dark:text-zinc-300'
                   }`}
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <span className="text-xs font-extrabold truncate block leading-snug">{g.name}</span>
-                    <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5">ID: {g.id.split('@')[0]}</span>
+                    <span className="text-[10px] text-zinc-450 dark:text-zinc-500 block mt-0.5 truncate">ID: {g.id.split('@')[0]}</span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-full shrink-0">
+                  <span className="text-[10px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 rounded-full shrink-0 whitespace-nowrap">
                     {g.participantsCount} member
                   </span>
                 </button>
@@ -408,7 +408,7 @@ export default function GroupTag() {
         </div>
 
         {/* Column 2: Members List (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
+        <div className="lg:col-span-4 min-w-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 flex flex-col h-[60vh] min-h-[360px] lg:h-[550px]">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2">
               <UserIcon className="w-4 h-4 text-blue-500" />
@@ -486,18 +486,18 @@ export default function GroupTag() {
                         : 'bg-transparent border-transparent hover:bg-zinc-50 dark:hover:bg-zinc-900/40 text-zinc-700 dark:text-zinc-300'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       {isSelected ? (
                         <CheckSquare className="w-4.5 h-4.5 text-blue-505 shrink-0" />
                       ) : (
                         <Square className="w-4.5 h-4.5 text-zinc-350 dark:text-zinc-700 shrink-0" />
                       )}
-                      <div className="min-w-0 text-left">
+                      <div className="min-w-0 flex-1 text-left">
                         <span className="text-xs font-bold truncate block leading-tight">
                           {p.name || number}
                         </span>
                         {p.name && (
-                          <span className="text-[9px] text-zinc-450 dark:text-zinc-555 font-mono block">
+                          <span className="text-[9px] text-zinc-450 dark:text-zinc-555 font-mono block truncate">
                             +{number}
                           </span>
                         )}
@@ -517,7 +517,7 @@ export default function GroupTag() {
         </div>
 
         {/* Column 3: Message Composer & Settings (4 cols) */}
-        <div className="lg:col-span-4 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 h-auto lg:h-[550px] flex flex-col">
+        <div className="lg:col-span-4 min-w-0 bg-white dark:bg-[#0e0e11] border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-sm space-y-4 h-auto lg:h-[550px] flex flex-col">
           <h3 className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 flex items-center gap-2 shrink-0">
             <Send className="w-4 h-4 text-blue-500" />
             Tulis Pesan Auto Tag
