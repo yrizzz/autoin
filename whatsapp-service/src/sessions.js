@@ -211,9 +211,25 @@ class SessionManager extends EventEmitter {
     this._contacts = new Map();
     this._chats = new Map();
     this._messages = new Map(); // `${sessionId}:${chatId}` → Msg[]
+    this._rawMessages = new Map(); // sessionId → Map(msgId → proto.IMessage) untuk getMessage (retry E2E)
     this._saveTimers = new Map();
     this._lidToPhone = new Map(); // `${sessionId}:${lid}` → phone JID
     this._flushes = new Map();
+  }
+
+  // Simpan isi pesan mentah (proto.IMessage) agar Baileys bisa MENGIRIM ULANG saat
+  // penerima minta retry. Tanpa ini, pesan yang gagal didekripsi di HP penerima akan
+  // nyangkut "Waiting for this message…" walau di WA Web tampil normal.
+  _cacheRawMessage(sessionId, id, message) {
+    if (!id || !message) return;
+    let store = this._rawMessages.get(sessionId);
+    if (!store) { store = new Map(); this._rawMessages.set(sessionId, store); }
+    store.set(id, message);
+    // Batasi memori: simpan maksimal 1500 pesan terakhir per sesi.
+    if (store.size > 1500) {
+      const oldest = store.keys().next().value;
+      store.delete(oldest);
+    }
   }
 
   // ── JID Translation ────────────────────────────────────────────────────────
@@ -630,7 +646,18 @@ class SessionManager extends EventEmitter {
     this._status.set(sessionId, 'connecting');
 
     return new Promise((resolve) => {
-      const sock = makeWASocket({ version, auth: state, logger, printQRInTerminal: false });
+      const sock = makeWASocket({
+        version,
+        auth: state,
+        logger,
+        printQRInTerminal: false,
+        // Wajib untuk menjawab retry-receipt dari penerima. Tanpa ini, pesan yang
+        // gagal didekripsi di HP penerima nyangkut "Waiting for this message…".
+        getMessage: async (key) => {
+          const store = this._rawMessages.get(sessionId);
+          return store?.get(key?.id) || undefined;
+        },
+      });
       this._sessions.set(sessionId, sock);
 
       // Ensure maps exist
@@ -710,6 +737,8 @@ class SessionManager extends EventEmitter {
       sock.ev.on('messages.upsert', async ({ messages: msgs, type }) => {
         if (type !== 'notify' && type !== 'append') return;
         for (const m of msgs) {
+          // Cache isi mentah untuk getMessage (retry E2E).
+          if (m.key?.id && m.message) this._cacheRawMessage(sessionId, m.key.id, m.message);
           const realMsg = getRealMessage(m.message);
           if (!realMsg) continue;
           const chatId = this.translateJid(sessionId, m.key.remoteJid);
@@ -1510,6 +1539,9 @@ class SessionManager extends EventEmitter {
     }
 
     if (result) {
+      // Cache isi pesan terkirim agar bisa dikirim ulang saat penerima minta retry.
+      if (result.key?.id && result.message) this._cacheRawMessage(sessionId, result.key.id, result.message);
+
       const text = message || (mediaUrl ? '[Media]' : '');
       const ts = new Date();
       const bubble = {
@@ -1561,6 +1593,7 @@ class SessionManager extends EventEmitter {
     this._sessions.delete(sessionId);
     this._qrs.delete(sessionId);
     this._status.delete(sessionId);
+    this._rawMessages.delete(sessionId);
     this._flushes.delete(sessionId);
     const t = this._saveTimers.get(sessionId);
     if (t) { clearTimeout(t); this._saveTimers.delete(sessionId); }
