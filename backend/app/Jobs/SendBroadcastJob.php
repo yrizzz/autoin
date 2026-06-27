@@ -114,9 +114,86 @@ class SendBroadcastJob implements ShouldQueue
         }
     }
 
+    /**
+     * Replace dynamic placeholders ({{name}}, {{nama}}, {{phone}}, ...) in the
+     * message body with the recipient's resolved details. Unknown placeholders
+     * are left untouched. Matching is case-insensitive and tolerant of spaces,
+     * e.g. {{ Name }}.
+     */
+    private function personalize(string $content, $channel, ?string $recipientId): string
+    {
+        if ($content === '' || !str_contains($content, '{{')) {
+            return $content;
+        }
+
+        $name  = $this->resolveRecipientName($channel, $recipientId);
+        $phone = $recipientId ? explode('@', $recipientId)[0] : '';
+
+        $vars = [
+            'name'   => $name,
+            'nama'   => $name,
+            'phone'  => $phone,
+            'number' => $phone,
+            'nomor'  => $phone,
+            // Billing placeholders are only populated when sending via the API
+            // with a data payload. On manual dashboard broadcasts there is no
+            // source for them, so blank them out instead of leaking the literal
+            // "{{tagihan}}" text to recipients (matches the in-app variable help).
+            'tagihan'  => '',
+            'tanggal'  => '',
+            'link'     => '',
+            'username' => '',
+        ];
+
+        return preg_replace_callback('/\{\{\s*([a-zA-Z_]+)\s*\}\}/', function ($m) use ($vars) {
+            $key = strtolower($m[1]);
+            return array_key_exists($key, $vars) ? $vars[$key] : $m[0];
+        }, $content);
+    }
+
+    /**
+     * Best-effort lookup of a recipient's display name from the channel's
+     * synced contacts/groups (handles LID → phone JID resolution). Returns an
+     * empty string when no name is known.
+     */
+    private function resolveRecipientName($channel, ?string $recipientId): string
+    {
+        if (!$recipientId || !$channel) {
+            return '';
+        }
+
+        $synced   = $channel->synced_data ?? [];
+        $lidMap   = $synced['lidMap'] ?? [];
+        $contacts = $synced['contacts'] ?? [];
+        $key      = explode('@', $recipientId)[0];
+
+        // Resolve a LID to its phone JID if we have a mapping.
+        $resolved    = $lidMap[$recipientId] ?? $lidMap[$key] ?? null;
+        $resolvedKey = $resolved ? explode('@', $resolved)[0] : null;
+
+        foreach ($contacts as $contact) {
+            $cid = $contact['id'] ?? '';
+            if ($cid === $recipientId || $cid === $key
+                || ($resolved && ($cid === $resolved || $cid === $resolvedKey))) {
+                $name = trim($contact['name'] ?? '');
+                if ($name !== '') {
+                    return $name;
+                }
+            }
+        }
+
+        foreach (($synced['groups'] ?? []) as $group) {
+            if (($group['id'] ?? '') === $recipientId || ($group['id'] ?? '') === $key) {
+                return trim($group['name'] ?? $group['subject'] ?? '');
+            }
+        }
+
+        return '';
+    }
+
     private function sendToChannel($channel, ?string $recipientId): array
     {
-        $content   = $this->broadcast->content ?? '';
+        $content   = $this->personalize($this->broadcast->content ?? '', $channel, $recipientId);
         $mediaUrl  = $this->broadcast->media_url;
         $mediaType = $this->broadcast->media_type;
 

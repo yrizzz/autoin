@@ -108,6 +108,7 @@ Route::middleware(['auth:api', 'throttle:api'])->group(function () {
 
     Route::apiResource('broadcasts', BroadcastController::class);
     Route::post('broadcasts/{broadcast}/send', [BroadcastController::class, 'send']);
+    Route::post('broadcasts/{broadcast}/duplicate', [BroadcastController::class, 'duplicate']);
     Route::post('broadcasts/{broadcast}/cancel', [BroadcastController::class, 'cancel']);
     Route::get('broadcasts/{broadcast}/logs', [BroadcastController::class, 'logs']);
 

@@ -351,6 +351,49 @@ class BroadcastController extends Controller
         return response()->json(['status' => 'cancelled']);
     }
 
+    /**
+     * "Pakai Ulang" — clone an existing broadcast (content, media, recipients
+     * and anti-ban settings) into a fresh draft so the user can re-send or
+     * re-schedule it without touching the original history.
+     */
+    public function duplicate(Request $request, Broadcast $broadcast)
+    {
+        $this->authorize($request->user(), $broadcast);
+        $user = $request->user();
+
+        // Respect the free plan's lifetime broadcast cap.
+        $count = $user->broadcasts()->count();
+        if (!PlanLimits::can($user, 'broadcasts', $count)) {
+            return PlanLimits::denyResponse('broadcasts');
+        }
+
+        $copy = $user->broadcasts()->create([
+            'title'            => $broadcast->title,
+            'content'          => $broadcast->content,
+            'media_url'        => $broadcast->media_url,
+            'media_type'       => $broadcast->media_type,
+            'scheduled_at'     => null,
+            'recurring'        => 'none',
+            'status'           => 'draft',
+            'delay_min'        => $broadcast->delay_min,
+            'delay_max'        => $broadcast->delay_max,
+            'chunk_size'       => $broadcast->chunk_size,
+            'chunk_delay_min'  => $broadcast->chunk_delay_min,
+            'chunk_delay_max'  => $broadcast->chunk_delay_max,
+            'auto_tag_members' => $broadcast->auto_tag_members,
+        ]);
+
+        foreach ($broadcast->targets as $target) {
+            BroadcastTarget::create([
+                'broadcast_id' => $copy->id,
+                'channel_id'   => $target->channel_id,
+                'recipients'   => $target->recipients,
+            ]);
+        }
+
+        return response()->json($copy->load('targets.channel'), 201);
+    }
+
     public function logs(Request $request, Broadcast $broadcast)
     {
         $this->authorize($request->user(), $broadcast);

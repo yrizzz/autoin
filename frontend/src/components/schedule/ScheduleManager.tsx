@@ -113,6 +113,7 @@ function DetailModal({
   onDelete,
   onSendNow,
   onCancel,
+  onReuse,
   onUpdate,
   onSaveSuccess,
   acting,
@@ -122,6 +123,7 @@ function DetailModal({
   onDelete: (b: Broadcast) => void;
   onSendNow: (b: Broadcast) => void;
   onCancel: (b: Broadcast) => void;
+  onReuse: (b: Broadcast) => void;
   onUpdate: () => Promise<void>;
   onSaveSuccess: (b: Broadcast) => void;
   acting: boolean;
@@ -629,6 +631,12 @@ function DetailModal({
                         </button>
                       </>
                     )}
+                    {['sent', 'failed', 'cancelled'].includes(broadcast.status) && (
+                      <button type="button" onClick={() => onReuse(broadcast)}
+                        className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs font-bold transition-all cursor-pointer border border-emerald-200 dark:border-emerald-500/20">
+                        <Copy className="w-3.5 h-3.5" /> Pakai Ulang
+                      </button>
+                    )}
                     {isDeletable && (
                       <button type="button" onClick={() => onDelete(broadcast)}
                         className="flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-zinc-500 hover:text-rose-600 dark:text-zinc-400 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl text-xs font-bold transition-all cursor-pointer">
@@ -751,6 +759,20 @@ export default function ScheduleManager() {
     });
   }
 
+  async function handleReuse(b: Broadcast) {
+    setActionId(b.id);
+    try {
+      const copy = await api.post<Broadcast>(`/api/broadcasts/${b.id}/duplicate`);
+      setActiveTab('all');
+      await load();
+      // Open the fresh draft so the user can send or re-schedule it right away.
+      await openDetail(copy);
+    } catch (e: any) {
+      alert(e.message ?? 'Gagal menyalin broadcast.');
+    }
+    setActionId(null);
+  }
+
   async function handleCancel(b: Broadcast) {
     triggerConfirm({
       title: 'Batalkan Jadwal Broadcast',
@@ -826,6 +848,7 @@ export default function ScheduleManager() {
           onDelete={b => handleDelete(b)}
           onSendNow={b => handleSendNow(b)}
           onCancel={b => handleCancel(b)}
+          onReuse={b => handleReuse(b)}
           onUpdate={load}
           onSaveSuccess={full => setDetail(full)}
           acting={actionId === detail.id}
@@ -985,6 +1008,13 @@ export default function ScheduleManager() {
                               <X className="w-3 h-3" /><span>Batalkan</span>
                             </button>
                           </div>
+                        )}
+                        {['sent', 'failed', 'cancelled'].includes(b.status) && (
+                          <button onClick={() => handleReuse(b)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600/10 hover:bg-emerald-600 text-emerald-600 hover:text-white dark:text-emerald-400 dark:hover:text-white rounded-xl text-[10px] font-bold transition-all border border-emerald-500/20 cursor-pointer shadow-sm"
+                            title="Pakai ulang broadcast ini">
+                            <Copy className="w-3 h-3" /><span>Pakai Ulang</span>
+                          </button>
                         )}
                         {!['scheduled', 'draft', 'queued', 'sending'].includes(b.status) && (
                           <button onClick={() => handleDelete(b)}

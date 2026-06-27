@@ -45,12 +45,35 @@ class BroadcastService
         }
 
         if (config('queue.default') === 'sync') {
-            $artisan = base_path('artisan');
-            $cmd = "php {$artisan} broadcast:run {$broadcast->id} > /dev/null 2>&1 &";
-            exec($cmd);
+            $this->dispatchInBackground($broadcast);
         } else {
             SendBroadcastJob::dispatch($broadcast);
         }
+    }
+
+    /**
+     * Kick off the actual sending without blocking — or failing — the HTTP
+     * response. Prefer a detached CLI process (no execution-time limit, best for
+     * large broadcasts); fall back to running after the response is flushed when
+     * exec() is unavailable. Previously an unguarded exec() raised a fatal
+     * "Server Error" whenever the host had exec() in disable_functions.
+     */
+    private function dispatchInBackground(Broadcast $broadcast): void
+    {
+        $disabled = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        $execAvailable = function_exists('exec') && !in_array('exec', $disabled, true);
+
+        if ($execAvailable) {
+            try {
+                $artisan = base_path('artisan');
+                exec("php {$artisan} broadcast:run {$broadcast->id} > /dev/null 2>&1 &");
+                return;
+            } catch (\Throwable $e) {
+                // Fall through to running the job after the response is sent.
+            }
+        }
+
+        SendBroadcastJob::dispatchAfterResponse($broadcast);
     }
 
     public function schedule(Broadcast $broadcast): void
