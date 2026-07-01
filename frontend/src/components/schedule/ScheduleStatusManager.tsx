@@ -158,6 +158,7 @@ export default function ScheduleStatusManager() {
   const [uploading, setUploading] = useState(false);
   const [scheduledAt, setScheduledAt] = useState('');
   const [sendImmediately, setSendImmediately] = useState(false);
+  const [recurring, setRecurring] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
 
   // Status privacy — persistent per-device blacklist ("Kontak saya, kecuali…")
   const [privacyOpen, setPrivacyOpen] = useState(false);
@@ -366,7 +367,7 @@ export default function ScheduleStatusManager() {
         channel_ids: [parseInt(selectedChannelId)],
         recipients: ['status@broadcast'],
         scheduled_at: scheduledAtUtc,
-        recurring: 'none',
+        recurring: sendImmediately ? 'none' : recurring,
         send_now: sendImmediately,
       });
 
@@ -377,6 +378,7 @@ export default function ScheduleStatusManager() {
       setMediaShape('full');
       setScheduledAt('');
       setSendImmediately(false);
+      setRecurring('none');
       
       // Reload list
       await loadData();
@@ -775,18 +777,58 @@ export default function ScheduleStatusManager() {
                 </div>
 
                 {!sendImmediately && (
-                  <div>
-                    <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
-                      Waktu Pengiriman
-                    </label>
-                    <div className="relative">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                      <input
-                        type="datetime-local"
-                        value={scheduledAt}
-                        onChange={e => setScheduledAt(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-medium"
-                      />
+                  <div className="space-y-3">
+                    {/* Waktu Pertama */}
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                        Waktu Pengiriman Pertama
+                      </label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                        <input
+                          type="datetime-local"
+                          value={scheduledAt}
+                          onChange={e => setScheduledAt(e.target.value)}
+                          className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-medium"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Pengulangan */}
+                    <div>
+                      <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                        Pengulangan
+                      </label>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {([
+                          { id: 'none',    label: 'Sekali',   icon: '—' },
+                          { id: 'daily',   label: 'Harian',   icon: '📅' },
+                          { id: 'weekly',  label: 'Mingguan', icon: '🗓️' },
+                          { id: 'monthly', label: 'Bulanan',  icon: '📆' },
+                        ] as const).map(opt => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            onClick={() => setRecurring(opt.id)}
+                            className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-[9px] font-bold transition-all cursor-pointer ${
+                              recurring === opt.id
+                                ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                                : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                            }`}
+                          >
+                            <span className="text-sm leading-none">{opt.icon}</span>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                      {recurring !== 'none' && (
+                        <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1.5 flex items-center gap-1">
+                          <RefreshCw className="w-3 h-3" />
+                          Status akan otomatis diulang setiap{' '}
+                          {recurring === 'daily' ? 'hari' : recurring === 'weekly' ? 'minggu' : 'bulan'}
+                          {' '}pada jam yang sama.
+                        </p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1002,9 +1044,17 @@ export default function ScheduleStatusManager() {
                                 <div className="font-bold text-zinc-900 dark:text-white truncate">
                                   {b.content || '—'}
                                 </div>
-                                <div className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1 mt-0.5">
-                                  <Smartphone className="w-2.5 h-2.5" />
-                                  <span>{deviceName}</span>
+                                <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                                  <div className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium flex items-center gap-1">
+                                    <Smartphone className="w-2.5 h-2.5" />
+                                    <span>{deviceName}</span>
+                                  </div>
+                                  {b.recurring && b.recurring !== 'none' && (
+                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-bold bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 uppercase">
+                                      <RefreshCw className="w-2 h-2 animate-spin-slow" />
+                                      {b.recurring === 'daily' ? 'Harian' : b.recurring === 'weekly' ? 'Mingguan' : 'Bulanan'}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
