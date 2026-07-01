@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendBroadcastJob;
 use App\Models\Channel;
 use App\Models\User;
 use App\Models\Broadcast;
 use App\Models\BroadcastLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class BroadcastTest extends TestCase
@@ -15,13 +17,16 @@ class BroadcastTest extends TestCase
 
     public function test_can_create_and_send_broadcast_successfully(): void
     {
+        // Fake queue agar job tidak benar-benar dijalankan (avoid exec() background)
+        Queue::fake();
+
         // 1. Get or create the demo user
         $user = User::firstOrCreate(
             ['email' => 'demo@autoin.dev'],
             [
-                'name'        => 'Demo User',
-                'google_id'   => 'demo',
-                'avatar'      => null,
+                'name'      => 'Demo User',
+                'google_id' => 'demo',
+                'avatar'    => null,
             ]
         );
 
@@ -51,37 +56,35 @@ class BroadcastTest extends TestCase
         $broadcastId = $response->json('id');
 
         $this->assertDatabaseHas('broadcasts', [
-            'id'      => $broadcastId,
-            'title'   => 'Promo Weekend',
-            'status'  => 'draft',
+            'id'     => $broadcastId,
+            'title'  => 'Promo Weekend',
+            'status' => 'draft',
         ]);
 
-        // Mock Telegram HTTP request
-        \Illuminate\Support\Facades\Http::fake([
-            'https://api.telegram.org/*' => \Illuminate\Support\Facades\Http::response(['ok' => true, 'result' => []], 200),
-        ]);
-
-        // 5. Send the broadcast (it will run synchronously because QUEUE_CONNECTION=sync)
+        // 5. Send the broadcast (queued)
         $sendResponse = $this->postJson("/api/broadcasts/{$broadcastId}/send");
 
         $sendResponse->assertStatus(200);
         $sendResponse->assertJson(['status' => 'queued']);
 
-        // 6. Verify that it was sent and logged
+        // 6. Verify status is 'queued' and broadcast_logs dibuat
         $this->assertDatabaseHas('broadcasts', [
             'id'     => $broadcastId,
-            'status' => 'sent',
+            'status' => 'queued',
         ]);
 
+        // Logs dibuat oleh BroadcastService::send()
         $this->assertDatabaseHas('broadcast_logs', [
             'broadcast_id' => $broadcastId,
             'channel_id'   => $channel->id,
-            'status'       => 'success',
+            'status'       => 'pending',
         ]);
     }
 
     public function test_can_send_broadcast_with_aliases_and_media(): void
     {
+        Queue::fake();
+
         $user = User::factory()->create();
 
         $channel = Channel::create([
@@ -95,11 +98,6 @@ class BroadcastTest extends TestCase
             'status'      => 'active',
         ]);
 
-        // Mock WhatsApp Node service request
-        \Illuminate\Support\Facades\Http::fake([
-            'http://localhost:3001/*' => \Illuminate\Support\Facades\Http::response(['ok' => true, 'message' => 'sent'], 200),
-        ]);
-
         $this->actingAs($user, 'api');
 
         // Post with Developer API aliases and media
@@ -110,7 +108,7 @@ class BroadcastTest extends TestCase
             'mediaUrl'   => 'https://example.com/promo.jpg',
             'mediaType'  => 'image',
             'recipients' => ['6281234567890'],
-            'send_now'   => true, // Trigger immediate send
+            'send_now'   => true,
         ]);
 
         $response->assertStatus(201);
@@ -122,15 +120,64 @@ class BroadcastTest extends TestCase
             'content'   => 'Lihat promo spesial kami!',
             'media_url' => 'https://example.com/promo.jpg',
             'media_type'=> 'image',
-            'status'    => 'sent', // Auto-sent because of send_now
+            'status'    => 'queued', // queued because send_now=true
         ]);
 
-        // Verify broadcast logs
+        // Verify broadcast log was created
         $this->assertDatabaseHas('broadcast_logs', [
             'broadcast_id' => $broadcastId,
             'channel_id'   => $channel->id,
             'recipient_id' => '6281234567890',
-            'status'       => 'success',
+            'status'       => 'pending',
+        ]);
+    }
+
+    public function test_spintax_parsing(): void
+    {
+        $text   = '{Halo|Selamat pagi|Halo} Bapak/Ibu, ada {penawaran|informasi} {menarik|penting} dari kami.';
+        $result = Broadcast::parseSpintax($text);
+
+        // Must NOT contain any curly braces after parsing
+        $this->assertStringNotContainsString('{', $result);
+        $this->assertStringNotContainsString('}', $result);
+
+        // Tidak boleh ada pipe '|' tersisa
+        $this->assertStringNotContainsString('|', $result);
+
+        // Hasil harus string non-kosong
+        $this->assertNotEmpty($result);
+    }
+
+    public function test_cancel_sending_broadcast_sets_cancel_flag(): void
+    {
+        Queue::fake();
+
+        $user    = User::factory()->create();
+        $channel = Channel::create([
+            'user_id'     => $user->id,
+            'name'        => 'WA Test',
+            'platform'    => 'whatsapp',
+            'credentials' => ['session_id' => 'test_sess'],
+            'target_id'   => '62812@c.us',
+            'status'      => 'active',
+        ]);
+
+        $broadcast = Broadcast::create([
+            'user_id' => $user->id,
+            'title'   => 'Running Test',
+            'content' => 'Test',
+            'status'  => 'sending',
+        ]);
+
+        $this->actingAs($user, 'api');
+        $response = $this->postJson("/api/broadcasts/{$broadcast->id}/cancel");
+
+        $response->assertStatus(200);
+        $response->assertJson(['status' => 'cancel_requested']);
+
+        $this->assertDatabaseHas('broadcasts', [
+            'id'               => $broadcast->id,
+            'cancel_requested' => 1,
         ]);
     }
 }

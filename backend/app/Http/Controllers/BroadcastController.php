@@ -83,17 +83,21 @@ class BroadcastController extends Controller
             'background_color' => 'nullable|string',
             'backgroundColor'  => 'nullable|string',
             'font'             => 'nullable|integer',
-            'delay_min'        => 'nullable|integer|min:0',
-            'delay_max'        => 'nullable|integer|min:0',
-            'chunk_size'       => 'nullable|integer|min:1',
-            'chunk_delay_min'  => 'nullable|integer|min:0',
-            'chunk_delay_max'  => 'nullable|integer|min:0',
+            'delay_min'           => 'nullable|integer|min:0',
+            'delay_max'           => 'nullable|integer|min:0',
+            'chunk_size'          => 'nullable|integer|min:1',
+            'chunk_delay_min'     => 'nullable|integer|min:0',
+            'chunk_delay_max'     => 'nullable|integer|min:0',
             // Boolean (legacy simple toggle) or array (per-group tag config)
             'auto_tag_members' => ['nullable', function ($attribute, $value, $fail) {
                 if (!is_bool($value) && !is_array($value)) {
                     $fail('Pengaturan auto tag members harus berupa boolean atau daftar grup.');
                 }
             }],
+            // Anti-ban v2
+            'spintax_enabled'     => 'nullable|boolean',
+            'shuffle_recipients'  => 'nullable|boolean',
+            'typing_simulation'   => 'nullable|boolean',
         ], [
             'channel_ids.required'   => 'Channel tujuan wajib diisi (channel_ids).',
             'channel_ids.min'        => 'Minimal pilih 1 channel tujuan.',
@@ -114,19 +118,23 @@ class BroadcastController extends Controller
         }
 
         $broadcast = $request->user()->broadcasts()->create([
-            'title'            => $data['title'] ?? null,
-            'content'          => $data['content'] ?? '',
-            'media_url'        => $mediaUrl,
-            'media_type'       => $mediaType,
-            'scheduled_at'     => $data['scheduled_at'] ?? null,
-            'recurring'        => $data['recurring'] ?? 'none',
-            'status'           => $status,
-            'delay_min'        => $data['delay_min'] ?? 2,
-            'delay_max'        => $data['delay_max'] ?? 5,
-            'chunk_size'       => $data['chunk_size'] ?? 10,
-            'chunk_delay_min'  => $data['chunk_delay_min'] ?? 10,
-            'chunk_delay_max'  => $data['chunk_delay_max'] ?? 20,
-            'auto_tag_members' => $data['auto_tag_members'] ?? false,
+            'title'               => $data['title'] ?? null,
+            'content'             => $data['content'] ?? '',
+            'media_url'           => $mediaUrl,
+            'media_type'          => $mediaType,
+            'scheduled_at'        => $data['scheduled_at'] ?? null,
+            'recurring'           => $data['recurring'] ?? 'none',
+            'status'              => $status,
+            'delay_min'           => $data['delay_min'] ?? 3,
+            'delay_max'           => $data['delay_max'] ?? 7,
+            'chunk_size'          => $data['chunk_size'] ?? 10,
+            'chunk_delay_min'     => $data['chunk_delay_min'] ?? 15,
+            'chunk_delay_max'     => $data['chunk_delay_max'] ?? 30,
+            'auto_tag_members'    => $data['auto_tag_members'] ?? false,
+            // Anti-ban v2
+            'spintax_enabled'     => $data['spintax_enabled']    ?? false,
+            'shuffle_recipients'  => $data['shuffle_recipients']  ?? true,
+            'typing_simulation'   => $data['typing_simulation']   ?? true,
         ]);
 
         $recipientsMap = $data['recipients'] ?? [];
@@ -342,8 +350,16 @@ class BroadcastController extends Controller
     {
         $this->authorize($request->user(), $broadcast);
 
-        if (!in_array($broadcast->status, ['scheduled', 'draft', 'queued'])) {
-            return response()->json(['message' => 'Broadcast ini tidak dapat dibatalkan.'], 422);
+        $cancellableStatuses = ['scheduled', 'draft', 'queued', 'sending'];
+        if (!in_array($broadcast->status, $cancellableStatuses)) {
+            return response()->json(['message' => 'Broadcast ini tidak dapat dibatalkan (status: ' . $broadcast->status . ').'], 422);
+        }
+
+        // Broadcast yang sedang berjalan ('sending'): set flag cancel_requested.
+        // Job akan membaca flag ini setiap 5 pesan dan berhenti secara graceful.
+        if ($broadcast->status === 'sending') {
+            $broadcast->update(['cancel_requested' => true]);
+            return response()->json(['status' => 'cancel_requested', 'message' => 'Pembatalan diterima. Broadcast akan berhenti setelah pesan saat ini selesai.']);
         }
 
         $broadcast->update(['status' => 'cancelled']);

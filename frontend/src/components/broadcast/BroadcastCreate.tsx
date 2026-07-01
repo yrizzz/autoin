@@ -1563,17 +1563,86 @@ export default function BroadcastCreate() {
               )}
             </button>
 
-            {/* Instruction Card */}
-            <div className="bg-zinc-100/50 dark:bg-zinc-950/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-5 text-xs text-zinc-550 dark:text-zinc-400 space-y-2">
-              <h4 className="font-bold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
-                <Info className="w-4 h-4 text-blue-500" />
-                Panduan Cepat
-              </h4>
-              <ul className="space-y-1 list-disc list-inside text-[11px] leading-relaxed">
-                <li>Bisa melampirkan media foto/video/dokumen.</li>
-                <li>Pilih kontak spesifik untuk target lebih sempit.</li>
-                <li>Gunakan AI asisten di tab AI untuk memoles teks.</li>
-              </ul>
+            {/* Anti-Ban Info Card */}
+            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border border-emerald-200/70 dark:border-emerald-800/40 rounded-3xl p-5 space-y-4">
+              
+              {/* Header */}
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-extrabold text-emerald-800 dark:text-emerald-300 leading-tight">
+                    Mode Anti-Banned Aktif
+                  </h4>
+                  <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">
+                    Broadcast dikirim secara aman & natural
+                  </p>
+                </div>
+              </div>
+
+              {/* Flow Steps */}
+              <div className="space-y-2">
+                {[
+                  {
+                    icon: '🔀',
+                    title: 'Urutan Diacak',
+                    desc: 'Daftar penerima diacak sebelum dikirim agar polanya tidak terdeteksi sistem WhatsApp.',
+                  },
+                  {
+                    icon: '⌨️',
+                    title: 'Simulasi Mengetik',
+                    desc: 'Sebelum setiap pesan terkirim, sistem mensimulasikan status "sedang mengetik..." selama 1–4 detik agar terlihat seperti manusia.',
+                  },
+                  {
+                    icon: '⏱️',
+                    title: 'Jeda Acak Antar Pesan',
+                    desc: `Setiap pesan diberi jeda acak ${delayMin}–${delayMax} detik. Jeda tidak kaku agar tidak terdeteksi sebagai bot.`,
+                  },
+                  {
+                    icon: '🛑',
+                    title: `Istirahat Tiap ${chunkSize} Pesan`,
+                    desc: `Setelah setiap ${chunkSize} pesan, sistem istirahat ${chunkDelayMin}–${chunkDelayMax} detik agar nomor WA tidak dianggap melakukan spam massal.`,
+                  },
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 bg-white/60 dark:bg-emerald-950/30 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+                    <span className="text-base shrink-0 leading-none mt-0.5">{step.icon}</span>
+                    <div className="min-w-0">
+                      <span className="block text-[11px] font-extrabold text-zinc-800 dark:text-zinc-200">{step.title}</span>
+                      <span className="block text-[10px] text-zinc-500 dark:text-zinc-400 leading-relaxed mt-0.5">{step.desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Estimasi Waktu */}
+              {(() => {
+                const totalRecipients = selectedChannels.reduce((sum, id) => {
+                  const st = recipientState[id];
+                  return sum + (st?.selected.size ?? 0);
+                }, 0);
+                if (totalRecipients < 2) return null;
+                const avgDelay = (Number(delayMin) + Number(delayMax)) / 2;
+                const chunks = Math.floor(totalRecipients / Number(chunkSize));
+                const avgChunkDelay = (Number(chunkDelayMin) + Number(chunkDelayMax)) / 2;
+                const totalSec = totalRecipients * avgDelay + chunks * avgChunkDelay + totalRecipients * 2.5; // +2.5s typing
+                const menit = Math.ceil(totalSec / 60);
+                return (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/30 rounded-2xl flex items-center gap-2.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    <span className="text-[11px] text-blue-700 dark:text-blue-300">
+                      <strong>{totalRecipients} penerima</strong> → estimasi selesai dalam ±{menit < 60 ? `${menit} menit` : `${Math.ceil(menit / 60)} jam`}
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Tip */}
+              <div className="flex items-start gap-2 text-[10px] text-emerald-700/80 dark:text-emerald-400/80">
+                <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>Proses berjalan di <strong>background</strong>. Anda bisa menutup halaman ini dan broadcast tetap berjalan.</span>
+              </div>
+
             </div>
 
           </div>

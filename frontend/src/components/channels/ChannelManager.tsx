@@ -737,19 +737,30 @@ export default function ChannelManager() {
                   className="flex flex-col p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/40 dark:bg-zinc-950/40 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-200 gap-3"
                 >
                   {/* Top: icon + name + status badge */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/5 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/10 mt-0.5">
                       <PlatformIcon platform={ch.platform} className="w-5.5 h-5.5" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
-                      <div className="flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500 font-semibold uppercase tracking-wider mt-1">
-                        <span className="text-emerald-600 dark:text-emerald-400">WhatsApp Account</span>
+                      {/* Name row */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
+                        {/* Status badge — top right */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {ch.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full border tracking-wide whitespace-nowrap ${statusBadgeStyle(ch.status)}`}>
+                            {ch.status === 'active' ? 'TERHUBUNG' : ch.status === 'error' ? 'ERROR' : ch.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Platform + ID row — now on its own line, won't collide */}
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold uppercase tracking-wider">WhatsApp</span>
                         <button
                           type="button"
                           onClick={() => handleCopyId(ch.id)}
-                          title="Salin Channel ID untuk dipakai di API (endpoint /api/whatsapp/{channel_id}/send & broadcast channel_ids)"
-                          className="inline-flex items-center gap-1 normal-case font-mono px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100/70 dark:hover:bg-blue-500/20 transition-all cursor-pointer"
+                          title="Salin Channel ID"
+                          className="inline-flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100/70 dark:hover:bg-blue-500/20 transition-all cursor-pointer"
                         >
                           <span>ID: {ch.id}</span>
                           {copiedId === ch.id
@@ -758,21 +769,14 @@ export default function ChannelManager() {
                         </button>
                       </div>
                     </div>
-                    {/* Status badge — always top-right */}
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      {ch.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
-                      <span className={`text-[9px] font-extrabold px-2.5 py-1 rounded-full border tracking-wide ${statusBadgeStyle(ch.status)}`}>
-                        {ch.status === 'active' ? 'TERHUBUNG' : ch.status === 'error' ? 'ERROR' : ch.status.toUpperCase()}
-                      </span>
-                    </div>
                   </div>
 
-                  {/* Bottom: action buttons — always full-width row, wraps on overflow */}
-                  <div className="flex items-center gap-2 flex-wrap border-t border-zinc-100 dark:border-zinc-800 pt-3">
+                  {/* Bottom: action buttons */}
+                  <div className="flex items-center gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-3">
                     {ch.platform === 'whatsapp' && ch.status === 'active' && (
                       <button
                         onClick={() => handleOpenSyncModal(ch)}
-                        className="flex-1 min-w-0 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-3 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        className="flex-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 bg-emerald-50/50 dark:bg-emerald-500/5 hover:bg-emerald-100/10 dark:hover:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/10 px-2 py-2 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0"
                       >
                         <MessageSquare className="w-3.5 h-3.5 shrink-0" />
                         <span className="truncate">Chats & Grup</span>
@@ -782,7 +786,7 @@ export default function ChannelManager() {
                     <button
                       onClick={() => handleTest(ch)}
                       disabled={testing === ch.id}
-                      className="flex-1 min-w-0 text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-3 py-2 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5"
+                      className="flex-1 text-xs font-bold text-blue-600 hover:text-blue-500 bg-blue-50/50 dark:bg-blue-500/5 hover:bg-blue-100/10 dark:hover:bg-blue-500/10 border border-blue-100 dark:border-blue-500/10 px-2 py-2 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5 min-w-0"
                     >
                       {testing === ch.id ? <Loader2 className="w-3 h-3 animate-spin shrink-0" /> : null}
                       <span className="truncate">Test Koneksi</span>

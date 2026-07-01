@@ -16,7 +16,7 @@ class WhatsAppService
         $this->secret  = config('services.whatsapp.secret', 'autoin-wa-secret');
     }
 
-    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null, ?array $mentions = null, ?array $statusExcludeJidList = null): array
+    public function send(Channel $channel, ?string $content = '', ?string $mediaUrl = null, ?string $mediaType = null, ?string $recipientId = null, ?array $statusJidList = null, ?array $mentions = null, ?array $statusExcludeJidList = null, bool $typingSimulation = false): array
     {
         $content = $content ?? '';
         $credentials = $channel->credentials;
@@ -37,8 +37,9 @@ class WhatsAppService
 
         if (empty($mediaUrls)) {
             $payload = [
-                'to'        => $to,
-                'message'   => $content,
+                'to'                => $to,
+                'message'           => $content,
+                'typingSimulation'  => $typingSimulation,
             ];
             if ($statusJidList !== null) {
                 $payload['statusJidList'] = $statusJidList;
@@ -50,6 +51,7 @@ class WhatsAppService
                 $payload['mentions'] = $mentions;
             }
             $response = Http::withHeader('x-api-secret', $this->secret)
+                ->timeout(60)
                 ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
             return [
                 'ok'       => $response->successful() && $response->json('ok'),
@@ -59,10 +61,11 @@ class WhatsAppService
 
         // Send first image with the caption/message
         $payload = [
-            'to'        => $to,
-            'message'   => $content,
-            'mediaUrl'  => $mediaUrls[0],
-            'mediaType' => $mediaType,
+            'to'               => $to,
+            'message'          => $content,
+            'mediaUrl'         => $mediaUrls[0],
+            'mediaType'        => $mediaType,
+            'typingSimulation' => $typingSimulation,
         ];
         if ($statusJidList !== null) {
             $payload['statusJidList'] = $statusJidList;
@@ -74,9 +77,10 @@ class WhatsAppService
             $payload['mentions'] = $mentions;
         }
         $response = Http::withHeader('x-api-secret', $this->secret)
+            ->timeout(60)
             ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
 
-        $success = $response->successful() && $response->json('ok');
+        $success      = $response->successful() && $response->json('ok');
         $lastResponse = $response->json();
 
         // Send remaining images without caption
@@ -94,6 +98,7 @@ class WhatsAppService
                 $payload['statusExcludeJidList'] = $statusExcludeJidList;
             }
             Http::withHeader('x-api-secret', $this->secret)
+                ->timeout(60)
                 ->post("{$this->baseUrl}/sessions/{$sessionId}/send", $payload);
         }
 

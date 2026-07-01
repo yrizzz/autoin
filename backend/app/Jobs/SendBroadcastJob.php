@@ -8,18 +8,28 @@ use App\Models\BroadcastLog;
 use App\Services\WhatsAppService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 
 class SendBroadcastJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $tries = 3;
-    public int $timeout = 3600;
+    public int $tries   = 3;
+    public int $timeout = 7200; // 2 jam maksimum
 
     public function __construct(public Broadcast $broadcast) {}
 
     public function handle(): void
     {
+        // Reload fresh dari DB agar cancel_requested selalu up-to-date
+        $this->broadcast->refresh();
+
+        if ($this->broadcast->cancel_requested) {
+            $this->broadcast->update(['status' => 'cancelled']);
+            Log::info("[Broadcast #{$this->broadcast->id}] Dibatalkan sebelum dimulai.");
+            return;
+        }
+
         $this->broadcast->update(['status' => 'sending']);
 
         $logs = BroadcastLog::where('broadcast_id', $this->broadcast->id)
@@ -27,18 +37,58 @@ class SendBroadcastJob implements ShouldQueue
             ->with('channel')
             ->get();
 
-        $delayMin = $this->broadcast->delay_min ?? 2;
-        $delayMax = $this->broadcast->delay_max ?? 5;
-        $chunkSize = $this->broadcast->chunk_size ?? 10;
-        $chunkDelayMin = $this->broadcast->chunk_delay_min ?? 10;
-        $chunkDelayMax = $this->broadcast->chunk_delay_max ?? 20;
+        if ($logs->isEmpty()) {
+            $this->broadcast->update(['status' => 'sent', 'sent_at' => now()]);
+            return;
+        }
 
-        foreach ($logs as $index => $log) {
+        // ── Anti-ban settings ─────────────────────────────────────────────────
+        $delayMin      = max(1, $this->broadcast->delay_min      ?? 3);
+        $delayMax      = max($delayMin, $this->broadcast->delay_max      ?? 7);
+        $chunkSize     = max(1, $this->broadcast->chunk_size     ?? 10);
+        $chunkDelayMin = max(5, $this->broadcast->chunk_delay_min ?? 15);
+        $chunkDelayMax = max($chunkDelayMin, $this->broadcast->chunk_delay_max ?? 30);
+
+        $useSpintax         = $this->broadcast->spintax_enabled    ?? false;
+        $shuffleRecipients  = $this->broadcast->shuffle_recipients  ?? true;
+        $typingSimulation   = $this->broadcast->typing_simulation   ?? true;
+
+        // ── Acak urutan penerima ──────────────────────────────────────────────
+        $logItems = $logs->all();
+        if ($shuffleRecipients) {
+            shuffle($logItems);
+        }
+
+        $sentCount   = 0;
+        $failedCount = 0;
+
+        foreach ($logItems as $index => $log) {
+            // ── Cek cancel di tengah proses ───────────────────────────────────
+            if ($index > 0 && $index % 5 === 0) {
+                $this->broadcast->refresh();
+                if ($this->broadcast->cancel_requested) {
+                    // Tandai yang belum terkirim sebagai cancelled
+                    $pendingIds = collect($logItems)
+                        ->skip($index)
+                        ->pluck('id');
+                    BroadcastLog::whereIn('id', $pendingIds)
+                        ->where('status', 'pending')
+                        ->update(['status' => 'cancelled']);
+                    $this->broadcast->update(['status' => 'cancelled']);
+                    Log::info("[Broadcast #{$this->broadcast->id}] Dibatalkan di indeks {$index}.");
+                    return;
+                }
+            }
+
+            // ── Delay anti-ban ────────────────────────────────────────────────
             if ($index > 0) {
                 if ($index % $chunkSize === 0) {
+                    // Jeda panjang antar chunk — tambahkan jitter acak
                     $delay = rand($chunkDelayMin, $chunkDelayMax);
+                    Log::debug("[Broadcast #{$this->broadcast->id}] Chunk pause: {$delay}s (chunk #{$index})");
                     sleep($delay);
                 } else {
+                    // Jeda normal antar pesan — jitter untuk hindari pola tetap
                     $delay = rand($delayMin, $delayMax);
                     sleep($delay);
                 }
@@ -46,7 +96,14 @@ class SendBroadcastJob implements ShouldQueue
 
             $channel     = $log->channel;
             $recipientId = $log->recipient_id;
-            $result      = $this->sendToChannel($channel, $recipientId);
+
+            // ── Spintax: variasi konten agar tidak identik ────────────────────
+            $content = $this->broadcast->content ?? '';
+            if ($useSpintax && !empty($content)) {
+                $content = Broadcast::parseSpintax($content);
+            }
+
+            $result = $this->sendToChannel($channel, $recipientId, $content, $typingSimulation);
 
             $log->update([
                 'status'   => $result['ok'] ? 'success' : 'failed',
@@ -55,54 +112,73 @@ class SendBroadcastJob implements ShouldQueue
             ]);
 
             $channel->update(['last_used_at' => now()]);
-
             event(new BroadcastStatusUpdated($this->broadcast, $log));
+
+            if ($result['ok']) {
+                $sentCount++;
+            } else {
+                $failedCount++;
+                // Back-off ekstra jika ada error (429, rate limit, dsb)
+                $responseData = $result['response'];
+                $errorMsg     = is_array($responseData) ? ($responseData['error'] ?? '') : (string) $responseData;
+                if (str_contains(strtolower($errorMsg), 'rate') || str_contains(strtolower($errorMsg), '429')) {
+                    Log::warning("[Broadcast #{$this->broadcast->id}] Rate limit detected, back-off 60s");
+                    sleep(60);
+                }
+            }
         }
 
         $allFailed = BroadcastLog::where('broadcast_id', $this->broadcast->id)
-            ->where('status', 'success')->doesntExist();
+            ->where('status', 'success')
+            ->doesntExist();
 
         $this->broadcast->update([
             'status'  => $allFailed ? 'failed' : 'sent',
             'sent_at' => now(),
         ]);
 
-        // If this broadcast is recurring, automatically schedule the next occurrence
+        Log::info("[Broadcast #{$this->broadcast->id}] Selesai: sent={$sentCount} failed={$failedCount}");
+
+        // ── Auto-schedule recurring ───────────────────────────────────────────
         if (in_array($this->broadcast->recurring, ['daily', 'weekly', 'monthly'])) {
             $this->scheduleNextOccurrence($this->broadcast);
         }
     }
 
     /**
-     * Helper to clone and schedule the next occurrence of a recurring broadcast.
+     * Clone dan jadwalkan occurrence berikutnya untuk broadcast recurring.
      */
     private function scheduleNextOccurrence(Broadcast $broadcast): void
     {
-        $baseDate = $broadcast->scheduled_at ?? $broadcast->created_at ?? now();
+        $baseDate        = $broadcast->scheduled_at ?? $broadcast->created_at ?? now();
         $nextScheduledAt = \Carbon\Carbon::parse($baseDate);
-        
+
         while ($nextScheduledAt->isPast()) {
-            if ($broadcast->recurring === 'daily') {
-                $nextScheduledAt->addDay();
-            } elseif ($broadcast->recurring === 'weekly') {
-                $nextScheduledAt->addWeek();
-            } elseif ($broadcast->recurring === 'monthly') {
-                $nextScheduledAt->addMonth();
-            } else {
-                break;
-            }
+            match ($broadcast->recurring) {
+                'daily'   => $nextScheduledAt->addDay(),
+                'weekly'  => $nextScheduledAt->addWeek(),
+                'monthly' => $nextScheduledAt->addMonth(),
+                default   => null,
+            };
         }
 
-        // Create next scheduled broadcast
         $nextBroadcast = Broadcast::create([
-            'user_id'      => $broadcast->user_id,
-            'title'        => $broadcast->title,
-            'content'      => $broadcast->content,
-            'media_url'    => $broadcast->media_url,
-            'media_type'   => $broadcast->media_type,
-            'scheduled_at' => $nextScheduledAt,
-            'recurring'    => $broadcast->recurring,
-            'status'       => 'scheduled',
+            'user_id'             => $broadcast->user_id,
+            'title'               => $broadcast->title,
+            'content'             => $broadcast->content,
+            'media_url'           => $broadcast->media_url,
+            'media_type'          => $broadcast->media_type,
+            'scheduled_at'        => $nextScheduledAt,
+            'recurring'           => $broadcast->recurring,
+            'status'              => 'scheduled',
+            'delay_min'           => $broadcast->delay_min,
+            'delay_max'           => $broadcast->delay_max,
+            'chunk_size'          => $broadcast->chunk_size,
+            'chunk_delay_min'     => $broadcast->chunk_delay_min,
+            'chunk_delay_max'     => $broadcast->chunk_delay_max,
+            'spintax_enabled'     => $broadcast->spintax_enabled,
+            'shuffle_recipients'  => $broadcast->shuffle_recipients,
+            'typing_simulation'   => $broadcast->typing_simulation,
         ]);
 
         foreach ($broadcast->targets as $target) {
@@ -191,17 +267,15 @@ class SendBroadcastJob implements ShouldQueue
         return '';
     }
 
-    private function sendToChannel($channel, ?string $recipientId): array
+    private function sendToChannel($channel, ?string $recipientId, string $content, bool $typingSimulation = true): array
     {
-        $content   = $this->personalize($this->broadcast->content ?? '', $channel, $recipientId);
         $mediaUrl  = $this->broadcast->media_url;
         $mediaType = $this->broadcast->media_type;
 
-        $mentions = null;
-        $autoTag = $this->broadcast->auto_tag_members;
-        
-        $isEnabled = false;
-        $tagMode = 'all';
+        $mentions    = null;
+        $autoTag     = $this->broadcast->auto_tag_members;
+        $isEnabled   = false;
+        $tagMode     = 'all';
         $customMembers = [];
 
         if ($channel->platform === 'whatsapp' && $recipientId && str_ends_with($recipientId, '@g.us')) {
@@ -211,11 +285,10 @@ class SendBroadcastJob implements ShouldQueue
                 if (isset($autoTag['enabled']) && $autoTag['enabled']) {
                     $isEnabled = true;
                 }
-                
                 if (isset($autoTag[$recipientId])) {
-                    $groupConf = $autoTag[$recipientId];
-                    $isEnabled = $groupConf['enabled'] ?? true;
-                    $tagMode = $groupConf['mode'] ?? 'all';
+                    $groupConf   = $autoTag[$recipientId];
+                    $isEnabled   = $groupConf['enabled'] ?? true;
+                    $tagMode     = $groupConf['mode']    ?? 'all';
                     $customMembers = $groupConf['custom_members'] ?? [];
                 }
             }
@@ -224,9 +297,9 @@ class SendBroadcastJob implements ShouldQueue
         if ($isEnabled) {
             $groupMetadata = app(WhatsAppService::class)->getGroupMetadata($channel, $recipientId);
             if ($groupMetadata && isset($groupMetadata['participants'])) {
-                $participants = $groupMetadata['participants'];
-                
+                $participants      = $groupMetadata['participants'];
                 $targetParticipants = [];
+
                 foreach ($participants as $p) {
                     if ($tagMode === 'all') {
                         $targetParticipants[] = $p['id'];
@@ -235,30 +308,22 @@ class SendBroadcastJob implements ShouldQueue
                             $targetParticipants[] = $p['id'];
                         }
                     } elseif ($tagMode === 'custom') {
-                        $pId = $p['id'];
+                        $pId    = $p['id'];
                         $pPhone = explode('@', $pId)[0];
-                        
-                        $isMatched = false;
                         foreach ($customMembers as $cm) {
                             $cmPhone = explode('@', $cm)[0];
                             if ($cm === $pId || $cmPhone === $pPhone) {
-                                $isMatched = true;
+                                $targetParticipants[] = $pId;
                                 break;
                             }
                         }
-                        if ($isMatched) {
-                            $targetParticipants[] = $pId;
-                        }
                     }
                 }
-
                 $mentions = $targetParticipants;
-                // Hidden mentions: We send the mentions array so participants are notified, but do not append visible @tags to the message body text.
             }
         }
 
-        // For WhatsApp Status posts, apply the device's persistent privacy
-        // blacklist so hidden contacts are excluded from the audience.
+        // Status broadcast: terapkan blacklist privasi device
         $statusExclude = null;
         if ($recipientId === 'status@broadcast') {
             $blacklist = $channel->status_blacklist ?? [];
@@ -267,23 +332,25 @@ class SendBroadcastJob implements ShouldQueue
             }
         }
 
-        return match($channel->platform) {
-            'whatsapp'  => app(WhatsAppService::class)->send($channel, $content, $mediaUrl, $mediaType, $recipientId, null, $mentions, $statusExclude),
-            'telegram'  => $this->sendTelegram($channel, $content),
-            default     => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
+        return match ($channel->platform) {
+            'whatsapp' => app(WhatsAppService::class)->send(
+                $channel, $content, $mediaUrl, $mediaType, $recipientId,
+                null, $mentions, $statusExclude, $typingSimulation
+            ),
+            'telegram' => $this->sendTelegram($channel, $content),
+            default    => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
         };
     }
 
-    private function sendTelegram($channel, ?string $content = ''): array
+    private function sendTelegram($channel, string $content = ''): array
     {
-        $content = $content ?? '';
-        $token = $channel->credentials['bot_token'] ?? '';
+        $token  = $channel->credentials['bot_token'] ?? '';
         $chatId = $channel->target_id;
 
-        $response = \Illuminate\Support\Facades\Http::post("https://api.telegram.org/bot{$token}/sendMessage", [
-            'chat_id' => $chatId,
-            'text'    => $content,
-        ]);
+        $response = \Illuminate\Support\Facades\Http::post(
+            "https://api.telegram.org/bot{$token}/sendMessage",
+            ['chat_id' => $chatId, 'text' => $content]
+        );
 
         return [
             'ok'       => $response->successful() && $response->json('ok'),

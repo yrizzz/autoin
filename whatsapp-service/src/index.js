@@ -173,8 +173,12 @@ app.delete('/sessions/:sessionId', auth, (req, res) => {
 // Send a message
 app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   const { sessionId } = req.params;
-  const { to, message, mediaUrl, mediaType, backgroundColor, font, statusJidList, mentions, statusExcludeJidList } = req.body;
-  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message} mediaUrl:${mediaUrl} mediaType:${mediaType} backgroundColor:${backgroundColor} font:${font} statusJidListLength:${statusJidList?.length ?? 0} mentionsLength=${mentions?.length ?? 0}`);
+  const {
+    to, message, mediaUrl, mediaType, backgroundColor, font,
+    statusJidList, mentions, statusExcludeJidList,
+    typingSimulation = false,
+  } = req.body;
+  console.log(`[index] POST /sessions/${sessionId}/send to:${to} message:${message?.slice(0,50)} mediaUrl:${mediaUrl} mediaType:${mediaType} typingSimulation:${typingSimulation} statusJidListLength:${statusJidList?.length ?? 0} mentionsLength=${mentions?.length ?? 0}`);
 
   if (!sessionManager.isConnected(sessionId)) {
     console.warn(`[index] Session ${sessionId} not connected`);
@@ -182,7 +186,32 @@ app.post('/sessions/:sessionId/send', auth, async (req, res) => {
   }
 
   try {
-    const result = await sessionManager.send(sessionId, to, message, mediaUrl, mediaType, null, backgroundColor, font, statusJidList, mentions, statusExcludeJidList);
+    // ── Typing simulation: simulasikan "sedang mengetik" sebelum kirim ──────
+    // Ini sangat penting untuk anti-ban — membuat perilaku lebih natural.
+    // Durasi typing proporsional dengan panjang pesan (1-4 detik).
+    if (typingSimulation && to && !to.includes('status@broadcast')) {
+      const sock = sessionManager._sessions?.get?.(sessionId);
+      if (sock) {
+        const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+        // Hitung durasi typing: minimal 1s, maksimal 4s, proporsional panjang pesan
+        const msgLen = (message || '').length;
+        const typingMs = Math.min(4000, Math.max(1000, msgLen * 30 + Math.random() * 1000));
+        try {
+          await sock.presenceSubscribe(jid);
+          await sock.sendPresenceUpdate('composing', jid);
+          await new Promise(r => setTimeout(r, Math.round(typingMs)));
+          await sock.sendPresenceUpdate('paused', jid);
+        } catch (e) {
+          // Jangan blokir send jika typing simulation gagal
+          console.warn(`[index] Typing simulation failed (non-fatal):`, e?.message || e);
+        }
+      }
+    }
+
+    const result = await sessionManager.send(
+      sessionId, to, message, mediaUrl, mediaType,
+      null, backgroundColor, font, statusJidList, mentions, statusExcludeJidList
+    );
     console.log(`[index] Send success for ${sessionId}`);
     res.json({ ok: true, result });
   } catch (err) {
@@ -190,6 +219,7 @@ app.post('/sessions/:sessionId/send', auth, async (req, res) => {
     res.status(500).json({ ok: false, error: err.message });
   }
 });
+
 
 // ── Plugin sandbox: jalankan kode plugin sekali (dipakai fitur "Tes" dashboard) ──
 app.post('/plugins/run', auth, async (req, res) => {
