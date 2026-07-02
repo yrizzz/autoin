@@ -303,12 +303,29 @@ class ChatbotRuleController extends Controller
                 $finalReply = $rule->reply;
 
                 if ($rule->is_ai) {
-                    $prompt = "Kamu adalah asisten chat otomatis (chatbot). Gunakan panduan berikut untuk menjawab pesan pelanggan:\n"
-                            . "--- PANDUAN ---\n"
-                            . $rule->reply . "\n"
-                            . "---------------\n\n"
-                            . "Pesan pelanggan: \"{$text}\"\n\n"
-                            . "Berikan jawaban langsung, ramah, profesional, dan dalam bahasa Indonesia. HANYA berikan isi jawaban tanpa penjelasan tambahan.";
+                    $quotedText = (string) $request->input('quoted_text', '');
+                    $extracted = $rule->extractArgs($text);
+                    $commandText = $extracted['raw_args'];
+
+                    if (!empty($quotedText)) {
+                        $instruction = !empty($commandText) ? $commandText : ($rule->reply ?: "Jawab atau olah teks berikut.");
+                        $prompt = "Kamu adalah asisten AI. Jalankan instruksi berikut pada teks yang di-reply/dikutip:\n\n"
+                                . "--- INSTRUKSI ---\n"
+                                . $instruction . "\n"
+                                . "-----------------\n\n"
+                                . "--- TEKS YANG DI-REPLY ---\n"
+                                . $quotedText . "\n"
+                                . "--------------------------\n\n"
+                                . "Berikan jawaban langsung, ramah, profesional, dan dalam bahasa Indonesia. HANYA berikan isi jawaban tanpa penjelasan tambahan.";
+                    } else {
+                        $incomingQuery = !empty($commandText) ? $commandText : $text;
+                        $prompt = "Kamu adalah asisten chat otomatis (chatbot). Gunakan panduan berikut untuk menjawab pesan pelanggan:\n"
+                                . "--- PANDUAN ---\n"
+                                . ($rule->reply ?: "Jawab dengan ramah dan profesional.") . "\n"
+                                . "---------------\n\n"
+                                . "Pesan pelanggan: \"{$incomingQuery}\"\n\n"
+                                . "Berikan jawaban langsung, ramah, profesional, dan dalam bahasa Indonesia. HANYA berikan isi jawaban tanpa penjelasan tambahan.";
+                    }
                     
                     try {
                         $apiUrl = 'https://api.yrizzz.my.id/api/execute/v1/ai/chatGpt';

@@ -200,6 +200,19 @@ function getRealMessage(message) {
   if (message.documentWithCaptionMessage) return getRealMessage(message.documentWithCaptionMessage.message);
   return message;
 }
+
+function getMessageText(message) {
+  if (!message) return '';
+  const real = getRealMessage(message);
+  if (!real) return '';
+  return real.conversation
+    || real.extendedTextMessage?.text
+    || real.imageMessage?.caption
+    || real.videoMessage?.caption
+    || real.documentMessage?.caption
+    || '';
+}
+
 class SessionManager extends EventEmitter {
   constructor() {
     super();
@@ -991,6 +1004,22 @@ class SessionManager extends EventEmitter {
         }
       }
 
+      // Extract quoted message text
+      let quotedText = '';
+      if (rawMessage?.message) {
+        const realMsg = getRealMessage(rawMessage.message);
+        if (realMsg) {
+          let ci = null;
+          for (const k of Object.keys(realMsg)) {
+            const c = realMsg[k]?.contextInfo;
+            if (c?.quotedMessage) { ci = c; break; }
+          }
+          if (ci && ci.quotedMessage) {
+            quotedText = getMessageText(ci.quotedMessage);
+          }
+        }
+      }
+
       const url = `${BACKEND_URL}/api/internal/chatbot/match`;
       console.log(`[Chatbot] Calling match API: ${url}`);
       const res = await fetch(url, {
@@ -1002,6 +1031,7 @@ class SessionManager extends EventEmitter {
         body: JSON.stringify({
           session_id: sessionId,
           text,
+          quoted_text: quotedText,
           sender,
           platform: 'whatsapp',
           from_me: rawMessage?.key?.fromMe ?? false,

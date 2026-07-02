@@ -179,6 +179,7 @@ class SendBroadcastJob implements ShouldQueue
             'spintax_enabled'     => $broadcast->spintax_enabled,
             'shuffle_recipients'  => $broadcast->shuffle_recipients,
             'typing_simulation'   => $broadcast->typing_simulation,
+            'auto_tag_members'    => $broadcast->auto_tag_members,
         ]);
 
         foreach ($broadcast->targets as $target) {
