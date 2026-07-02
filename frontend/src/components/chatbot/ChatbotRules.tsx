@@ -125,6 +125,23 @@ export default function ChatbotRules() {
     }
   }
 
+  async function handleUpdateDeviceScope(channelId: number, scope: string) {
+    try {
+      const channel = channels.find(c => c.id === channelId);
+      if (!channel) return;
+      const updatedSettings = {
+        ...(channel.chatbot_settings || {}),
+        target_scope: scope
+      };
+      const updated = await api.put<Channel>(`/api/channels/${channelId}`, {
+        chatbot_settings: updatedSettings
+      });
+      setChannels(prev => prev.map(c => c.id === channelId ? updated : c));
+    } catch (e: any) {
+      alert(e.message ?? 'Gagal memperbarui cakupan global.');
+    }
+  }
+
   // Tutup combobox plugin saat klik di luar / tekan Esc.
   useEffect(() => {
     if (!pluginPickerOpen) return;
@@ -517,6 +534,20 @@ export default function ChatbotRules() {
                   <div className="flex items-center gap-3 text-[10px]">
                     <span className="text-zinc-500 dark:text-zinc-400 font-semibold">Aturan khusus: {activeDeviceRules}</span>
                     <span className="text-zinc-450 dark:text-zinc-500 font-semibold">Aturan global: {activeGlobalRules}</span>
+                  </div>
+                  <div className="mt-3 pt-2.5 border-t border-zinc-100 dark:border-zinc-800/85 flex items-center justify-between gap-2" onClick={e => e.stopPropagation()}>
+                    <span className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Cakupan Device</span>
+                    <select
+                      value={ch.chatbot_settings?.target_scope || 'rule'}
+                      onChange={e => handleUpdateDeviceScope(ch.id, e.target.value)}
+                      className="px-2 py-1 text-[10px] bg-zinc-50 dark:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer font-bold"
+                    >
+                      <option value="rule">Ikuti Aturan (Per Rule)</option>
+                      <option value="umum">Umum (Selain Bot)</option>
+                      <option value="self">Selfbot (Hanya Bot)</option>
+                      <option value="group">Hanya Grup</option>
+                      <option value="group_admin">Hanya Admin Grup</option>
+                    </select>
                   </div>
                 </div>
               );

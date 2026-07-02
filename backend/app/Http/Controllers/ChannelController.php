@@ -59,6 +59,7 @@ class ChannelController extends Controller
             'chatbot_settings'   => 'sometimes|nullable|array',
             'chatbot_settings.reply_self'   => 'sometimes|boolean',
             'chatbot_settings.reply_others' => 'sometimes|boolean',
+            'chatbot_settings.target_scope' => 'sometimes|nullable|string|in:rule,umum,self,group,group_admin',
         ]);
 
         $channel->update($data);

@@ -247,9 +247,11 @@ class ChatbotRuleController extends Controller
             ->orderBy('created_at')
             ->get();
 
-        // Filter rules berdasarkan target_scope
-        $rules = $rules->filter(function ($rule) use ($fromMe, $isGroup, $isAdmin) {
-            $scope = $rule->target_scope ?? 'umum';
+        // Filter rules berdasarkan target_scope (bisa override via global device scope)
+        $deviceScope = data_get($channel->chatbot_settings, 'target_scope', 'rule');
+
+        $rules = $rules->filter(function ($rule) use ($fromMe, $isGroup, $isAdmin, $deviceScope) {
+            $scope = ($deviceScope && $deviceScope !== 'rule') ? $deviceScope : ($rule->target_scope ?? 'umum');
             if ($fromMe) {
                 return $scope === 'self';
             } else {
