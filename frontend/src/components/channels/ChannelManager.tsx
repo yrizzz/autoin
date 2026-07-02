@@ -87,10 +87,6 @@ export default function ChannelManager() {
     try {
       await api.put(`/api/channels/${settingsChannel.id}`, {
         name: settingsName,
-        chatbot_settings: {
-          reply_self: replySelf,
-          reply_others: replyOthers,
-        }
       });
       setMsg({ ok: true, text: 'Pengaturan device berhasil disimpan.' });
       setSettingsModalOpen(false);
@@ -1067,46 +1063,7 @@ export default function ChannelManager() {
                   />
                 </div>
 
-                {/* Auto Reply Settings Title */}
-                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
-                  <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-3">Pengaturan Auto Reply</span>
-                  
-                  <div className="space-y-3">
-                    {/* Reply Self Toggle */}
-                    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                      <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Deteksi Pesan Diri Sendiri ("me")</p>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Balas otomatis pesan yang Anda kirim sendiri.</p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={replySelf}
-                        onClick={() => setReplySelf(!replySelf)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${replySelf ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${replySelf ? 'translate-x-4' : 'translate-x-1'}`} />
-                      </button>
-                    </div>
 
-                    {/* Reply Others Toggle */}
-                    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                      <div>
-                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Deteksi Pesan Orang Lain</p>
-                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Balas otomatis pesan masuk dari nomor lain.</p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={replyOthers}
-                        onClick={() => setReplyOthers(!replyOthers)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${replyOthers ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
-                      >
-                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${replyOthers ? 'translate-x-4' : 'translate-x-1'}`} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               {/* Modal Footer */}

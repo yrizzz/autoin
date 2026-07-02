@@ -216,6 +216,7 @@ class SessionManager extends EventEmitter {
     this._lidToPhone = new Map(); // `${sessionId}:${lid}` → phone JID
     this._flushes = new Map();
     this._botSentIds = new Map(); // sessionId → Set(msgId) — anti-loop untuk fromMe autoreply
+    this._groupMetadataCache = new Map(); // key: `${sessionId}:${groupId}` → { metadata, timestamp }
   }
 
   // Simpan isi pesan mentah (proto.IMessage) agar Baileys bisa MENGIRIM ULANG saat
@@ -951,10 +952,45 @@ class SessionManager extends EventEmitter {
     } catch { /* ignore — not critical */ }
   }
 
+  async _getCachedGroupMetadata(sessionId, groupId, sock) {
+    const key = `${sessionId}:${groupId}`;
+    const cached = this._groupMetadataCache.get(key);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp < 5 * 60 * 1000)) {
+      return cached.metadata;
+    }
+    try {
+      const metadata = await sock.groupMetadata(groupId);
+      this._groupMetadataCache.set(key, { metadata, timestamp: now });
+      return metadata;
+    } catch (e) {
+      console.warn(`[sessions] Failed to get group metadata for ${groupId}:`, e.message || e);
+      return cached ? cached.metadata : null;
+    }
+  }
+
   async _autoreply(sessionId, chatId, text, rawMessage = null) {
     console.log(`[Chatbot] Triggered for session ${sessionId}, chat ${chatId}, text: "${text}"`);
     const sender = rawMessage?.key?.participant || rawMessage?.participant || chatId;
     try {
+      const isGroup = chatId.endsWith('@g.us');
+      let isAdmin = false;
+      if (isGroup) {
+        const sock = this._sessions.get(sessionId);
+        if (sock) {
+          try {
+            const metadata = await this._getCachedGroupMetadata(sessionId, chatId, sock);
+            if (metadata && metadata.participants) {
+              const senderJid = sender.includes('@') ? sender : `${sender.split(':')[0]}@s.whatsapp.net`;
+              const p = metadata.participants.find(part => part.id === senderJid || part.id.split('@')[0] === senderJid.split('@')[0]);
+              isAdmin = !!(p && (p.admin === 'admin' || p.admin === 'superadmin'));
+            }
+          } catch (metaErr) {
+            console.error(`[Chatbot] Error reading group metadata:`, metaErr.message);
+          }
+        }
+      }
+
       const url = `${BACKEND_URL}/api/internal/chatbot/match`;
       console.log(`[Chatbot] Calling match API: ${url}`);
       const res = await fetch(url, {
@@ -963,7 +999,15 @@ class SessionManager extends EventEmitter {
           'Content-Type': 'application/json',
           'X-Internal-Secret': INTERNAL_SECRET,
         },
-        body: JSON.stringify({ session_id: sessionId, text, sender, platform: 'whatsapp', from_me: rawMessage?.key?.fromMe ?? false }),
+        body: JSON.stringify({
+          session_id: sessionId,
+          text,
+          sender,
+          platform: 'whatsapp',
+          from_me: rawMessage?.key?.fromMe ?? false,
+          is_group: isGroup,
+          is_admin: isAdmin,
+        }),
         signal: AbortSignal.timeout(10000)
       });
       console.log(`[Chatbot] Match API response status: ${res.status}`);

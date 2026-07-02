@@ -24,6 +24,7 @@ interface ChatbotRule {
   prefix?: 'any' | 'none' | '.' | '/' | '!' | '#';
   plugin_id?: number | null;
   channel_id?: number | null;
+  target_scope?: 'umum' | 'self' | 'group' | 'group_admin';
   created_at: string;
 }
 
@@ -43,6 +44,20 @@ const MATCH_LABELS: Record<string, string> = {
   exact: 'Sama Persis',
   contains: 'Mengandung kata',
   starts_with: 'Diawali dengan',
+};
+
+const SCOPE_LABELS: Record<string, string> = {
+  umum: 'Umum',
+  self: 'Selfbot',
+  group: 'Hanya Grup',
+  group_admin: 'Admin Grup',
+};
+
+const SCOPE_CLASSES: Record<string, string> = {
+  umum: 'bg-zinc-50 dark:bg-zinc-800/60 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800',
+  self: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
+  group: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+  group_admin: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
 };
 
 const getAbsoluteMediaUrl = (url: string | null) => {
@@ -82,6 +97,7 @@ export default function ChatbotRules() {
   const [mediaType, setMediaType] = useState<string | null>(null);
   const [pluginId, setPluginId] = useState<number | null>(null);
   const [channelId, setChannelId] = useState<number | null>(null);
+  const [targetScope, setTargetScope] = useState<'umum' | 'self' | 'group' | 'group_admin'>('umum');
   const [channels, setChannels] = useState<Channel[]>([]);
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
@@ -198,7 +214,7 @@ export default function ChatbotRules() {
     }
   }
 
-  function resetForm() {
+   function resetForm() {
     setMode('text');
     setTrigger('');
     setMatchType('contains');
@@ -210,6 +226,7 @@ export default function ChatbotRules() {
     setMediaType(null);
     setPluginId(null);
     setChannelId(null);
+    setTargetScope('umum');
     setPluginPickerOpen(false);
     setPluginQuery('');
   }
@@ -232,6 +249,7 @@ export default function ChatbotRules() {
     setMediaType(rule.media_type || null);
     setPluginId(rule.plugin_id || null);
     setChannelId(rule.channel_id || null);
+    setTargetScope(rule.target_scope || 'umum');
     setMode(rule.plugin_id ? 'plugin' : (rule.is_ai ? 'ai' : 'text'));
     setModalOpen(true);
   }
@@ -312,6 +330,7 @@ export default function ChatbotRules() {
         is_ai: mode === 'ai',
         plugin_id: mode === 'plugin' ? pluginId : null,
         channel_id: channelId,
+        target_scope: targetScope,
       };
       if (editingRule) {
         const updated = await api.put<ChatbotRule>(`/api/chatbot-rules/${editingRule.id}`, payload);
@@ -496,15 +515,8 @@ export default function ChatbotRules() {
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-[10px]">
-                    <div className="flex items-center gap-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${settings.reply_others ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
-                      <span className="text-zinc-500 dark:text-zinc-400">Orang lain</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`w-1.5 h-1.5 rounded-full ${settings.reply_self ? 'bg-purple-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
-                      <span className="text-zinc-500 dark:text-zinc-400">Diri sendiri</span>
-                    </div>
-                    <span className="ml-auto text-zinc-400 dark:text-zinc-500 font-semibold">{activeDeviceRules} khusus · {activeGlobalRules} global</span>
+                    <span className="text-zinc-500 dark:text-zinc-400 font-semibold">Aturan khusus: {activeDeviceRules}</span>
+                    <span className="text-zinc-450 dark:text-zinc-500 font-semibold">Aturan global: {activeGlobalRules}</span>
                   </div>
                 </div>
               );
@@ -628,15 +640,20 @@ export default function ChatbotRules() {
                     <td className="px-4 py-2.5 align-top">
                       <div className="flex flex-col gap-1.5 items-start">
                         <code className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{prefixStr}{rule.trigger}</code>
-                        {rule.channel_id ? (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 whitespace-nowrap max-w-[120px] truncate" title={channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}>
-                            {channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <span className={`px-1 py-0.5 rounded text-[8.5px] font-extrabold uppercase border ${SCOPE_CLASSES[rule.target_scope || 'umum']}`}>
+                            {SCOPE_LABELS[rule.target_scope || 'umum']}
                           </span>
-                        ) : (
-                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 whitespace-nowrap">
-                            Semua Device
-                          </span>
-                        )}
+                          {rule.channel_id ? (
+                            <span className="px-1 py-0.5 rounded text-[8.5px] font-extrabold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 whitespace-nowrap max-w-[120px] truncate" title={channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}>
+                              {channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}
+                            </span>
+                          ) : (
+                            <span className="px-1 py-0.5 rounded text-[8.5px] font-extrabold uppercase bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 whitespace-nowrap">
+                              Semua Device
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-2.5 align-top"><ModeBadge rule={rule} /></td>
@@ -704,7 +721,8 @@ export default function ChatbotRules() {
                   {/* Badges */}
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <ModeBadge rule={rule} />
-                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">{MATCH_LABELS[rule.match_type] ?? rule.match_type}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border ${SCOPE_CLASSES[rule.target_scope || 'umum']}`}>{SCOPE_LABELS[rule.target_scope || 'umum']}</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-650 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">{MATCH_LABELS[rule.match_type] ?? rule.match_type}</span>
                     {rule.reply_type === 'quote' && <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 flex items-center gap-0.5"><Quote className="w-2.5 h-2.5" />Quote</span>}
                     {rule.prefix && rule.prefix !== 'any' && <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">Prefix: {rule.prefix === 'none' ? 'tanpa' : `"${rule.prefix}"`}</span>}
                     {rule.channel_id ? (
@@ -981,7 +999,17 @@ export default function ChatbotRules() {
                 </>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Target Balasan</label>
+                  <select value={targetScope} onChange={e => setTargetScope(e.target.value as any)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100 cursor-pointer">
+                    <option value="umum">Umum (Selain Bot)</option>
+                    <option value="self">Selfbot (Hanya Bot Sendiri)</option>
+                    <option value="group">Hanya Grup</option>
+                    <option value="group_admin">Hanya Admin Grup</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Platform</label>
                   <select value={platform} onChange={e => setPlatform(e.target.value as any)}

@@ -39,6 +39,7 @@ class ChatbotRuleController extends Controller
             'is_active'  => 'sometimes|boolean',
             'plugin_id'  => 'sometimes|nullable|integer',
             'channel_id' => 'sometimes|nullable|integer',
+            'target_scope' => 'sometimes|in:umum,self,group,group_admin',
         ]);
 
         if (!empty($data['channel_id'])) {
@@ -80,6 +81,7 @@ class ChatbotRuleController extends Controller
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
             'plugin_id'  => 'sometimes|nullable|integer',
             'channel_id' => 'sometimes|nullable|integer',
+            'target_scope' => 'sometimes|in:umum,self,group,group_admin',
         ]);
 
         if (array_key_exists('channel_id', $data) && !empty($data['channel_id'])) {
@@ -212,6 +214,9 @@ class ChatbotRuleController extends Controller
         $platform  = $request->input('platform', 'whatsapp');
         $fromMe    = (bool) $request->input('from_me', false);
 
+        $isGroup   = (bool) $request->input('is_group', false);
+        $isAdmin   = (bool) $request->input('is_admin', false);
+
         // Find channel by session_id stored in credentials (which is encrypted in DB)
         $channel = Channel::whereIn('platform', ['whatsapp'])
             ->get()
@@ -220,21 +225,6 @@ class ChatbotRuleController extends Controller
             });
 
         if (!$channel) {
-            return response()->json(['reply' => null]);
-        }
-
-        // Check self vs other messages toggle settings
-        $chatbotSettings = $channel->chatbot_settings ?? [
-            'reply_self' => false,
-            'reply_others' => true,
-        ];
-        $replySelf = (bool) ($chatbotSettings['reply_self'] ?? false);
-        $replyOthers = (bool) ($chatbotSettings['reply_others'] ?? true);
-
-        if ($fromMe && !$replySelf) {
-            return response()->json(['reply' => null]);
-        }
-        if (!$fromMe && !$replyOthers) {
             return response()->json(['reply' => null]);
         }
 
@@ -256,6 +246,26 @@ class ChatbotRuleController extends Controller
             })
             ->orderBy('created_at')
             ->get();
+
+        // Filter rules berdasarkan target_scope
+        $rules = $rules->filter(function ($rule) use ($fromMe, $isGroup, $isAdmin) {
+            $scope = $rule->target_scope ?? 'umum';
+            if ($fromMe) {
+                return $scope === 'self';
+            } else {
+                if ($scope === 'self') {
+                    return false;
+                }
+                if ($scope === 'group') {
+                    return $isGroup;
+                }
+                if ($scope === 'group_admin') {
+                    return $isGroup && $isAdmin;
+                }
+                // 'umum' matches both private chats and group chats for other users
+                return true;
+            }
+        });
 
         foreach ($rules as $rule) {
             if ($rule->matches($text)) {
