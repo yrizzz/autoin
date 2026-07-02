@@ -15,7 +15,9 @@ import {
   RefreshCw,
   X,
   Copy,
-  Check
+  Check,
+  Settings,
+  Edit3
 } from 'lucide-react';
 
 type Platform = Channel['platform'];
@@ -60,6 +62,46 @@ export default function ChannelManager() {
   // Custom delete confirmation
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
+
+  // Unified Settings (Rename + Chatbot settings)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [settingsChannel, setSettingsChannel] = useState<Channel | null>(null);
+  const [settingsName, setSettingsName] = useState('');
+  const [replySelf, setReplySelf] = useState(false);
+  const [replyOthers, setReplyOthers] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  function handleOpenSettings(ch: Channel) {
+    setSettingsChannel(ch);
+    setSettingsName(ch.name);
+    const chatSettings = ch.chatbot_settings || { reply_self: false, reply_others: true };
+    setReplySelf(!!chatSettings.reply_self);
+    setReplyOthers(chatSettings.reply_others !== false);
+    setSettingsModalOpen(true);
+  }
+
+  async function handleSaveSettings(e: React.FormEvent) {
+    e.preventDefault();
+    if (!settingsChannel || !settingsName.trim()) return;
+    setSavingSettings(true);
+    try {
+      await api.put(`/api/channels/${settingsChannel.id}`, {
+        name: settingsName,
+        chatbot_settings: {
+          reply_self: replySelf,
+          reply_others: replyOthers,
+        }
+      });
+      setMsg({ ok: true, text: 'Pengaturan device berhasil disimpan.' });
+      setSettingsModalOpen(false);
+      setSettingsChannel(null);
+      fetchChannels();
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message ?? 'Gagal menyimpan pengaturan.' });
+    } finally {
+      setSavingSettings(false);
+    }
+  }
 
   // WhatsApp states
   const [waMethod, setWaMethod] = useState<'qr' | 'code'>('qr');
@@ -744,7 +786,17 @@ export default function ChannelManager() {
                     <div className="min-w-0 flex-1">
                       {/* Name row */}
                       <div className="flex items-center justify-between gap-2">
-                        <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="text-sm font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenSettings(ch)}
+                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition cursor-pointer"
+                            title="Rename / Atur Device"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         {/* Status badge — top right */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           {ch.status === 'active' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
@@ -790,6 +842,14 @@ export default function ChannelManager() {
                     >
                       {testing === ch.id ? <Loader2 className="w-3 h-3 animate-spin shrink-0" /> : null}
                       <span className="truncate">Test Koneksi</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleOpenSettings(ch)}
+                      className="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 hover:bg-zinc-100/70 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 transition-all cursor-pointer shrink-0 animate-none"
+                      title="Pengaturan Device"
+                    >
+                      <Settings className="w-3.5 h-3.5" />
                     </button>
 
                     <button
@@ -969,6 +1029,105 @@ export default function ChannelManager() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Device Settings Modal (Rename & Chatbot settings) */}
+      {settingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/40 dark:bg-zinc-900/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-blue-500" />
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Pengaturan Device</h3>
+              </div>
+              <button 
+                onClick={() => { setSettingsModalOpen(false); setSettingsChannel(null); }}
+                className="text-zinc-400 hover:text-zinc-500 dark:hover:text-zinc-300 transition-colors p-1 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveSettings}>
+              <div className="p-5 space-y-4">
+                {/* Device Name input */}
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Nama Device</label>
+                  <input
+                    type="text"
+                    value={settingsName}
+                    onChange={e => setSettingsName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100"
+                    placeholder="Nama Device"
+                    required
+                  />
+                </div>
+
+                {/* Auto Reply Settings Title */}
+                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800">
+                  <span className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-3">Pengaturan Auto Reply</span>
+                  
+                  <div className="space-y-3">
+                    {/* Reply Self Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Deteksi Pesan Diri Sendiri ("me")</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Balas otomatis pesan yang Anda kirim sendiri.</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={replySelf}
+                        onClick={() => setReplySelf(!replySelf)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${replySelf ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${replySelf ? 'translate-x-4' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+
+                    {/* Reply Others Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900/30 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200">Deteksi Pesan Orang Lain</p>
+                        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 leading-relaxed">Balas otomatis pesan masuk dari nomor lain.</p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={replyOthers}
+                        onClick={() => setReplyOthers(!replyOthers)}
+                        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer ${replyOthers ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-700'}`}
+                      >
+                        <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${replyOthers ? 'translate-x-4' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30 flex justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => { setSettingsModalOpen(false); setSettingsChannel(null); }}
+                  className="px-4 py-2.5 bg-zinc-50 hover:bg-zinc-100 dark:bg-zinc-900 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-bold text-xs rounded-xl border border-zinc-200 dark:border-zinc-800 cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSettings}
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md disabled:opacity-60"
+                >
+                  {savingSettings ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  <span>Simpan Perubahan</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

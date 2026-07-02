@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { api } from '../../lib/api';
+import type { Channel } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
 import {
   Plus, Search, Cpu, Trash2, Edit3, MessageSquare, Loader2,
@@ -22,6 +23,7 @@ interface ChatbotRule {
   reply_type?: 'normal' | 'quote';
   prefix?: 'any' | 'none' | '.' | '/' | '!' | '#';
   plugin_id?: number | null;
+  channel_id?: number | null;
   created_at: string;
 }
 
@@ -79,6 +81,8 @@ export default function ChatbotRules() {
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<string | null>(null);
   const [pluginId, setPluginId] = useState<number | null>(null);
+  const [channelId, setChannelId] = useState<number | null>(null);
+  const [channels, setChannels] = useState<Channel[]>([]);
   const [uploading, setUploading] = useState(false);
   const [optimizing, setOptimizing] = useState(false);
 
@@ -94,7 +98,16 @@ export default function ChatbotRules() {
   const [reactFeedback, setReactFeedback] = useState(false);
   const [reactSaving, setReactSaving] = useState(false);
 
-  useEffect(() => { loadRules(); loadPlugins(); loadSettings(); }, []);
+  useEffect(() => { loadRules(); loadPlugins(); loadSettings(); loadChannels(); }, []);
+
+  async function loadChannels() {
+    try {
+      const res = await api.get<Channel[]>('/api/channels');
+      setChannels(res.filter(c => c.platform === 'whatsapp'));
+    } catch {
+      setChannels([]);
+    }
+  }
 
   // Tutup combobox plugin saat klik di luar / tekan Esc.
   useEffect(() => {
@@ -196,6 +209,7 @@ export default function ChatbotRules() {
     setMediaUrl(null);
     setMediaType(null);
     setPluginId(null);
+    setChannelId(null);
     setPluginPickerOpen(false);
     setPluginQuery('');
   }
@@ -217,6 +231,7 @@ export default function ChatbotRules() {
     setMediaUrl(rule.media_url || null);
     setMediaType(rule.media_type || null);
     setPluginId(rule.plugin_id || null);
+    setChannelId(rule.channel_id || null);
     setMode(rule.plugin_id ? 'plugin' : (rule.is_ai ? 'ai' : 'text'));
     setModalOpen(true);
   }
@@ -296,6 +311,7 @@ export default function ChatbotRules() {
         media_type: mode === 'plugin' ? null : mediaType,
         is_ai: mode === 'ai',
         plugin_id: mode === 'plugin' ? pluginId : null,
+        channel_id: channelId,
       };
       if (editingRule) {
         const updated = await api.put<ChatbotRule>(`/api/chatbot-rules/${editingRule.id}`, payload);
@@ -311,10 +327,17 @@ export default function ChatbotRules() {
     setSaving(false);
   }
 
-  const filtered = rules.filter(r =>
-    r.trigger.toLowerCase().includes(search.toLowerCase()) ||
-    (r.reply || '').toLowerCase().includes(search.toLowerCase())
-  );
+  // Filter by device: 'all' = semua, 'global' = hanya global (tanpa channel_id), atau number = channel_id tertentu
+  const [filterDevice, setFilterDevice] = useState<string>('all');
+
+  const filtered = rules.filter(r => {
+    const matchesSearch = r.trigger.toLowerCase().includes(search.toLowerCase()) ||
+      (r.reply || '').toLowerCase().includes(search.toLowerCase());
+    if (!matchesSearch) return false;
+    if (filterDevice === 'all') return true;
+    if (filterDevice === 'global') return !r.channel_id;
+    return r.channel_id === Number(filterDevice);
+  });
 
   const pluginById = (id?: number | null) => plugins.find(p => p.id === id);
 
@@ -441,12 +464,76 @@ export default function ChatbotRules() {
         </button>
       </div>
 
+      {/* Device Overview Cards */}
+      {channels.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Status Auto-Reply per Device</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {channels.map(ch => {
+              const settings = ch.chatbot_settings || { reply_self: false, reply_others: true };
+              const deviceRules = rules.filter(r => r.channel_id === ch.id);
+              const globalRules = rules.filter(r => !r.channel_id);
+              const activeDeviceRules = deviceRules.filter(r => r.is_active).length;
+              const activeGlobalRules = globalRules.filter(r => r.is_active).length;
+              return (
+                <div key={ch.id}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer ${filterDevice === String(ch.id)
+                    ? 'border-blue-400 dark:border-blue-500/40 bg-blue-50/50 dark:bg-blue-500/5 ring-1 ring-blue-400/30'
+                    : 'border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                  onClick={() => setFilterDevice(filterDevice === String(ch.id) ? 'all' : String(ch.id))}
+                >
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${ch.status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                      <span className="text-xs font-bold text-zinc-800 dark:text-zinc-100 truncate">{ch.name}</span>
+                    </div>
+                    <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-full border ${ch.status === 'active'
+                      ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20'
+                      : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700'}`}>
+                      {ch.status === 'active' ? 'ONLINE' : 'OFFLINE'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 text-[10px]">
+                    <div className="flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${settings.reply_others ? 'bg-blue-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                      <span className="text-zinc-500 dark:text-zinc-400">Orang lain</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={`w-1.5 h-1.5 rounded-full ${settings.reply_self ? 'bg-purple-500' : 'bg-zinc-300 dark:bg-zinc-600'}`} />
+                      <span className="text-zinc-500 dark:text-zinc-400">Diri sendiri</span>
+                    </div>
+                    <span className="ml-auto text-zinc-400 dark:text-zinc-500 font-semibold">{activeDeviceRules} khusus · {activeGlobalRules} global</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Control bar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-3 mb-6">
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input type="text" placeholder="Cari pemicu atau balasan…" value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <div className="relative flex-1 md:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+            <input type="text" placeholder="Cari pemicu atau balasan…" value={search} onChange={e => setSearch(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-sm text-zinc-800 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all" />
+          </div>
+          {channels.length > 0 && (
+            <select
+              value={filterDevice}
+              onChange={e => setFilterDevice(e.target.value)}
+              className="px-3 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl text-xs font-bold text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+            >
+              <option value="all">Semua Device</option>
+              <option value="global">🌐 Global saja</option>
+              {channels.map(ch => (
+                <option key={ch.id} value={ch.id}>📱 {ch.name}</option>
+              ))}
+            </select>
+          )}
         </div>
         <div className="flex items-center gap-2 w-full md:w-auto justify-end">
           <div className="inline-flex items-center gap-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700 p-0.5 bg-white dark:bg-zinc-900">
@@ -463,7 +550,7 @@ export default function ChatbotRules() {
             <Puzzle className="w-3.5 h-3.5" /> Kelola Plugin
           </a>
           <span className="text-xs text-zinc-500 dark:text-zinc-400 font-semibold bg-zinc-100 dark:bg-zinc-900 px-3.5 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800">
-            {rules.length} aturan
+            {filtered.length}/{rules.length} aturan
           </span>
         </div>
       </div>
@@ -539,7 +626,18 @@ export default function ChatbotRules() {
                         aria-label={`Pilih ${rule.trigger}`} className="w-4 h-4 rounded accent-blue-600 cursor-pointer mt-0.5" />
                     </td>
                     <td className="px-4 py-2.5 align-top">
-                      <code className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{prefixStr}{rule.trigger}</code>
+                      <div className="flex flex-col gap-1.5 items-start">
+                        <code className="bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 font-mono text-[11px] text-blue-600 dark:text-blue-400 whitespace-nowrap">{prefixStr}{rule.trigger}</code>
+                        {rule.channel_id ? (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 whitespace-nowrap max-w-[120px] truncate" title={channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}>
+                            {channels.find(c => c.id === rule.channel_id)?.name || `Device ID: ${rule.channel_id}`}
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 whitespace-nowrap">
+                            Semua Device
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 align-top"><ModeBadge rule={rule} /></td>
                     <td className="px-4 py-2.5 align-top hidden md:table-cell text-zinc-500 dark:text-zinc-400">
@@ -609,6 +707,15 @@ export default function ChatbotRules() {
                     <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">{MATCH_LABELS[rule.match_type] ?? rule.match_type}</span>
                     {rule.reply_type === 'quote' && <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800 flex items-center gap-0.5"><Quote className="w-2.5 h-2.5" />Quote</span>}
                     {rule.prefix && rule.prefix !== 'any' && <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">Prefix: {rule.prefix === 'none' ? 'tanpa' : `"${rule.prefix}"`}</span>}
+                    {rule.channel_id ? (
+                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 max-w-[120px] truncate" title={channels.find(c => c.id === rule.channel_id)?.name || `ID: ${rule.channel_id}`}>
+                        Device: {channels.find(c => c.id === rule.channel_id)?.name || `ID: ${rule.channel_id}`}
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase border bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 border-zinc-200 dark:border-zinc-800">
+                        Semua Device
+                      </span>
+                    )}
                   </div>
 
                   {/* Body preview */}
@@ -881,6 +988,16 @@ export default function ChatbotRules() {
                     className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100 cursor-pointer">
                     <option value="all">Semua (WhatsApp)</option>
                     <option value="whatsapp">WhatsApp saja</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">Hubungkan ke Device</label>
+                  <select value={channelId === null ? '' : channelId} onChange={e => setChannelId(e.target.value ? Number(e.target.value) : null)}
+                    className="w-full px-3.5 py-2.5 text-xs bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-zinc-800 dark:text-zinc-100 cursor-pointer">
+                    <option value="">Semua Device (Global)</option>
+                    {channels.map(ch => (
+                      <option key={ch.id} value={ch.id}>{ch.name}</option>
+                    ))}
                   </select>
                 </div>
               </div>

@@ -215,6 +215,7 @@ class SessionManager extends EventEmitter {
     this._saveTimers = new Map();
     this._lidToPhone = new Map(); // `${sessionId}:${lid}` → phone JID
     this._flushes = new Map();
+    this._botSentIds = new Map(); // sessionId → Set(msgId) — anti-loop untuk fromMe autoreply
   }
 
   // Simpan isi pesan mentah (proto.IMessage) agar Baileys bisa MENGIRIM ULANG saat
@@ -791,8 +792,14 @@ class SessionManager extends EventEmitter {
           this.emit(`message:${sessionId}:${chatId}`, { type: 'message', message: bubble, chatId });
           this.emit(`chats:${sessionId}`, { type: 'chats_updated' });
 
-          if (!m.key.fromMe && text !== '[Media]') {
-            this._autoreply(sessionId, chatId, text, m);
+          if (text !== '[Media]') {
+            // Anti-loop: skip autoreply untuk pesan yang dikirim oleh bot sendiri
+            const botSent = this._botSentIds.get(sessionId);
+            if (botSent && botSent.has(m.key.id)) {
+              botSent.delete(m.key.id); // cleanup
+            } else {
+              this._autoreply(sessionId, chatId, text, m);
+            }
           }
         }
       });
@@ -956,7 +963,7 @@ class SessionManager extends EventEmitter {
           'Content-Type': 'application/json',
           'X-Internal-Secret': INTERNAL_SECRET,
         },
-        body: JSON.stringify({ session_id: sessionId, text, sender, platform: 'whatsapp' }),
+        body: JSON.stringify({ session_id: sessionId, text, sender, platform: 'whatsapp', from_me: rawMessage?.key?.fromMe ?? false }),
         signal: AbortSignal.timeout(10000)
       });
       console.log(`[Chatbot] Match API response status: ${res.status}`);
@@ -1382,7 +1389,10 @@ class SessionManager extends EventEmitter {
 
         if (!actualMediaType) {
           const lowerUrl = resolvedUrl.toLowerCase();
-          if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(lowerUrl)) {
+          if (lowerUrl.startsWith('data:')) {
+            // data URI tanpa MIME yang jelas → default ke image (output plugin paling umum)
+            actualMediaType = 'image';
+          } else if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(lowerUrl)) {
             actualMediaType = 'image';
           } else if (/\.(mp4|avi|mov|mkv|webm|3gp)$/.test(lowerUrl)) {
             actualMediaType = 'video';
@@ -1459,7 +1469,15 @@ class SessionManager extends EventEmitter {
             content = {
               document: mediaSource,
               mimetype: detectedMime || (actualMediaType === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
-              fileName: mediaUrl.split('/').pop() || 'file',
+              fileName: (() => {
+                if (mediaUrl.startsWith('data:')) {
+                  const ext = (detectedMime && detectedMime.split('/')[1]) || 'bin';
+                  return `file.${ext}`;
+                }
+                let name = mediaUrl.split('?')[0].split('/').pop() || 'file';
+                name = decodeURIComponent(name).replace(/[\/\\?%*:|"<>\s]/g, '_');
+                return name || 'file';
+              })(),
             };
             if (message) content.caption = message;
             break;
@@ -1541,6 +1559,18 @@ class SessionManager extends EventEmitter {
     if (result) {
       // Cache isi pesan terkirim agar bisa dikirim ulang saat penerima minta retry.
       if (result.key?.id && result.message) this._cacheRawMessage(sessionId, result.key.id, result.message);
+
+      // Anti-loop: track ID pesan yang dikirim bot agar tidak re-trigger autoreply
+      if (result.key?.id) {
+        let sentSet = this._botSentIds.get(sessionId);
+        if (!sentSet) { sentSet = new Set(); this._botSentIds.set(sessionId, sentSet); }
+        sentSet.add(result.key.id);
+        // Batasi memori: simpan maks 500 ID terakhir
+        if (sentSet.size > 500) {
+          const oldest = sentSet.values().next().value;
+          sentSet.delete(oldest);
+        }
+      }
 
       const text = message || (mediaUrl ? '[Media]' : '');
       const ts = new Date();

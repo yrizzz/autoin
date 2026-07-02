@@ -56,6 +56,9 @@ class ChannelController extends Controller
             // from this device's WhatsApp Status ("My contacts except…").
             'status_blacklist'   => 'sometimes|nullable|array',
             'status_blacklist.*' => 'string',
+            'chatbot_settings'   => 'sometimes|nullable|array',
+            'chatbot_settings.reply_self'   => 'sometimes|boolean',
+            'chatbot_settings.reply_others' => 'sometimes|boolean',
         ]);
 
         $channel->update($data);

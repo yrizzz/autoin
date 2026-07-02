@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ChatbotRule extends Model
 {
-    protected $fillable = ['user_id', 'trigger', 'match_type', 'reply', 'media_url', 'media_type', 'platform', 'is_active', 'is_ai', 'reply_type', 'prefix', 'plugin_id'];
+    protected $fillable = ['user_id', 'channel_id', 'trigger', 'match_type', 'reply', 'media_url', 'media_type', 'platform', 'is_active', 'is_ai', 'reply_type', 'prefix', 'plugin_id'];
 
     protected function casts(): array
     {
@@ -14,6 +14,11 @@ class ChatbotRule extends Model
             'is_active' => 'boolean',
             'is_ai' => 'boolean',
         ];
+    }
+
+    public function channel()
+    {
+        return $this->belongsTo(Channel::class);
     }
 
     public function plugin()

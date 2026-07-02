@@ -162,16 +162,53 @@ function safeStringify(x) {
   try { return JSON.stringify(x); } catch { return String(x); }
 }
 
+function detectMediaType(url) {
+  if (!url || typeof url !== 'string') return null;
+  const lower = url.split('?')[0].toLowerCase();
+  if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(lower)) return 'image';
+  if (/\.(mp4|avi|mov|mkv|webm|3gp)$/.test(lower)) return 'video';
+  if (/\.(mp3|ogg|wav|m4a|aac|opus)$/.test(lower)) return 'audio';
+  if (/\.pdf$/.test(lower)) return 'pdf';
+  if (/\.(doc|docx|xls|xlsx|ppt|pptx|zip|rar|7z|gz|tar|csv|txt)$/.test(lower)) return 'document';
+  return null;
+}
+
+function bufferToDataUri(buf, mimeType) {
+  const mime = mimeType || 'application/octet-stream';
+  return `data:${mime};base64,${buf.toString('base64')}`;
+}
+
 function normalize(out) {
   if (out == null) return null;
   if (typeof out === 'string') return { text: out };
+  // Plugin return Buffer langsung → jadikan media (document)
+  if (Buffer.isBuffer(out)) {
+    return { mediaUrl: bufferToDataUri(out), mediaType: 'document' };
+  }
   if (typeof out === 'object') {
     const o = {};
     if (out.text != null) o.text = String(out.text);
-    const mu = out.mediaUrl ?? out.media_url;
-    const mt = out.mediaType ?? out.media_type;
-    if (mu != null) o.mediaUrl = String(mu);
-    if (mt != null) o.mediaType = String(mt);
+
+    let mu = out.mediaUrl ?? out.media_url;
+    let mt = out.mediaType ?? out.media_type;
+
+    // Jika mediaUrl berupa Buffer, convert ke data URI
+    if (Buffer.isBuffer(mu)) {
+      const mime = mt === 'image' ? 'image/jpeg'
+        : mt === 'video' ? 'video/mp4'
+        : mt === 'audio' ? 'audio/mpeg'
+        : mt === 'pdf' ? 'application/pdf'
+        : 'application/octet-stream';
+      mu = bufferToDataUri(mu, mime);
+    }
+
+    if (mu != null) {
+      o.mediaUrl = String(mu);
+      // Auto-detect mediaType dari URL jika plugin tidak menyebutkan
+      if (!mt) mt = detectMediaType(o.mediaUrl);
+      if (mt != null) o.mediaType = String(mt);
+    }
+
     return o;
   }
   return { text: String(out) };

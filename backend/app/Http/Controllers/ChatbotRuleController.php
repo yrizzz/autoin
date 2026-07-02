@@ -38,7 +38,17 @@ class ChatbotRuleController extends Controller
             'is_ai'      => 'sometimes|boolean',
             'is_active'  => 'sometimes|boolean',
             'plugin_id'  => 'sometimes|nullable|integer',
+            'channel_id' => 'sometimes|nullable|integer',
         ]);
+
+        if (!empty($data['channel_id'])) {
+            $channel = Channel::where('id', $data['channel_id'])
+                ->where('user_id', $user->id)
+                ->first();
+            if (!$channel) {
+                return response()->json(['message' => 'Channel tidak valid.'], 422);
+            }
+        }
 
         $this->assertOwnsPlugin($user, $data['plugin_id'] ?? null);
         if ($resp = $this->checkPublicPluginQuota($user, $data['plugin_id'] ?? null)) {
@@ -69,7 +79,17 @@ class ChatbotRuleController extends Controller
             'reply_type' => 'sometimes|in:normal,quote',
             'prefix'     => 'sometimes|in:any,none,.,/,!,#',
             'plugin_id'  => 'sometimes|nullable|integer',
+            'channel_id' => 'sometimes|nullable|integer',
         ]);
+
+        if (array_key_exists('channel_id', $data) && !empty($data['channel_id'])) {
+            $channel = Channel::where('id', $data['channel_id'])
+                ->where('user_id', $request->user()->id)
+                ->first();
+            if (!$channel) {
+                return response()->json(['message' => 'Channel tidak valid.'], 422);
+            }
+        }
 
         if (array_key_exists('plugin_id', $data)) {
             $this->assertOwnsPlugin($request->user(), $data['plugin_id']);
@@ -190,6 +210,7 @@ class ChatbotRuleController extends Controller
         $sessionId = $request->input('session_id');
         $text      = (string) $request->input('text', '');
         $platform  = $request->input('platform', 'whatsapp');
+        $fromMe    = (bool) $request->input('from_me', false);
 
         // Find channel by session_id stored in credentials (which is encrypted in DB)
         $channel = Channel::whereIn('platform', ['whatsapp'])
@@ -202,6 +223,21 @@ class ChatbotRuleController extends Controller
             return response()->json(['reply' => null]);
         }
 
+        // Check self vs other messages toggle settings
+        $chatbotSettings = $channel->chatbot_settings ?? [
+            'reply_self' => false,
+            'reply_others' => true,
+        ];
+        $replySelf = (bool) ($chatbotSettings['reply_self'] ?? false);
+        $replyOthers = (bool) ($chatbotSettings['reply_others'] ?? true);
+
+        if ($fromMe && !$replySelf) {
+            return response()->json(['reply' => null]);
+        }
+        if (!$fromMe && !$replyOthers) {
+            return response()->json(['reply' => null]);
+        }
+
         // Plugin TIDAK lagi punya prefix/command sendiri. Pemicunya diatur lewat
         // chatbot rule (prefix + trigger + plugin_id) yang dicek di loop di bawah.
 
@@ -211,6 +247,9 @@ class ChatbotRuleController extends Controller
         $reactFeedback = (bool) data_get($owner?->settings, 'plugin_react_feedback', false);
 
         $rules = ChatbotRule::where('user_id', $channel->user_id)
+            ->where(function ($q) use ($channel) {
+                $q->whereNull('channel_id')->orWhere('channel_id', $channel->id);
+            })
             ->where('is_active', true)
             ->where(function ($q) use ($platform) {
                 $q->where('platform', 'all')->orWhere('platform', $platform);

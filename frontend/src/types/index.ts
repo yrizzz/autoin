@@ -21,6 +21,7 @@ export interface Channel {
   // Persistent status-privacy blacklist: contact JIDs/numbers hidden from this
   // device's WhatsApp Status ("My contacts except…").
   status_blacklist?: string[] | null;
+  chatbot_settings?: { reply_self?: boolean; reply_others?: boolean } | null;
 }
 
 export interface Broadcast {
