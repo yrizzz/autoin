@@ -5,7 +5,7 @@ import {
   Calendar, Clock, RefreshCw, Trash2, Play, Loader2,
   X, BarChart3, CheckCircle2, AlertCircle, XCircle,
   MessageSquare, Users, FileText, Video,
-  ChevronRight, Send, Hash, Copy, Check, Info, Layers, Smartphone, Upload, Plus, Trash, EyeOff, Search
+  ChevronRight, Send, Hash, Copy, Check, Info, Layers, Smartphone, Upload, Plus, Trash, EyeOff, Search, Pencil
 } from 'lucide-react';
 import type { Channel } from '../../types';
 
@@ -170,6 +170,16 @@ export default function ScheduleStatusManager() {
 
   // Search Filter
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Edit modal state
+  const [editModal, setEditModal] = useState<{
+    open: boolean;
+    broadcast: Broadcast | null;
+  }>({ open: false, broadcast: null });
+  const [editContent, setEditContent] = useState('');
+  const [editScheduledAt, setEditScheduledAt] = useState('');
+  const [editRecurring, setEditRecurring] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
+  const [editSaving, setEditSaving] = useState(false);
 
   // Confirm Modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -459,6 +469,42 @@ export default function ScheduleStatusManager() {
         }
       }
     });
+  };
+
+  const openEdit = (b: Broadcast) => {
+    // Pre-fill form with existing broadcast data
+    setEditContent(b.content || '');
+    // Convert UTC stored time to local datetime-local format
+    if (b.scheduled_at) {
+      const d = new Date(b.scheduled_at);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      const local = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      setEditScheduledAt(local);
+    } else {
+      setEditScheduledAt('');
+    }
+    setEditRecurring((b.recurring as any) || 'none');
+    setEditModal({ open: true, broadcast: b });
+  };
+
+  const saveEdit = async () => {
+    if (!editModal.broadcast) return;
+    if (!editScheduledAt) { alert('Tentukan tanggal & waktu baru!'); return; }
+    setEditSaving(true);
+    try {
+      const scheduledAtUtc = new Date(editScheduledAt).toISOString();
+      await api.put(`/api/broadcasts/${editModal.broadcast.id}`, {
+        content: editContent,
+        scheduled_at: scheduledAtUtc,
+        recurring: editRecurring,
+      });
+      setEditModal({ open: false, broadcast: null });
+      await loadData();
+    } catch (err: any) {
+      alert(err.message ?? 'Gagal menyimpan perubahan.');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   // Filter lists based on tab & search query
@@ -1079,6 +1125,14 @@ export default function ScheduleStatusManager() {
                               {b.status === 'scheduled' && (
                                 <>
                                   <button
+                                    onClick={() => openEdit(b)}
+                                    disabled={actionId === b.id}
+                                    title="Edit Jadwal"
+                                    className="p-1 rounded-lg border border-zinc-200 dark:border-zinc-800 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 cursor-pointer"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
                                     onClick={() => handleSendNow(b)}
                                     disabled={actionId === b.id}
                                     title="Kirim Sekarang"
@@ -1268,6 +1322,128 @@ export default function ScheduleStatusManager() {
               >
                 {privacySaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                 Simpan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Jadwal Status Modal ── */}
+      {editModal.open && editModal.broadcast && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-zinc-950/80 backdrop-blur-sm">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 border-b border-zinc-200 dark:border-zinc-800">
+              <h3 className="flex items-center gap-2 text-sm font-extrabold text-zinc-950 dark:text-white">
+                <Pencil className="w-4 h-4 text-blue-500" />
+                Edit Jadwal Status
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditModal({ open: false, broadcast: null })}
+                className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* Konten / Caption */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                  {editModal.broadcast.media_type ? 'Caption (Opsional)' : 'Pesan Status'}
+                </label>
+                {editModal.broadcast.media_type ? (
+                  <input
+                    type="text"
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                    placeholder="Edit caption..."
+                    className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-medium placeholder-zinc-400"
+                  />
+                ) : (
+                  <textarea
+                    value={editContent}
+                    onChange={e => setEditContent(e.target.value)}
+                    placeholder="Edit pesan status..."
+                    rows={3}
+                    className="w-full px-3 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-medium placeholder-zinc-400"
+                  />
+                )}
+              </div>
+
+              {/* Waktu Pengiriman */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                  Waktu Pengiriman
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                  <input
+                    type="datetime-local"
+                    value={editScheduledAt}
+                    onChange={e => setEditScheduledAt(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl text-zinc-800 dark:text-zinc-100 focus:outline-none focus:border-blue-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* Pengulangan */}
+              <div>
+                <label className="block text-[11px] font-extrabold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
+                  Pengulangan
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {([
+                    { id: 'none',    label: 'Sekali',   icon: '—' },
+                    { id: 'daily',   label: 'Harian',   icon: '📅' },
+                    { id: 'weekly',  label: 'Mingguan', icon: '🗓️' },
+                    { id: 'monthly', label: 'Bulanan',  icon: '📆' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setEditRecurring(opt.id)}
+                      className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl border text-[9px] font-bold transition-all cursor-pointer ${
+                        editRecurring === opt.id
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                          : 'border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900'
+                      }`}
+                    >
+                      <span className="text-sm leading-none">{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                {editRecurring !== 'none' && (
+                  <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1.5 flex items-center gap-1">
+                    <RefreshCw className="w-3 h-3" />
+                    Status akan otomatis diulang setiap{' '}
+                    {editRecurring === 'daily' ? 'hari' : editRecurring === 'weekly' ? 'minggu' : 'bulan'}
+                    {' '}pada jam yang sama.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setEditModal({ open: false, broadcast: null })}
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-850 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl cursor-pointer transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={editSaving}
+                className="px-4 py-2 btn-primary text-white font-bold text-xs rounded-xl shadow-md cursor-pointer transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {editSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                Simpan Perubahan
               </button>
             </div>
           </div>
