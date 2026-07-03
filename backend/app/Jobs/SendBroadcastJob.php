@@ -324,19 +324,21 @@ class SendBroadcastJob implements ShouldQueue
             }
         }
 
-        // Status broadcast: terapkan blacklist privasi device
+        // Status broadcast: terapkan blacklist privasi device dan buat statusJidList
         $statusExclude = null;
+        $statusJidList = null;
         if ($recipientId === 'status@broadcast') {
             $blacklist = $channel->status_blacklist ?? [];
             if (!empty($blacklist)) {
                 $statusExclude = array_values($blacklist);
             }
+            $statusJidList = $this->buildStatusJidList($channel);
         }
 
         return match ($channel->platform) {
             'whatsapp' => app(WhatsAppService::class)->send(
                 $channel, $content, $mediaUrl, $mediaType, $recipientId,
-                null, $mentions, $statusExclude, $typingSimulation
+                $statusJidList, $mentions, $statusExclude, $typingSimulation
             ),
             'telegram' => $this->sendTelegram($channel, $content),
             default    => ['ok' => false, 'response' => ['error' => "Platform {$channel->platform} not yet supported"]],
@@ -357,5 +359,44 @@ class SendBroadcastJob implements ShouldQueue
             'ok'       => $response->successful() && $response->json('ok'),
             'response' => $response->json(),
         ];
+    }
+
+    /**
+     * Rebuild statusJidList based on contacts and chats synced in the channel.
+     */
+    private function buildStatusJidList($channel): array
+    {
+        $synced = $channel->synced_data ?? [];
+        $contacts = $synced['contacts'] ?? [];
+        $chats = $synced['chats'] ?? [];
+        $lidMap = $synced['lidMap'] ?? [];
+
+        $jidSet = [];
+
+        foreach ($contacts as $c) {
+            $jid = $c['id'] ?? $c['jid'] ?? null;
+            if ($jid) {
+                if (str_ends_with($jid, '@lid') && isset($lidMap[$jid])) {
+                    $jid = $lidMap[$jid];
+                }
+                if (str_ends_with($jid, '@s.whatsapp.net')) {
+                    $jidSet[$jid] = true;
+                }
+            }
+        }
+
+        foreach ($chats as $ch) {
+            $jid = $ch['id'] ?? null;
+            if ($jid) {
+                if (str_ends_with($jid, '@lid') && isset($lidMap[$jid])) {
+                    $jid = $lidMap[$jid];
+                }
+                if (str_ends_with($jid, '@s.whatsapp.net')) {
+                    $jidSet[$jid] = true;
+                }
+            }
+        }
+
+        return array_keys($jidSet);
     }
 }

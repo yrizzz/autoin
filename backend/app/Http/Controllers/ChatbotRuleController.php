@@ -206,6 +206,7 @@ class ChatbotRuleController extends Controller
         $secret = $request->header('X-Internal-Secret');
         if ($secret !== config('services.internal.secret', 'autoin-internal-secret') && 
             $secret !== config('services.whatsapp.secret', 'autoin-wa-secret')) {
+            \Illuminate\Support\Facades\Log::warning("[Chatbot Match] Invalid internal secret: " . substr($secret, 0, 10) . "...");
             return response()->json(['reply' => null], 401);
         }
 
@@ -217,6 +218,8 @@ class ChatbotRuleController extends Controller
         $isGroup   = (bool) $request->input('is_group', false);
         $isAdmin   = (bool) $request->input('is_admin', false);
 
+        \Illuminate\Support\Facades\Log::info("[Chatbot Match] Input - Session: {$sessionId}, Text: '{$text}', FromMe: " . ($fromMe?'yes':'no') . ", IsGroup: " . ($isGroup?'yes':'no') . ", IsAdmin: " . ($isAdmin?'yes':'no'));
+
         // Find channel by session_id stored in credentials (which is encrypted in DB)
         $channel = Channel::whereIn('platform', ['whatsapp'])
             ->get()
@@ -225,6 +228,7 @@ class ChatbotRuleController extends Controller
             });
 
         if (!$channel) {
+            \Illuminate\Support\Facades\Log::warning("[Chatbot Match] Channel not found for session ID: {$sessionId}");
             return response()->json(['reply' => null]);
         }
 
@@ -246,6 +250,8 @@ class ChatbotRuleController extends Controller
             })
             ->orderBy('created_at')
             ->get();
+
+        \Illuminate\Support\Facades\Log::info("[Chatbot Match] Found " . $rules->count() . " active rules for User #{$channel->user_id}");
 
         // Filter rules berdasarkan target_scope (bisa override via global device scope)
         $deviceScope = data_get($channel->chatbot_settings, 'target_scope', 'rule');
@@ -269,8 +275,11 @@ class ChatbotRuleController extends Controller
             }
         });
 
+        \Illuminate\Support\Facades\Log::info("[Chatbot Match] " . $rules->count() . " rules remain after filtering with device scope '{$deviceScope}'");
+
         foreach ($rules as $rule) {
             if ($rule->matches($text)) {
+                \Illuminate\Support\Facades\Log::info("[Chatbot Match] Rule matched! Trigger: '{$rule->trigger}', Rule ID: {$rule->id}, Target Scope: {$rule->target_scope}");
                 // Rule memakai plugin dari pustaka -> jalankan plugin sbg balasan
                 if ($rule->plugin_id) {
                     $plugin = $rule->plugin;
@@ -363,6 +372,7 @@ class ChatbotRuleController extends Controller
             }
         }
 
+        \Illuminate\Support\Facades\Log::info("[Chatbot Match] No rules matched the text: '{$text}'");
         return response()->json(['reply' => null]);
     }
 }
