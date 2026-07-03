@@ -13,7 +13,7 @@ const WORKER_URL = new URL('./pluginWorker.js', import.meta.url);
  * @returns {Promise<{ok:boolean, output?:{text?:string,mediaUrl?:string,mediaType?:string}, logs?:string[], error?:string}>}
  */
 export function runPlugin(code, ctx, { timeoutMs = 8000 } = {}) {
-  const limit = Math.min(Math.max(Number(timeoutMs) || 8000, 1000), 15000);
+  const limit = Math.min(Math.max(Number(timeoutMs) || 8000, 1000), 30000);
 
   return new Promise((resolve) => {
     let settled = false;
@@ -34,7 +34,7 @@ export function runPlugin(code, ctx, { timeoutMs = 8000 } = {}) {
     const killTimer = setTimeout(() => {
       worker.terminate();
       finish({ ok: false, error: `Plugin timeout (> ${limit}ms)`, logs: [] });
-    }, limit + 1500);
+    }, limit + 3000);
 
     worker.on('message', (msg) => {
       clearTimeout(killTimer);

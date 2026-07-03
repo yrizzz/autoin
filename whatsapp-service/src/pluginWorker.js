@@ -12,7 +12,7 @@ const logs = [];
 const MAX_REQUESTS = 10;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_TEXT_LEN = 8000;
-const REQUEST_TIMEOUT = Math.min(Number(timeoutMs) || 8000, 15000);
+const REQUEST_TIMEOUT = Math.min(Number(timeoutMs) || 8000, 30000);
 let requestCount = 0;
 
 // ── Anti-SSRF ───────────────────────────────────────────────────────────────
