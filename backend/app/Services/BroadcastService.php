@@ -18,6 +18,9 @@ class BroadcastService
 
         $broadcast->update(['status' => 'queued']);
 
+        // Delete any existing logs to prevent duplicates on retry/resend
+        BroadcastLog::where('broadcast_id', $broadcast->id)->delete();
+
         foreach ($broadcast->targets as $target) {
             $recipients = $target->recipients;
 

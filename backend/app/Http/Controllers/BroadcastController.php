@@ -105,7 +105,19 @@ class BroadcastController extends Controller
             'channel_ids.*.exists'   => 'Channel ID tidak valid atau bukan milik akun Anda.',
         ]);
 
-        $status = !empty($data['scheduled_at']) ? 'scheduled' : 'draft';
+        $isApiKey = (bool) $request->attributes->get('is_api_key', false);
+        $sendNowDefault = $isApiKey || $request->has('message') || $request->has('channel_id');
+        $sendNow = empty($data['scheduled_at']) && $request->input('send_now', $sendNowDefault);
+
+        $status = 'draft';
+        $scheduledAt = $data['scheduled_at'] ?? null;
+
+        if ($scheduledAt) {
+            $status = 'scheduled';
+        } elseif ($sendNow) {
+            $status = 'scheduled';
+            $scheduledAt = now();
+        }
 
         // If backgroundColor is passed for a status text broadcast,
         // store it in media_url with '#' prefix (existing convention)
@@ -122,7 +134,7 @@ class BroadcastController extends Controller
             'content'             => $data['content'] ?? '',
             'media_url'           => $mediaUrl,
             'media_type'          => $mediaType,
-            'scheduled_at'        => $data['scheduled_at'] ?? null,
+            'scheduled_at'        => $scheduledAt,
             'recurring'           => $data['recurring'] ?? 'none',
             'status'              => $status,
             'delay_min'           => $data['delay_min'] ?? 3,
@@ -154,17 +166,6 @@ class BroadcastController extends Controller
                 'channel_id'   => $channelId,
                 'recipients'   => $recipientsMap[$channelId] ?? null,
             ]);
-        }
-
-        // When to send immediately (unless scheduled). The public API (called
-        // with an API key) and the developer aliases (message/channel_id) send
-        // right away — matching the docs' "Kirim Campaign Broadcast". The web
-        // dashboard (cookie/JWT) keeps the old behaviour: create a draft, then
-        // call /broadcasts/{id}/send explicitly. `send_now` always wins if sent.
-        $isApiKey = (bool) $request->attributes->get('is_api_key', false);
-        $sendNowDefault = $isApiKey || $request->has('message') || $request->has('channel_id');
-        if (empty($data['scheduled_at']) && $request->input('send_now', $sendNowDefault)) {
-            $this->service->send($broadcast);
         }
 
         return response()->json($broadcast->load('targets.channel'), 201);
@@ -333,17 +334,13 @@ class BroadcastController extends Controller
             // (already checked at create time — allow send to proceed)
         }
 
-        // "Kirim Sekarang": this endpoint is an explicit manual send, so cancel any
-        // pending future schedule — otherwise BroadcastService::send() would bail out
-        // on its isFuture() guard and just leave the broadcast scheduled.
-        if ($broadcast->scheduled_at && $broadcast->scheduled_at->isFuture()) {
-            $broadcast->update(['scheduled_at' => null]);
-            $broadcast->refresh();
-        }
+        // Update status to scheduled and scheduled_at to now so that the background scheduler picks it up
+        $broadcast->update([
+            'scheduled_at' => now(),
+            'status' => 'scheduled'
+        ]);
 
-        $this->service->send($broadcast);
-
-        return response()->json(['status' => 'queued', 'broadcast_id' => $broadcast->id]);
+        return response()->json(['status' => 'scheduled', 'broadcast_id' => $broadcast->id]);
     }
 
     public function cancel(Request $request, Broadcast $broadcast)

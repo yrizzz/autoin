@@ -784,20 +784,18 @@ export default function BroadcastCreate() {
         chunk_delay_min: smartBlastEnabled ? Number(chunkDelayMin) : 0,
         chunk_delay_max: smartBlastEnabled ? Number(chunkDelayMax) : 0,
         auto_tag_members: autoTagMembers,
+        send_now: !isScheduled,
       });
 
       if (!isScheduled) {
-        await api.post(`/api/broadcasts/${broadcast.id}/send`);
-        setActiveBroadcastId(broadcast.id);
-        setProgressModalOpen(true);
-        setProgressData(null);
+        setResult({ ok: true, message: '✓ Broadcast berhasil diserahkan ke antrean scheduler dan akan segera dikirim.' });
       } else {
         setResult({ ok: true, message: `📅 Broadcast dijadwalkan pada ${new Date(scheduledAt).toLocaleString('id-ID')}` });
-        setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
-        setScheduledAt(''); setRecurring('none'); setRecipientState({});
-        setAutoTagMembers({});
-        setActiveTab('editor');
       }
+      setContent(''); setTitle(''); setMediaUrls([]); setSelectedChannels([]);
+      setScheduledAt(''); setRecurring('none'); setRecipientState({});
+      setAutoTagMembers({});
+      setActiveTab('editor');
     } catch (e: any) {
       setResult({ ok: false, message: e.message ?? 'Gagal memproses broadcast.' });
     } finally {

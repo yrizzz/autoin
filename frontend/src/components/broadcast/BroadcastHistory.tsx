@@ -123,7 +123,10 @@ export default function BroadcastHistory() {
   }, [currentPage, statusFilter]);
 
   useEffect(() => {
-    const hasActiveBroadcasts = broadcasts.some(b => ['sending', 'queued'].includes(b.status));
+    const hasActiveBroadcasts = broadcasts.some(b => 
+      ['sending', 'queued'].includes(b.status) ||
+      (b.status === 'scheduled' && (!b.scheduled_at || new Date(b.scheduled_at) <= new Date()))
+    );
     if (!hasActiveBroadcasts) return;
 
     const intervalId = setInterval(() => {
