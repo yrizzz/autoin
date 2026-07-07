@@ -1460,7 +1460,26 @@ class SessionManager extends EventEmitter {
           mediaSource = { url: resolvedUrl };
         }
 
-        actualMediaType = mediaType;
+        // Normalize and validate mediaType if provided by plugin/caller
+        if (mediaType) {
+          const amt = String(mediaType).toLowerCase();
+          if (amt.includes('image') || amt.includes('jpg') || amt.includes('png') || amt.includes('jpeg') || amt.includes('webp') || amt.includes('photo')) {
+            actualMediaType = 'image';
+          } else if (amt.includes('video') || amt.includes('mp4') || amt.includes('avi') || amt.includes('mov') || amt.includes('mkv') || amt.includes('webm')) {
+            actualMediaType = 'video';
+          } else if (amt.includes('audio') || amt.includes('mp3') || amt.includes('ogg') || amt.includes('wav') || amt.includes('m4a') || amt.includes('opus')) {
+            actualMediaType = 'audio';
+          } else if (amt.includes('pdf')) {
+            actualMediaType = 'pdf';
+          } else if (amt.includes('document') || amt.includes('file')) {
+            actualMediaType = 'document';
+          } else {
+            actualMediaType = mediaType;
+          }
+        } else {
+          actualMediaType = null;
+        }
+
         // Jangan menentukan tipe dari MIME generik (octet-stream): biarkan jatuh ke
         // deteksi via ekstensi di bawah supaya gambar/video tidak salah jadi "document".
         const genericMime = !detectedMime || detectedMime.startsWith('application/octet-stream');
@@ -1479,17 +1498,17 @@ class SessionManager extends EventEmitter {
         }
 
         if (!actualMediaType) {
-          const lowerUrl = resolvedUrl.toLowerCase();
-          if (lowerUrl.startsWith('data:')) {
+          const cleanUrlForDetection = resolvedUrl.split('?')[0].split('#')[0].toLowerCase();
+          if (cleanUrlForDetection.startsWith('data:')) {
             // data URI tanpa MIME yang jelas → default ke image (output plugin paling umum)
             actualMediaType = 'image';
-          } else if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(lowerUrl)) {
+          } else if (/\.(jpg|jpeg|png|webp|gif|bmp|svg)$/.test(cleanUrlForDetection)) {
             actualMediaType = 'image';
-          } else if (/\.(mp4|avi|mov|mkv|webm|3gp)$/.test(lowerUrl)) {
+          } else if (/\.(mp4|avi|mov|mkv|webm|3gp)$/.test(cleanUrlForDetection)) {
             actualMediaType = 'video';
-          } else if (/\.(mp3|ogg|wav|m4a|aac)$/.test(lowerUrl)) {
+          } else if (/\.(mp3|ogg|wav|m4a|aac|opus)$/.test(cleanUrlForDetection)) {
             actualMediaType = 'audio';
-          } else if (lowerUrl.endsWith('.pdf')) {
+          } else if (cleanUrlForDetection.endsWith('.pdf')) {
             actualMediaType = 'pdf';
           } else {
             actualMediaType = 'document';

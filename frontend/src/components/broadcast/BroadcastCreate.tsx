@@ -115,15 +115,119 @@ export function RecipientModal({
       });
   }, [editingGroupTag, channel.id, autoTagMembers]);
 
-  const contacts = state.items.filter(r => r.type === 'contact');
-  const groups   = state.items.filter(r => r.type === 'group');
-  const selected = state.items.filter(r => state.selected.has(r.id));
+  // Load from other device states
+  const [otherChannels, setOtherChannels] = useState<Channel[]>([]);
+  const [selectedSourceChannelId, setSelectedSourceChannelId] = useState<number>(channel.id);
+  const [modalItems, setModalItems] = useState<Recipient[]>(state.items);
+  const [loadingBorrowed, setLoadingBorrowed] = useState(false);
+
+  // Sync modalItems with state.items on change, preserving selected items
+  useEffect(() => {
+    setModalItems(prev => {
+      const mergedMap = new Map<string, Recipient>();
+      prev.forEach(item => {
+        if (state.selected.has(item.id)) {
+          mergedMap.set(item.id, item);
+        }
+      });
+      state.items.forEach(item => {
+        mergedMap.set(item.id, item);
+      });
+      return Array.from(mergedMap.values());
+    });
+  }, [state.items]);
+
+  // Fetch other connected channels
+  useEffect(() => {
+    api.get<Channel[]>('/api/channels')
+      .then(chs => {
+        setOtherChannels(chs.filter(c => c.platform === 'whatsapp' && c.status === 'active'));
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSourceChannelChange = async (sourceId: number) => {
+    setSelectedSourceChannelId(sourceId);
+    if (sourceId === channel.id) {
+      setModalItems(prev => {
+        const mergedMap = new Map<string, Recipient>();
+        prev.forEach(item => {
+          if (state.selected.has(item.id)) {
+            mergedMap.set(item.id, item);
+          }
+        });
+        state.items.forEach(item => {
+          mergedMap.set(item.id, item);
+        });
+        return Array.from(mergedMap.values());
+      });
+      return;
+    }
+
+    setLoadingBorrowed(true);
+    try {
+      const [cRes, gRes] = await Promise.all([
+        api.get<{ contacts: any[] }>(`/api/whatsapp/${sourceId}/contacts`).catch(() => ({ contacts: [] })),
+        api.get<{ groups: any[] }>(`/api/whatsapp/${sourceId}/groups`).catch(() => ({ groups: [] })),
+      ]);
+
+      const contactsList = (cRes.contacts || [])
+        .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+          phone: `+${c.id.split('@')[0]}`,
+          type: 'contact' as const
+        }));
+
+      const groupsMap = new Map<string, Recipient>();
+      (gRes.groups || []).forEach((g: any) => {
+        groupsMap.set(g.id, { id: g.id, name: g.name || g.subject || g.id, type: 'group' as const });
+      });
+
+      // Try fetching active chats to include groups not in standard metadata
+      const chatRes = await api.get<{ chats: any[] }>(`/api/whatsapp/${sourceId}/chats`).catch(() => ({ chats: [] }));
+      (chatRes.chats || []).forEach((chat: any) => {
+        const jid = chat.id || null;
+        if (jid && jid.endsWith('@g.us') && !groupsMap.has(jid)) {
+          groupsMap.set(jid, {
+            id: jid,
+            name: chat.name || chat.subject || jid.split('@')[0],
+            type: 'group' as const
+          });
+        }
+      });
+
+      const borrowed = [...contactsList, ...Array.from(groupsMap.values())];
+
+      setModalItems(prev => {
+        const mergedMap = new Map<string, Recipient>();
+        prev.forEach(item => {
+          if (state.selected.has(item.id)) {
+            mergedMap.set(item.id, item);
+          }
+        });
+        borrowed.forEach(item => {
+          mergedMap.set(item.id, item);
+        });
+        return Array.from(mergedMap.values());
+      });
+    } catch {
+      // ignore
+    } finally {
+      setLoadingBorrowed(false);
+    }
+  };
+
+  const contacts = modalItems.filter(r => r.type === 'contact');
+  const groups   = modalItems.filter(r => r.type === 'group');
+  const selected = modalItems.filter(r => state.selected.has(r.id));
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
     const pool = tab === 'contacts' ? contacts : tab === 'groups' ? groups : selected;
     return q ? pool.filter(r => r.name.toLowerCase().includes(q) || (r.phone || r.id).includes(q)) : pool;
-  }, [tab, contacts, groups, selected, search]);
+  }, [tab, modalItems, state.selected, search]);
 
   const allInTab = tab === 'contacts' ? contacts : tab === 'groups' ? groups : [];
   const allTabSelected = allInTab.length > 0 && allInTab.every(r => state.selected.has(r.id));
@@ -365,6 +469,28 @@ export function RecipientModal({
           </div>
         </div>
 
+        {/* Contact Source Selection */}
+        {channel.platform === 'whatsapp' && otherChannels.length > 1 && (
+          <div className="px-5 py-3 border-b border-zinc-150 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/20 flex items-center justify-between gap-3 shrink-0">
+            <label className="text-[10px] font-black text-zinc-450 dark:text-zinc-500 uppercase tracking-widest shrink-0">
+              Pinjam Kontak Device Lain:
+            </label>
+            <select
+              value={selectedSourceChannelId}
+              onChange={(e) => handleSourceChannelChange(Number(e.target.value))}
+              className="text-xs bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-3 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:border-blue-500 cursor-pointer max-w-[220px] transition-all hover:border-zinc-300 dark:hover:border-zinc-700 shadow-sm"
+            >
+              <option value={channel.id}>Device Sendiri ({channel.name})</option>
+              {otherChannels
+                .filter(c => c.id !== channel.id)
+                .map(c => (
+                  <option key={c.id} value={c.id}>Pinjam dari: {c.name}</option>
+                ))
+              }
+            </select>
+          </div>
+        )}
+
         {/* Search */}
         <div className="p-3 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="relative">
@@ -401,7 +527,7 @@ export function RecipientModal({
             </button>
           )}
 
-          {state.loading ? (
+          {state.loading || loadingBorrowed ? (
             <div className="flex flex-col items-center justify-center py-12 gap-2">
               <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
               <span className="text-xs text-zinc-400">Memuat kontak & grup...</span>
