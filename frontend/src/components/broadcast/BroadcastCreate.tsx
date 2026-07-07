@@ -65,6 +65,8 @@ export function RecipientModal({
   onUpdateGroupTagSettings,
   syncing = false,
   onSyncContacts,
+  onAddBulkRecipients,
+  showToast,
 }: {
   channel: Channel;
   state: ChannelRecipientState;
@@ -75,6 +77,8 @@ export function RecipientModal({
   onUpdateGroupTagSettings: (groupId: string, settings: { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }) => void;
   syncing?: boolean;
   onSyncContacts?: () => Promise<void>;
+  onAddBulkRecipients?: (channelId: number, recipients: Recipient[]) => void;
+  showToast?: (message: string, type?: 'success' | 'info' | 'error') => void;
 }) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'contacts' | 'groups' | 'selected'>('contacts');
@@ -86,6 +90,57 @@ export function RecipientModal({
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
+
+  const [loadingGroups, setLoadingGroups] = useState<Record<string, boolean>>({});
+
+  async function handleFetchGroupMembers(groupId: string, groupName: string) {
+    setLoadingGroups(prev => ({ ...prev, [groupId]: true }));
+    try {
+      const sourceId = selectedSourceChannelId || channel.id;
+      const res = await api.get<{ metadata: { participants: any[] } }>(
+        `/api/whatsapp/${sourceId}/groups/${encodeURIComponent(groupId)}`
+      );
+      if (res && res.metadata && res.metadata.participants) {
+        const participants = res.metadata.participants;
+        if (participants.length === 0) {
+          if (showToast) showToast('Grup ini tidak memiliki anggota atau gagal diambil.', 'error');
+          else alert('Grup ini tidak memiliki anggota atau gagal diambil.');
+          return;
+        }
+
+        const newRecipients = participants.map((p: any) => ({
+          id: p.id,
+          name: p.name || p.id.split('@')[0],
+          phone: p.id.split('@')[0],
+          type: 'contact' as const,
+        }));
+
+        setModalItems(prev => {
+          const mergedMap = new Map<string, Recipient>();
+          prev.forEach(item => mergedMap.set(item.id, item));
+          newRecipients.forEach(item => mergedMap.set(item.id, item));
+          return Array.from(mergedMap.values());
+        });
+
+        if (onAddBulkRecipients) {
+          onAddBulkRecipients(channel.id, newRecipients);
+        }
+
+        if (showToast) {
+          showToast(`✓ Berhasil menambahkan ${newRecipients.length} anggota dari "${groupName}" sebagai penerima individu.`, 'success');
+        }
+      } else {
+        if (showToast) showToast('Gagal memuat anggota grup.', 'error');
+        else alert('Gagal memuat anggota grup.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (showToast) showToast('Gagal mengambil anggota grup: ' + (err.message || ''), 'error');
+      else alert('Gagal mengambil anggota grup: ' + (err.message || ''));
+    } finally {
+      setLoadingGroups(prev => ({ ...prev, [groupId]: false }));
+    }
+  }
 
   // Preload group member data when editingGroupTag is active
   useEffect(() => {
@@ -567,26 +622,49 @@ export function RecipientModal({
                     {isGroup && (() => {
                       const hasTagSettings = autoTagMembers[r.id]?.enabled;
                       const mode = autoTagMembers[r.id]?.mode;
+                      const isLoadingGroup = loadingGroups[r.id];
                       return (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            setEditingGroupTag(r);
-                          }}
-                          className={`ml-2 px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer border shrink-0 ${
-                            hasTagSettings
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450'
-                              : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20'
-                          }`}
-                        >
-                          <Tag className="w-3 h-3" />
-                          {hasTagSettings 
-                            ? `Tag: ${mode === 'all' ? 'Semua' : mode === 'admin' ? 'Admin' : 'Kustom'}`
-                            : 'Tag Member'
-                          }
-                        </button>
+                        <div className="flex items-center gap-1.5 ml-2 shrink-0">
+                          {/* Ambil Anggota button */}
+                          <button
+                            type="button"
+                            disabled={isLoadingGroup}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              handleFetchGroupMembers(r.id, r.name);
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer border bg-indigo-500/10 border-indigo-500/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/25 disabled:opacity-50"
+                          >
+                            {isLoadingGroup ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Users className="w-3 h-3" />
+                            )}
+                            <span>Ambil Anggota</span>
+                          </button>
+
+                          {/* Tag Member button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              setEditingGroupTag(r);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold flex items-center gap-1 transition-all cursor-pointer border ${
+                              hasTagSettings
+                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-450'
+                                : 'bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20'
+                            }`}
+                          >
+                            <Tag className="w-3 h-3" />
+                            {hasTagSettings 
+                              ? `Tag: ${mode === 'all' ? 'Semua' : mode === 'admin' ? 'Admin' : 'Kustom'}`
+                              : 'Tag Member'
+                            }
+                          </button>
+                        </div>
                       );
                     })()}
                   </div>
@@ -887,6 +965,34 @@ export default function BroadcastCreate() {
     });
   }
 
+  function addBulkRecipients(channelId: number, recipientsToAdd: Recipient[]) {
+    setRecipientState(prev => {
+      const cur = prev[channelId];
+      if (!cur) return prev;
+
+      const nextSelected = new Set(cur.selected);
+      recipientsToAdd.forEach(r => nextSelected.add(r.id));
+
+      const existingIds = new Set(cur.items.map(item => item.id));
+      const nextItems = [...cur.items];
+      recipientsToAdd.forEach(r => {
+        if (!existingIds.has(r.id)) {
+          nextItems.push(r);
+          existingIds.add(r.id);
+        }
+      });
+
+      return {
+        ...prev,
+        [channelId]: {
+          ...cur,
+          selected: nextSelected,
+          items: nextItems
+        }
+      };
+    });
+  }
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -1071,6 +1177,8 @@ export default function BroadcastCreate() {
           onSyncContacts={async () => {
             await handleSyncRecipients(recipientModal);
           }}
+          onAddBulkRecipients={addBulkRecipients}
+          showToast={showToast}
         />
       )}
 

@@ -292,17 +292,7 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
-        // Check if user has premium plan
-        $user = $request->user();
-        $isPremium = $user->subscription && $user->subscription->plan !== 'free' && 
-                     (!$user->subscription->expires_at || now()->lt($user->subscription->expires_at));
-        
-        if (!$isPremium) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Fitur Auto Tag Group hanya tersedia untuk pengguna premium.'
-            ], 403);
-        }
+        // Fetching group metadata is allowed for all connected users
 
         $credentials = $channel->credentials;
         if (!$credentials || !isset($credentials['session_id'])) {
