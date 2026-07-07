@@ -159,10 +159,12 @@ class WhatsAppController extends Controller
                 $name = explode('@', $name)[0];
             }
 
-            $resolvedContacts[$resolvedId] = [
-                'id' => $resolvedId,
-                'name' => $name ?: explode('@', $resolvedId)[0],
-            ];
+            if (str_ends_with($resolvedId, '@s.whatsapp.net')) {
+                $resolvedContacts[$resolvedId] = [
+                    'id' => $resolvedId,
+                    'name' => $name ?: explode('@', $resolvedId)[0],
+                ];
+            }
         }
 
         return response()->json(['contacts' => array_values($resolvedContacts)]);
@@ -600,11 +602,14 @@ class WhatsAppController extends Controller
 
         $via = $request->attributes->get('is_api_key') ? 'api' : 'web';
 
+        $to = $data['to'];
+        $to = $this->wa->resolveJid($channel, $to);
+
         // Create initial pending log
         $apiLog = \App\Models\ApiLog::create([
             'user_id'    => $request->user()->id,
             'channel_id' => $channel->id,
-            'to'         => $data['to'],
+            'to'         => $to,
             'message'    => $data['message'] ?? null,
             'media_url'  => $data['mediaUrl'] ?? null,
             'media_type' => $data['mediaType'] ?? null,
@@ -615,7 +620,7 @@ class WhatsAppController extends Controller
         try {
             $response = \Illuminate\Support\Facades\Http::withHeader('x-api-secret', $secret)
                 ->post("{$baseUrl}/sessions/{$credentials['session_id']}/send", [
-                    'to'              => $data['to'],
+                    'to'              => $to,
                     'message'         => $data['message'] ?? '',
                     'mediaUrl'        => $data['mediaUrl'] ?? null,
                     'mediaType'       => $data['mediaType'] ?? null,

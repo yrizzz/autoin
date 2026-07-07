@@ -96,6 +96,45 @@ class SendBroadcastJob implements ShouldQueue
 
             $channel     = $log->channel;
             $recipientId = $log->recipient_id;
+            $targetId    = $recipientId ?? $channel->target_id;
+
+            // Resolve LID to Phone JID if possible before compliance check
+            if ($channel->platform === 'whatsapp' && $targetId) {
+                $resolvedId = app(WhatsAppService::class)->resolveJid($channel, $targetId);
+                if ($resolvedId !== $targetId) {
+                    Log::info("[Broadcast #{$this->broadcast->id}] Log #{$log->id} JID resolved: {$targetId} -> {$resolvedId}");
+                    $targetId = $resolvedId;
+                    if ($recipientId !== null) {
+                        $recipientId = $resolvedId;
+                        $log->update(['recipient_id' => $resolvedId]);
+                    }
+                }
+            }
+
+            // ── Compliance check — skip non-compliant JIDs gracefully ───────────
+            $isValidJid = true;
+            if ($channel->platform === 'whatsapp' && $targetId) {
+                $isValidJid = false;
+                if (str_ends_with($targetId, '@s.whatsapp.net') && preg_match('/^[1-9]\d{5,19}@s\.whatsapp\.net$/', $targetId)) {
+                    $isValidJid = true;
+                } elseif (str_ends_with($targetId, '@g.us')) {
+                    $isValidJid = true;
+                } elseif ($targetId === 'status@broadcast') {
+                    $isValidJid = true;
+                }
+            }
+
+            if (!$isValidJid) {
+                Log::warning("[Broadcast #{$this->broadcast->id}] Skipping non-compliant JID: {$targetId}");
+                $log->update([
+                    'status'   => 'failed',
+                    'response' => ['error' => 'Non-compliant recipient JID: ' . $targetId],
+                    'sent_at'  => now(),
+                ]);
+                $failedCount++;
+                event(new BroadcastStatusUpdated($this->broadcast, $log));
+                continue;
+            }
 
             // ── Spintax: variasi konten agar tidak identik ────────────────────
             $content = $this->broadcast->content ?? '';
@@ -103,7 +142,7 @@ class SendBroadcastJob implements ShouldQueue
                 $content = Broadcast::parseSpintax($content);
             }
 
-            $result = $this->sendToChannel($channel, $recipientId, $content, $typingSimulation);
+            $result = $this->sendToChannel($channel, $targetId, $content, $typingSimulation);
 
             $log->update([
                 'status'   => $result['ok'] ? 'success' : 'failed',

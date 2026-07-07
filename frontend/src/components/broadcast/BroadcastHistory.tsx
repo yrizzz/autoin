@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../lib/api';
-import type { Broadcast } from '../../types';
+import type { Broadcast, Channel } from '../../types';
 import AdminLayout from '../layout/AdminLayout';
 import Toast from '../ui/Toast';
 import { 
@@ -20,8 +20,12 @@ import {
   AlertTriangle,
   Send,
   Sparkles,
-  Tag
+  Tag,
+  Users,
+  Phone
 } from 'lucide-react';
+import { RecipientModal, PlatformIcon } from './BroadcastCreate';
+import type { Recipient, ChannelRecipientState } from './BroadcastCreate';
 
 interface BroadcastLog {
   id: number;
@@ -76,6 +80,15 @@ export default function BroadcastHistory() {
   const [editScheduledAt, setEditScheduledAt] = useState('');
   const [editRecurring, setEditRecurring] = useState('none');
   const [editAutoTagMembers, setEditAutoTagMembers] = useState(false);
+  
+  // Edit Target Channels & Recipients States
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [selectedChannels, setSelectedChannels] = useState<number[]>([]);
+  const [recipientState, setRecipientState] = useState<Record<number, ChannelRecipientState>>({});
+  const [recipientModal, setRecipientModal] = useState<Channel | null>(null);
+  const [syncingRecipients, setSyncingRecipients] = useState<Record<number, boolean>>({});
+  const [autoTagMembersSettings, setAutoTagMembersSettings] = useState<Record<string, { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }>>({});
+
   const [saving, setSaving] = useState(false);
 
   // Delete Confirmation State
@@ -199,10 +212,223 @@ export default function BroadcastHistory() {
     }
   };
 
+  const startEditing = async () => {
+    if (!selectedBroadcast) return;
+    setIsEditing(true);
+    try {
+      // 1. Fetch user's channels
+      const chs = await api.get<Channel[]>('/api/channels');
+      setChannels(chs);
+
+      // 2. Initialize selectedChannels from targets
+      const targetChannelIds = (selectedBroadcast.targets || []).map(t => t.channel_id);
+      setSelectedChannels(targetChannelIds);
+
+      // 3. Initialize recipientState based on the targets
+      const initialRecipients: Record<number, ChannelRecipientState> = {};
+      
+      // For each channel we own, load its targets
+      for (const ch of chs) {
+        const target = (selectedBroadcast.targets || []).find(t => t.channel_id === ch.id);
+        const selectedJids = new Set<string>(target?.recipients || []);
+        
+        // Initialize state as loading: true first
+        initialRecipients[ch.id] = {
+          loading: true,
+          items: [],
+          selected: selectedJids,
+        };
+      }
+      setRecipientState(initialRecipients);
+
+      // 4. Fetch the contact/group items for the selected channels so the lists are filled
+      for (const ch of chs) {
+        if (!targetChannelIds.includes(ch.id)) continue;
+        
+        // Fetch contacts & groups for this channel (lazy but parallel)
+        (async () => {
+          try {
+            const [cRes, gRes] = await Promise.all([
+              api.get<{ contacts: any[] }>(`/api/whatsapp/${ch.id}/contacts`).catch(() => ({ contacts: [] })),
+              api.get<{ groups: any[] }>(`/api/whatsapp/${ch.id}/groups`).catch(() => ({ groups: [] })),
+            ]);
+
+            const contacts: Recipient[] = (cRes.contacts || [])
+              .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+              .map((c: any) => ({
+                id: c.id,
+                name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+                phone: `+${c.id.split('@')[0]}`,
+                type: 'contact' as const
+              }));
+
+            const groups: Recipient[] = (gRes.groups || [])
+              .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
+
+            setRecipientState(prev => {
+              const current = prev[ch.id];
+              return {
+                ...prev,
+                [ch.id]: {
+                  loading: false,
+                  items: [...contacts, ...groups],
+                  selected: current?.selected ?? new Set(),
+                }
+              };
+            });
+          } catch (e) {
+            setRecipientState(prev => {
+              const current = prev[ch.id];
+              return {
+                ...prev,
+                [ch.id]: {
+                  loading: false,
+                  items: [],
+                  selected: current?.selected ?? new Set(),
+                }
+              };
+            });
+          }
+        })();
+      }
+
+    } catch (err: any) {
+      showToast('Gagal memuat daftar channel: ' + (err.message ?? ''), 'error');
+      setIsEditing(false);
+    }
+  };
+
+  const toggleChannel = (channelId: number) => {
+    setSelectedChannels(prev => {
+      const next = prev.includes(channelId)
+        ? prev.filter(id => id !== channelId)
+        : [...prev, channelId];
+      return next;
+    });
+
+    // If channel wasn't loaded yet, load it
+    const ch = channels.find(c => c.id === channelId);
+    if (ch && (!recipientState[channelId] || recipientState[channelId].items.length === 0)) {
+      setRecipientState(prev => ({
+        ...prev,
+        [channelId]: {
+          loading: true,
+          items: [],
+          selected: prev[channelId]?.selected ?? new Set(),
+        }
+      }));
+
+      (async () => {
+        try {
+          const [cRes, gRes] = await Promise.all([
+            api.get<{ contacts: any[] }>(`/api/whatsapp/${ch.id}/contacts`).catch(() => ({ contacts: [] })),
+            api.get<{ groups: any[] }>(`/api/whatsapp/${ch.id}/groups`).catch(() => ({ groups: [] })),
+          ]);
+
+          const contacts: Recipient[] = (cRes.contacts || [])
+            .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+            .map((c: any) => ({
+              id: c.id,
+              name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+              phone: `+${c.id.split('@')[0]}`,
+              type: 'contact' as const
+            }));
+
+          const groups: Recipient[] = (gRes.groups || [])
+            .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
+
+          setRecipientState(prev => {
+            const current = prev[ch.id];
+            return {
+              ...prev,
+              [ch.id]: {
+                loading: false,
+                items: [...contacts, ...groups],
+                selected: current?.selected ?? new Set(),
+              }
+            };
+          });
+        } catch (e) {
+          setRecipientState(prev => {
+            const current = prev[ch.id];
+            return {
+              ...prev,
+              [ch.id]: {
+                loading: false,
+                items: [],
+                selected: current?.selected ?? new Set(),
+              }
+            };
+          });
+        }
+      })();
+    }
+  };
+
+  const openRecipientModal = (ch: Channel) => {
+    setRecipientModal(ch);
+  };
+
+  function toggleRecipient(channelId: number, recipientId: string) {
+    setRecipientState(prev => {
+      const cur = prev[channelId];
+      if (!cur) return prev;
+      const next = new Set(cur.selected);
+      next.has(recipientId) ? next.delete(recipientId) : next.add(recipientId);
+      return { ...prev, [channelId]: { ...cur, selected: next } };
+    });
+  }
+
+  function clearAllRecipients(channelId: number) {
+    setRecipientState(prev => {
+      const cur = prev[channelId];
+      if (!cur) return prev;
+      return { ...prev, [channelId]: { ...cur, selected: new Set() } };
+    });
+  }
+
+  async function handleSyncRecipients(ch: Channel) {
+    const id = ch.id;
+    setSyncingRecipients(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.post(`/api/whatsapp/${id}/sync`);
+      const [cRes, gRes] = await Promise.all([
+        api.get<{ contacts: any[] }>(`/api/whatsapp/${id}/contacts`).catch(() => ({ contacts: [] })),
+        api.get<{ groups: any[] }>(`/api/whatsapp/${id}/groups`).catch(() => ({ groups: [] })),
+      ]);
+      const contacts: Recipient[] = (cRes.contacts || [])
+        .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+          phone: `+${c.id.split('@')[0]}`,
+          type: 'contact' as const
+        }));
+      const groups: Recipient[] = (gRes.groups || [])
+        .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
+      const items = [...contacts, ...groups];
+
+      setRecipientState(prev => ({
+        ...prev,
+        [id]: { loading: false, items, selected: prev[id]?.selected ?? new Set() },
+      }));
+      showToast('Sinkronisasi kontak berhasil!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Gagal sinkronisasi kontak: ' + (err.message ?? ''), 'error');
+    } finally {
+      setSyncingRecipients(prev => ({ ...prev, [id]: false }));
+    }
+  }
+
   const handleSaveEdit = async () => {
     if (!selectedBroadcast) return;
     if (!editContent.trim()) {
       showToast('Isi pesan tidak boleh kosong!', 'error');
+      return;
+    }
+    if (selectedChannels.length === 0) {
+      showToast('Pilih minimal satu channel target!', 'error');
       return;
     }
     setSaving(true);
@@ -211,12 +437,21 @@ export default function BroadcastHistory() {
         ? new Date(editScheduledAt).toISOString()
         : null;
 
+      // Map recipientState selected Sets to arrays for the request payload
+      const recipientsPayload: Record<number, string[]> = {};
+      selectedChannels.forEach(cId => {
+        const sel = recipientState[cId]?.selected;
+        recipientsPayload[cId] = sel ? Array.from(sel) : [];
+      });
+
       const updated = await api.put<DetailedBroadcast>(`/api/broadcasts/${selectedBroadcast.id}`, {
         title: editTitle || null,
         content: editContent,
         scheduled_at: scheduledAtUtc,
         recurring: scheduledAtUtc ? editRecurring : 'none',
         auto_tag_members: editAutoTagMembers,
+        channel_ids: selectedChannels,
+        recipients: recipientsPayload,
       });
       
       showToast('Perubahan broadcast berhasil disimpan!', 'success');
@@ -740,6 +975,68 @@ export default function BroadcastHistory() {
                         Jika diaktifkan, saat broadcast dikirimkan ke target <strong>Grup WhatsApp</strong>, sistem akan secara otomatis me-mention (tag) seluruh anggota grup tersebut di dalam pesan.
                       </p>
                     </div>
+
+                    {/* Target Channels & Recipients */}
+                    <div className="space-y-3">
+                      <label className="block text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
+                        Channel Target & Penerima
+                      </label>
+                      <div className="grid grid-cols-1 gap-3">
+                        {channels.map(ch => {
+                          const isSelected = selectedChannels.includes(ch.id);
+                          const rState = recipientState[ch.id];
+                          const selectedCount = rState?.selected.size || 0;
+
+                          return (
+                            <div
+                              key={ch.id}
+                              className={`p-3.5 rounded-xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                isSelected
+                                  ? 'bg-blue-500/5 border-blue-500/25 dark:bg-blue-500/10'
+                                  : 'bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleChannel(ch.id)}
+                                  disabled={saving}
+                                  className="w-4 h-4 rounded text-blue-500 border-zinc-300 dark:border-zinc-700 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <PlatformIcon platform={ch.platform} className="w-4 h-4" />
+                                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-150 truncate">
+                                      {ch.name}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5 font-normal truncate">
+                                    {ch.platform === 'whatsapp' ? 'WhatsApp Session' : 'Telegram Bot'}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <button
+                                  type="button"
+                                  onClick={() => openRecipientModal(ch)}
+                                  disabled={saving}
+                                  className={`text-[10px] font-extrabold flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border transition-all cursor-pointer ${
+                                    selectedCount > 0
+                                      ? 'bg-blue-500/10 border-blue-500/25 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20'
+                                      : 'bg-zinc-100 dark:bg-zinc-800 border-zinc-250 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-150'
+                                  }`}
+                                >
+                                  <Users className="w-3.5 h-3.5" />
+                                  {selectedCount > 0 ? `${selectedCount} Penerima` : 'Pilih Penerima'}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -920,7 +1217,7 @@ export default function BroadcastHistory() {
                   <>
                     {/* Edit button: only show if broadcast is editable (scheduled, draft, cancelled, failed) */}
                     {selectedBroadcast && ['scheduled', 'draft', 'cancelled', 'failed'].includes(selectedBroadcast.status) && (
-                      <button type="button" onClick={() => setIsEditing(true)}
+                      <button type="button" onClick={startEditing}
                         className="flex items-center gap-1 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-bold transition-all cursor-pointer border border-blue-200 dark:border-blue-500/20">
                         Edit Broadcast
                       </button>
@@ -936,6 +1233,28 @@ export default function BroadcastHistory() {
 
           </div>
         </div>
+      )}
+
+      {/* Recipient Selection Modal */}
+      {recipientModal && recipientState[recipientModal.id] && (
+        <RecipientModal
+          channel={recipientModal}
+          state={recipientState[recipientModal.id]}
+          onClose={() => setRecipientModal(null)}
+          onToggle={id => toggleRecipient(recipientModal.id, id)}
+          onClearAll={() => clearAllRecipients(recipientModal.id)}
+          autoTagMembers={autoTagMembersSettings}
+          onUpdateGroupTagSettings={(groupId, settings) => {
+            setAutoTagMembersSettings(prev => ({
+              ...prev,
+              [groupId]: settings,
+            }));
+          }}
+          syncing={syncingRecipients[recipientModal.id] || false}
+          onSyncContacts={async () => {
+            await handleSyncRecipients(recipientModal);
+          }}
+        />
       )}
 
       <Toast toast={toast} onClose={() => setToast(null)} />

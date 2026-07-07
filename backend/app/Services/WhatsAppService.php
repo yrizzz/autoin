@@ -22,6 +22,7 @@ class WhatsAppService
         $credentials = $channel->credentials;
         $sessionId   = $credentials['session_id'];
         $to          = $recipientId ?? $channel->target_id;
+        $to          = $this->resolveJid($channel, $to);
 
         $mediaUrls = [];
         if ($mediaUrl) {
@@ -135,21 +136,7 @@ class WhatsAppService
 
                     foreach ($metadata['participants'] as &$p) {
                         if (isset($p['id'])) {
-                            if (str_ends_with($p['id'], '@lid')) {
-                                if (isset($lidMap[$p['id']])) {
-                                    $p['id'] = $lidMap[$p['id']];
-                                } else {
-                                    $pName = strtolower(trim($p['name'] ?? ''));
-                                    if ($pName !== '') {
-                                        foreach ($contactLookup as $cId => $c) {
-                                            if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($c['name'] ?? '')) === $pName) {
-                                                $p['id'] = $cId;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            $p['id'] = $this->resolveJid($channel, $p['id']);
 
                             if (empty($p['name']) || str_contains($p['name'], '@')) {
                                 if (isset($contactLookup[$p['id']])) {
@@ -166,6 +153,59 @@ class WhatsAppService
         }
 
         return null;
+    }
+
+    /**
+     * Resolve a JID ending with @lid to a phone JID ending with @s.whatsapp.net if mapped.
+     * Otherwise, fallback to name-matching or return the JID as-is.
+     */
+    public function resolveJid(Channel $channel, ?string $jid): ?string
+    {
+        if (!$jid || !str_ends_with($jid, '@lid')) {
+            return $jid;
+        }
+
+        $synced = $channel->synced_data ?? [];
+        $lidMap = $synced['lidMap'] ?? [];
+        $key = explode('@', $jid)[0];
+
+        // 1. Direct translation
+        $resolved = $lidMap[$jid] ?? $lidMap[$key] ?? null;
+        if ($resolved) {
+            return str_contains($resolved, '@') ? $resolved : $resolved . '@s.whatsapp.net';
+        }
+
+        // 2. Name-matching fallback in contacts list
+        $contacts = $synced['contacts'] ?? [];
+        $searchName = null;
+
+        // Find the name of the LID contact
+        foreach ($contacts as $contact) {
+            if (($contact['id'] ?? '') === $jid) {
+                $searchName = strtolower(trim($contact['name'] ?? ''));
+                break;
+            }
+        }
+
+        if ($searchName !== null && $searchName !== '') {
+            // Check if name itself is a phone number
+            $cleanName = preg_replace('/\D/', '', $searchName);
+            if (strlen($cleanName) >= 9 && strlen($cleanName) <= 15) {
+                if (str_starts_with($cleanName, '0')) {
+                    $cleanName = '62' . substr($cleanName, 1);
+                }
+                return $cleanName . '@s.whatsapp.net';
+            }
+
+            foreach ($contacts as $contact) {
+                $cid = $contact['id'] ?? '';
+                if (str_ends_with($cid, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
+                    return $cid;
+                }
+            }
+        }
+
+        return $jid;
     }
 
     public function createSession(string $sessionId, bool $usePairingCode = false, string $phoneNumber = ''): array

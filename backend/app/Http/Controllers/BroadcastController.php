@@ -281,6 +281,9 @@ class BroadcastController extends Controller
                     $fail('Pengaturan auto tag members harus berupa boolean atau daftar grup.');
                 }
             }],
+            'channel_ids'      => 'nullable|array',
+            'channel_ids.*'    => 'exists:channels,id',
+            'recipients'       => 'nullable|array',
         ];
 
         if ($request->has('scheduled_at') && $request->input('scheduled_at') !== null) {
@@ -311,7 +314,45 @@ class BroadcastController extends Controller
 
         $broadcast->update($data);
 
-        return response()->json($broadcast);
+        // Sync channels and targets if provided in the update request
+        if ($request->has('channel_ids')) {
+            $channelsInput = $request->input('channel_ids', []);
+            $channelsInput = array_unique(array_filter($channelsInput));
+
+            // Validate that the user owns all specified channels
+            foreach ($channelsInput as $cId) {
+                $exists = $request->user()->channels()->where('id', $cId)->exists();
+                if (!$exists) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Channel ID tidak valid atau bukan milik Anda.'
+                    ], 422);
+                }
+            }
+
+            $recipientsMap = $request->input('recipients', []);
+            if (!empty($recipientsMap) && array_keys($recipientsMap) === range(0, count($recipientsMap) - 1)) {
+                $flatRecipients = $recipientsMap;
+                $recipientsMap = [];
+                foreach ($channelsInput as $channelId) {
+                    $recipientsMap[$channelId] = $flatRecipients;
+                }
+            }
+
+            // Delete old targets
+            \App\Models\BroadcastTarget::where('broadcast_id', $broadcast->id)->delete();
+
+            // Create new ones
+            foreach ($channelsInput as $channelId) {
+                \App\Models\BroadcastTarget::create([
+                    'broadcast_id' => $broadcast->id,
+                    'channel_id'   => $channelId,
+                    'recipients'   => $recipientsMap[$channelId] ?? null,
+                ]);
+            }
+        }
+
+        return response()->json($broadcast->load('targets.channel'));
     }
 
     public function destroy(Request $request, Broadcast $broadcast)

@@ -142,7 +142,7 @@ export default function ContactManager() {
   const fetchWaContacts = async (ch: Channel) => {
     const res = await api.get<{ contacts: WaContact[] }>(`/api/whatsapp/${ch.id}/contacts`);
     const real = (res.contacts || []).filter(c =>
-      (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@') && !c.id.startsWith('0@')
+      c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@') && !c.id.startsWith('0@')
     );
     setContacts(real.map(c => ({ id: c.id, name: c.name || '', phone: formatWaPhone(c.id) })));
   };

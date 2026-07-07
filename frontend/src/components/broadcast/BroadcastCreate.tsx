@@ -8,12 +8,12 @@ import {
   Loader2, Bookmark, Image as ImageIcon, Video, FileText, Plus,
   Trash2, Paperclip, Upload, X, Calendar, Clock, Users, Search,
   Phone, Hash, UserCheck, Wand2, Lightbulb, Copy, CheckCircle2,
-  ArrowRight, Info, Eye, HelpCircle, Shield, ShieldAlert, ShieldCheck, Tag
+  ArrowRight, Info, Eye, HelpCircle, Shield, ShieldAlert, ShieldCheck, Tag, RefreshCw
 } from 'lucide-react';
 
-interface Recipient { id: string; name: string; phone?: string; type: 'contact' | 'group'; }
+export interface Recipient { id: string; name: string; phone?: string; type: 'contact' | 'group'; }
 
-interface ChannelRecipientState {
+export interface ChannelRecipientState {
   loading: boolean;
   items: Recipient[];
   selected: Set<string>;
@@ -25,13 +25,13 @@ const AVATAR_COLORS = [
   'bg-rose-500', 'bg-teal-500', 'bg-amber-500', 'bg-indigo-500',
 ];
 
-function avatarColor(id: string) {
+export function avatarColor(id: string) {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
   return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
 }
 
-function parseWhatsAppFormatting(text: string): string {
+export function parseWhatsAppFormatting(text: string): string {
   if (!text) return '';
   let html = text
     .replace(/&/g, '&amp;')
@@ -46,7 +46,7 @@ function parseWhatsAppFormatting(text: string): string {
   return html;
 }
 
-function PlatformIcon({ platform, className = 'w-5 h-5' }: { platform: string; className?: string }) {
+export function PlatformIcon({ platform, className = 'w-5 h-5' }: { platform: string; className?: string }) {
   if (platform === 'whatsapp') return (
     <svg className={`${className} text-emerald-500`} viewBox="0 0 24 24" fill="currentColor">
       <path d="M12.004 2C6.48 2 2 6.48 2 12.004c0 1.908.533 3.69 1.465 5.215L2 22l4.928-1.412A9.97 9.97 0 0012.004 22c5.524 0 10.004-4.48 10.004-10.004C22.008 6.48 17.528 2 12.004 2zm0 18.008c-1.67 0-3.238-.456-4.6-1.25L4.4 19.6l.858-2.928a8.004 8.004 0 116.746 3.336zM15.908 13.4c-.22-.11-1.3-.642-1.503-.715-.2-.074-.347-.11-.495.11-.147.22-.57.715-.7.863-.128.147-.257.165-.477.055a6.002 6.002 0 01-1.77-1.093c-.633-.564-1.062-1.26-1.186-1.48-.124-.22-.013-.34.097-.45.1-.1.22-.257.33-.385.11-.128.147-.22.22-.367.073-.147.037-.275-.018-.385-.055-.11-.495-1.193-.68-1.637-.18-.433-.36-.374-.495-.38l-.42-.008c-.147 0-.386.055-.588.275-.2.22-.77.752-.77 1.834 0 1.082.788 2.128.9 2.275.11.147 1.55 2.365 3.755 3.318.524.226.934.362 1.254.464.526.167 1.004.143 1.382.087.42-.062 1.3-.532 1.485-1.046.183-.513.183-.953.128-1.046-.055-.093-.202-.147-.422-.257z" />
@@ -55,7 +55,7 @@ function PlatformIcon({ platform, className = 'w-5 h-5' }: { platform: string; c
   return <Globe className={`${className} text-zinc-500`} />;
 }
 
-function RecipientModal({
+export function RecipientModal({
   channel,
   state,
   onClose,
@@ -63,6 +63,8 @@ function RecipientModal({
   onClearAll,
   autoTagMembers,
   onUpdateGroupTagSettings,
+  syncing = false,
+  onSyncContacts,
 }: {
   channel: Channel;
   state: ChannelRecipientState;
@@ -71,6 +73,8 @@ function RecipientModal({
   onClearAll: () => void;
   autoTagMembers: Record<string, { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }>;
   onUpdateGroupTagSettings: (groupId: string, settings: { enabled: boolean; mode: 'all' | 'admin' | 'custom'; custom_members: string[] }) => void;
+  syncing?: boolean;
+  onSyncContacts?: () => Promise<void>;
 }) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'contacts' | 'groups' | 'selected'>('contacts');
@@ -343,9 +347,22 @@ function RecipientModal({
               <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">{channel.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 cursor-pointer">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            {channel.platform === 'whatsapp' && onSyncContacts && (
+              <button
+                type="button"
+                onClick={onSyncContacts}
+                disabled={syncing}
+                title="Sinkronisasi Kontak & Grup"
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 cursor-pointer transition-all disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+              </button>
+            )}
+            <button onClick={onClose} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-250 cursor-pointer animate-none">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -493,6 +510,7 @@ export default function BroadcastCreate() {
   const [selectedChannels, setSelectedChannels] = useState<number[]>([]);
   const [recipientState, setRecipientState] = useState<Record<number, ChannelRecipientState>>({});
   const [recipientModal, setRecipientModal] = useState<Channel | null>(null);
+  const [syncingRecipients, setSyncingRecipients] = useState<Record<number, boolean>>({});
   const [content, setContent]             = useState('');
   const [title, setTitle]                 = useState('');
   const [sending, setSending]             = useState(false);
@@ -666,11 +684,11 @@ export default function BroadcastCreate() {
             api.get<{ groups: any[] }>(`/api/whatsapp/${id}/groups`).catch(() => ({ groups: [] })),
           ]);
           const contacts: Recipient[] = (cRes.contacts || [])
-            .filter((c: any) => c.id && (c.id.endsWith('@s.whatsapp.net') || c.id.endsWith('@lid')) && !c.id.startsWith('status@'))
+            .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
             .map((c: any) => ({
               id: c.id,
-              name: c.name && !c.name.includes('@') ? c.name : (c.id.endsWith('@lid') ? 'Kontak WhatsApp' : c.id.split('@')[0]),
-              phone: c.id.endsWith('@lid') ? undefined : `+${c.id.split('@')[0]}`,
+              name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+              phone: `+${c.id.split('@')[0]}`,
               type: 'contact' as const
             }));
           const groups: Recipient[] = (gRes.groups || [])
@@ -689,6 +707,40 @@ export default function BroadcastCreate() {
       }
     }
     setRecipientModal(ch);
+  }
+
+  async function handleSyncRecipients(ch: Channel) {
+    const id = ch.id;
+    setSyncingRecipients(prev => ({ ...prev, [id]: true }));
+    try {
+      await api.post(`/api/whatsapp/${id}/sync`);
+      const [cRes, gRes] = await Promise.all([
+        api.get<{ contacts: any[] }>(`/api/whatsapp/${id}/contacts`).catch(() => ({ contacts: [] })),
+        api.get<{ groups: any[] }>(`/api/whatsapp/${id}/groups`).catch(() => ({ groups: [] })),
+      ]);
+      const contacts: Recipient[] = (cRes.contacts || [])
+        .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+        .map((c: any) => ({
+          id: c.id,
+          name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+          phone: `+${c.id.split('@')[0]}`,
+          type: 'contact' as const
+        }));
+      const groups: Recipient[] = (gRes.groups || [])
+        .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
+      const items = [...contacts, ...groups];
+
+      setRecipientState(prev => ({
+        ...prev,
+        [id]: { loading: false, items, selected: prev[id]?.selected ?? new Set() },
+      }));
+      showToast('Sinkronisasi kontak berhasil!', 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Gagal sinkronisasi kontak: ' + (err.message ?? ''), 'error');
+    } finally {
+      setSyncingRecipients(prev => ({ ...prev, [id]: false }));
+    }
   }
 
   function toggleRecipient(channelId: number, recipientId: string) {
@@ -888,6 +940,10 @@ export default function BroadcastCreate() {
               ...prev,
               [groupId]: settings,
             }));
+          }}
+          syncing={syncingRecipients[recipientModal.id] || false}
+          onSyncContacts={async () => {
+            await handleSyncRecipients(recipientModal);
           }}
         />
       )}

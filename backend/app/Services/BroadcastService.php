@@ -27,6 +27,13 @@ class BroadcastService
             if (!empty($recipients)) {
                 // Create one log entry per individual recipient
                 foreach ($recipients as $recipientId) {
+                    if ($target->channel && $target->channel->platform === 'whatsapp') {
+                        $resolved = app(\App\Services\WhatsAppService::class)->resolveJid($target->channel, $recipientId);
+                        if ($resolved) {
+                            $recipientId = $resolved;
+                        }
+                    }
+
                     BroadcastLog::create([
                         'broadcast_id' => $broadcast->id,
                         'channel_id'   => $target->channel_id,

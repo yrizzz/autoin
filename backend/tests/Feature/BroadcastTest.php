@@ -65,9 +65,18 @@ class BroadcastTest extends TestCase
         $sendResponse = $this->postJson("/api/broadcasts/{$broadcastId}/send");
 
         $sendResponse->assertStatus(200);
-        $sendResponse->assertJson(['status' => 'queued']);
+        $sendResponse->assertJson(['status' => 'scheduled']);
 
-        // 6. Verify status is 'queued' and broadcast_logs dibuat
+        // 6. Verify status is 'scheduled'
+        $this->assertDatabaseHas('broadcasts', [
+            'id'     => $broadcastId,
+            'status' => 'scheduled',
+        ]);
+
+        // Manually run BroadcastService send to transition to queued and create logs
+        app(\App\Services\BroadcastService::class)->send(Broadcast::find($broadcastId));
+
+        // Now verify status is 'queued' and logs are created
         $this->assertDatabaseHas('broadcasts', [
             'id'     => $broadcastId,
             'status' => 'queued',
@@ -120,8 +129,11 @@ class BroadcastTest extends TestCase
             'content'   => 'Lihat promo spesial kami!',
             'media_url' => 'https://example.com/promo.jpg',
             'media_type'=> 'image',
-            'status'    => 'queued', // queued because send_now=true
+            'status'    => 'scheduled', // scheduled because send_now=true
         ]);
+
+        // Manually run BroadcastService send to transition to queued and create logs
+        app(\App\Services\BroadcastService::class)->send(Broadcast::find($broadcastId));
 
         // Verify broadcast log was created
         $this->assertDatabaseHas('broadcast_logs', [
@@ -179,5 +191,80 @@ class BroadcastTest extends TestCase
             'id'               => $broadcast->id,
             'cancel_requested' => 1,
         ]);
+    }
+
+    public function test_can_update_broadcast_channels_and_recipients(): void
+    {
+        $user = User::factory()->create();
+        $channel1 = Channel::create([
+            'user_id'     => $user->id,
+            'name'        => 'Channel 1',
+            'platform'    => 'whatsapp',
+            'credentials' => ['session_id' => 'sess1'],
+            'target_id'   => '1@c.us',
+            'status'      => 'active',
+        ]);
+        $channel2 = Channel::create([
+            'user_id'     => $user->id,
+            'name'        => 'Channel 2',
+            'platform'    => 'whatsapp',
+            'credentials' => ['session_id' => 'sess2'],
+            'target_id'   => '2@c.us',
+            'status'      => 'active',
+        ]);
+
+        $broadcast = Broadcast::create([
+            'user_id' => $user->id,
+            'title'   => 'Original Title',
+            'content' => 'Original Content',
+            'status'  => 'draft',
+        ]);
+
+        // Add initial target
+        \App\Models\BroadcastTarget::create([
+            'broadcast_id' => $broadcast->id,
+            'channel_id'   => $channel1->id,
+            'recipients'   => ['123@s.whatsapp.net'],
+        ]);
+
+        $this->actingAs($user, 'api');
+
+        // Update title, content, target channels, and recipients
+        $response = $this->putJson("/api/broadcasts/{$broadcast->id}", [
+            'title'            => 'Updated Title',
+            'content'          => 'Updated Content',
+            'channel_ids'      => [$channel2->id],
+            'recipients'       => [
+                $channel2->id  => ['456@s.whatsapp.net', '789@s.whatsapp.net'],
+            ],
+        ]);
+
+        $response->assertStatus(200);
+
+        // Assert broadcast updated
+        $this->assertDatabaseHas('broadcasts', [
+            'id'      => $broadcast->id,
+            'title'   => 'Updated Title',
+            'content' => 'Updated Content',
+        ]);
+
+        // Assert old target deleted
+        $this->assertDatabaseMissing('broadcast_targets', [
+            'broadcast_id' => $broadcast->id,
+            'channel_id'   => $channel1->id,
+        ]);
+
+        // Assert new target added
+        $this->assertDatabaseHas('broadcast_targets', [
+            'broadcast_id' => $broadcast->id,
+            'channel_id'   => $channel2->id,
+        ]);
+
+        $target = \App\Models\BroadcastTarget::where('broadcast_id', $broadcast->id)
+            ->where('channel_id', $channel2->id)
+            ->first();
+
+        $this->assertNotNull($target);
+        $this->assertEquals(['456@s.whatsapp.net', '789@s.whatsapp.net'], $target->recipients);
     }
 }
