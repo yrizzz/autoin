@@ -184,6 +184,25 @@ class WhatsAppService
 
         // 1. Direct translation
         $resolved = $lidMap[$jid] ?? $lidMap[$key] ?? null;
+        if (!$resolved) {
+            // Check other channels of the same user for the mapping
+            $otherChannels = \App\Models\Channel::where('user_id', $channel->user_id)
+                ->where('id', '!=', $channel->id)
+                ->get();
+            foreach ($otherChannels as $oc) {
+                $ocSynced = $oc->synced_data ?? [];
+                $ocLidMap = $ocSynced['lidMap'] ?? [];
+                if (isset($ocLidMap[$jid])) {
+                    $resolved = $ocLidMap[$jid];
+                    break;
+                }
+                if (isset($ocLidMap[$key])) {
+                    $resolved = $ocLidMap[$key];
+                    break;
+                }
+            }
+        }
+
         if ($resolved) {
             return str_contains($resolved, '@') ? $resolved : $resolved . '@s.whatsapp.net';
         }
@@ -200,7 +219,7 @@ class WhatsAppService
             }
         }
 
-        if ($searchName !== null && $searchName !== '') {
+        if ($searchName !== null && $searchName !== '' && $searchName !== $key) {
             // Check if name itself is a phone number
             $cleanName = preg_replace('/\D/', '', $searchName);
             if (strlen($cleanName) >= 9 && strlen($cleanName) <= 15) {
@@ -212,8 +231,8 @@ class WhatsAppService
 
             foreach ($contacts as $contact) {
                 $cid = $contact['id'] ?? '';
-                if (str_ends_with($cid, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
-                    return $cid;
+                if (!str_contains($cid, '@lid') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
+                    return str_contains($cid, '@') ? $cid : $cid . '@s.whatsapp.net';
                 }
             }
         }

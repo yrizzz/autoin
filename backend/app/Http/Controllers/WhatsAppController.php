@@ -321,25 +321,17 @@ class WhatsAppController extends Controller
 
                 foreach ($data['metadata']['participants'] as &$p) {
                     if (isset($p['id'])) {
-                        if (str_ends_with($p['id'], '@lid')) {
-                            if (isset($lidMap[$p['id']])) {
-                                $p['id'] = $lidMap[$p['id']];
-                            } else {
-                                $pName = strtolower(trim($p['name'] ?? ''));
-                                if ($pName !== '') {
-                                    foreach ($contactLookup as $cId => $c) {
-                                        if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($c['name'] ?? '')) === $pName) {
-                                            $p['id'] = $cId;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
+                        $originalId = $p['id'];
+                        $resolved = $this->wa->resolveJid($channel, $p['id']);
+                        if ($resolved) {
+                            $p['id'] = $resolved;
                         }
 
                         if (empty($p['name']) || str_contains($p['name'], '@')) {
                             if (isset($contactLookup[$p['id']])) {
                                 $p['name'] = $contactLookup[$p['id']]['name'] ?? null;
+                            } elseif (isset($contactLookup[$originalId])) {
+                                $p['name'] = $contactLookup[$originalId]['name'] ?? null;
                             }
                         }
                     }

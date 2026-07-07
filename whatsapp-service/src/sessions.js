@@ -188,7 +188,8 @@ async function useMySQLAuthState(sessionId) {
       queueUpdate('creds', creds);
       flushUpdates(); // Flush credentials immediately!
     },
-    flush: () => flushUpdates()
+    flush: () => flushUpdates(),
+    authCache
   };
 }
 
@@ -646,8 +647,26 @@ class SessionManager extends EventEmitter {
     // Load any persisted data before connecting
     await this._loadFromDb(sessionId);
 
-    const { state, saveCreds, flush } = await useMySQLAuthState(sessionId);
+    const { state, saveCreds, flush, authCache } = await useMySQLAuthState(sessionId);
     this._flushes.set(sessionId, flush);
+
+    // Populate memory _lidToPhone from database authCache
+    if (authCache) {
+      let count = 0;
+      for (const [key, value] of Object.entries(authCache)) {
+        if (key.startsWith('lid-mapping-') && key.endsWith('_reverse')) {
+          const lidNumber = key.slice('lid-mapping-'.length, -'_reverse'.length);
+          const lid = `${lidNumber}@lid`;
+          const phone = `${value}@s.whatsapp.net`;
+          this._lidToPhone.set(`${sessionId}:${lid}`, phone);
+          count++;
+        }
+      }
+      console.log(`[SessionManager] Restored ${count} LID mappings from DB authCache for session ${sessionId}`);
+      if (count > 0) {
+        this._scheduleSave(sessionId);
+      }
+    }
     let version = [2, 3000, 1017592466];
     try {
       const latest = await Promise.race([
