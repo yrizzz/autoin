@@ -232,7 +232,33 @@ class WhatsAppController extends Controller
         abort_if($channel->platform !== 'whatsapp', 422);
 
         $synced = $channel->synced_data ?? [];
-        return response()->json(['groups' => $synced['groups'] ?? []]);
+        $groups = $synced['groups'] ?? [];
+        $chats  = $synced['chats'] ?? [];
+
+        // Build unique map of groups by JID
+        $groupsMap = [];
+        foreach ($groups as $g) {
+            if (isset($g['id'])) {
+                $groupsMap[$g['id']] = $g;
+            }
+        }
+
+        // Add groups found in chats
+        foreach ($chats as $chat) {
+            $jid = $chat['id'] ?? null;
+            if ($jid && str_ends_with($jid, '@g.us')) {
+                if (!isset($groupsMap[$jid])) {
+                    $groupsMap[$jid] = [
+                        'id' => $jid,
+                        'name' => $chat['name'] ?? $chat['subject'] ?? explode('@', $jid)[0],
+                    ];
+                } elseif (empty($groupsMap[$jid]['name']) && (!empty($chat['name']) || !empty($chat['subject']))) {
+                    $groupsMap[$jid]['name'] = $chat['name'] ?? $chat['subject'];
+                }
+            }
+        }
+
+        return response()->json(['groups' => array_values($groupsMap)]);
     }
 
     public function getGroupsRealtime(Request $request, Channel $channel)

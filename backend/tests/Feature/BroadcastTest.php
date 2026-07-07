@@ -139,7 +139,7 @@ class BroadcastTest extends TestCase
         $this->assertDatabaseHas('broadcast_logs', [
             'broadcast_id' => $broadcastId,
             'channel_id'   => $channel->id,
-            'recipient_id' => '6281234567890',
+            'recipient_id' => '6281234567890@s.whatsapp.net',
             'status'       => 'pending',
         ]);
     }

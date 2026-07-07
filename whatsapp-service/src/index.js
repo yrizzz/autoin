@@ -155,6 +155,8 @@ app.post('/sessions/:sessionId/sync', auth, async (req, res) => {
     const sock = sessionManager._sessions.get(sessionId);
     if (!sock) return res.status(404).json({ error: 'Session not found' });
     await sessionManager._syncGroups(sessionId, sock);
+    // Force immediate sync to DB so Laravel gets it right away!
+    await sessionManager.syncToDb(sessionId);
     const chats = sessionManager.getChats(sessionId);
     res.json({ ok: true, chats });
   } catch (err) {

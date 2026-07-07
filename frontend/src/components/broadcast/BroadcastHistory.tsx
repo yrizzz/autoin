@@ -22,7 +22,8 @@ import {
   Sparkles,
   Tag,
   Users,
-  Phone
+  Phone,
+  Edit2
 } from 'lucide-react';
 import { RecipientModal, PlatformIcon } from './BroadcastCreate';
 import type { Recipient, ChannelRecipientState } from './BroadcastCreate';
@@ -204,6 +205,96 @@ export default function BroadcastHistory() {
     try {
       const data = await api.get<DetailedBroadcast>(`/api/broadcasts/${id}`);
       setSelectedBroadcast(data);
+    } catch (err) {
+      showToast('Gagal memuat detail log penerima', 'error');
+      setDetailOpen(false);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const openEditDirectly = async (id: number) => {
+    setDetailLoading(true);
+    setSelectedBroadcast(null);
+    setIsEditing(false);
+    setDetailOpen(true);
+    setLogSearchTerm('');
+
+    try {
+      const data = await api.get<DetailedBroadcast>(`/api/broadcasts/${id}`);
+      setSelectedBroadcast(data);
+      setIsEditing(true);
+
+      const chs = await api.get<Channel[]>('/api/channels');
+      setChannels(chs);
+
+      const initialSelectedChannels: number[] = [];
+      const initialRecipientState: Record<number, ChannelRecipientState> = {};
+      const initialAutoTagSettings: Record<string, any> = {};
+
+      for (const ch of chs) {
+        const target = (data.targets || []).find(t => t.channel_id === ch.id);
+        const selectedJids = new Set<string>(target?.recipients || []);
+        
+        initialRecipientState[ch.id] = {
+          loading: false,
+          items: [],
+          selected: selectedJids,
+        };
+
+        if (target) {
+          initialSelectedChannels.push(ch.id);
+        }
+      }
+
+      setEditTitle(data.title || '');
+      setEditContent(data.content || '');
+      setEditScheduledAt(data.scheduled_at ? data.scheduled_at.slice(0, 16) : '');
+      setEditRecurring(data.recurring || 'none');
+      setEditAutoTagMembers(!!data.auto_tag_members);
+
+      if (typeof data.auto_tag_members === 'object' && data.auto_tag_members !== null) {
+        Object.entries(data.auto_tag_members).forEach(([groupId, settings]) => {
+          initialAutoTagSettings[groupId] = settings;
+        });
+      }
+
+      setSelectedChannels(initialSelectedChannels);
+      setRecipientState(initialRecipientState);
+      setAutoTagMembersSettings(initialAutoTagSettings);
+
+      chs.forEach(ch => {
+        if (initialSelectedChannels.includes(ch.id)) {
+          Promise.all([
+            api.get<{ contacts: any[] }>(`/api/whatsapp/${ch.id}/contacts`).catch(() => ({ contacts: [] })),
+            api.get<{ groups: any[] }>(`/api/whatsapp/${ch.id}/groups`).catch(() => ({ groups: [] })),
+          ]).then(([cRes, gRes]) => {
+            const contacts = (cRes.contacts || [])
+              .filter((c: any) => c.id && c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@'))
+              .map((c: any) => ({
+                id: c.id,
+                name: c.name && !c.name.includes('@') ? c.name : c.id.split('@')[0],
+                phone: `+${c.id.split('@')[0]}`,
+                type: 'contact' as const
+              }));
+            const groups = (gRes.groups || [])
+              .map((g: any) => ({ id: g.id, name: g.name || g.subject || g.id, type: 'group' as const }));
+
+            setRecipientState(prev => {
+              const current = prev[ch.id];
+              if (!current) return prev;
+              return {
+                ...prev,
+                [ch.id]: {
+                  ...current,
+                  items: [...contacts, ...groups],
+                }
+              };
+            });
+          }).catch(() => {});
+        }
+      });
+
     } catch (err) {
       showToast('Gagal memuat detail log penerima', 'error');
       setDetailOpen(false);
@@ -728,6 +819,17 @@ export default function BroadcastHistory() {
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
+
+                          {['scheduled', 'draft', 'cancelled', 'failed'].includes(bc.status) && (
+                            <button
+                              type="button"
+                              onClick={() => openEditDirectly(bc.id)}
+                              className="p-2 bg-zinc-50 dark:bg-zinc-950 hover:bg-amber-50 dark:hover:bg-amber-500/10 border border-zinc-200 dark:border-zinc-800 hover:border-amber-500/20 text-zinc-600 dark:text-zinc-400 hover:text-amber-600 dark:hover:text-amber-450 rounded-xl transition-all cursor-pointer"
+                              title="Edit Broadcast"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           {['failed', 'draft'].includes(bc.status) && (
                             <button

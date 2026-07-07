@@ -161,7 +161,20 @@ class WhatsAppService
      */
     public function resolveJid(Channel $channel, ?string $jid): ?string
     {
-        if (!$jid || !str_ends_with($jid, '@lid')) {
+        if (!$jid) {
+            return null;
+        }
+
+        // Normalize raw phone numbers (digits, + prefix, e.g. +628123 or 08123)
+        $clean = preg_replace('/\D/', '', $jid);
+        if (preg_match('/^[0-9]{9,15}$/', $clean)) {
+            if (str_starts_with($clean, '0')) {
+                $clean = '62' . substr($clean, 1);
+            }
+            return $clean . '@s.whatsapp.net';
+        }
+
+        if (!str_ends_with($jid, '@lid')) {
             return $jid;
         }
 

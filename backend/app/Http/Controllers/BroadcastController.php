@@ -161,10 +161,29 @@ class BroadcastController extends Controller
         }
 
         foreach ($data['channel_ids'] as $channelId) {
+            $ch = \App\Models\Channel::find($channelId);
+            $recs = $recipientsMap[$channelId] ?? null;
+            if ($ch && $ch->platform === 'whatsapp' && is_array($recs)) {
+                $synced = $ch->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $normalized = [];
+                foreach ($recs as $rec) {
+                    $originalKey = explode('@', $rec)[0];
+                    if (str_ends_with($rec, '@lid') && isset($lidMap[$rec])) {
+                        $normalized[] = $lidMap[$rec];
+                    } elseif (str_ends_with($rec, '@lid') && isset($lidMap[$originalKey])) {
+                        $normalized[] = $lidMap[$originalKey];
+                    } else {
+                        $normalized[] = $rec;
+                    }
+                }
+                $recs = $normalized;
+            }
+
             BroadcastTarget::create([
                 'broadcast_id' => $broadcast->id,
                 'channel_id'   => $channelId,
-                'recipients'   => $recipientsMap[$channelId] ?? null,
+                'recipients'   => $recs,
             ]);
         }
 
@@ -175,6 +194,29 @@ class BroadcastController extends Controller
     {
         $this->authorize($request->user(), $broadcast);
         $broadcast->load('targets.channel', 'logs.channel');
+
+        foreach ($broadcast->targets as $target) {
+            if ($target->channel && $target->channel->platform === 'whatsapp' && is_array($target->recipients)) {
+                $synced = $target->channel->synced_data ?? [];
+                $lidMap = $synced['lidMap'] ?? [];
+                $normalized = [];
+                foreach ($target->recipients as $rec) {
+                    $originalKey = explode('@', $rec)[0];
+                    if (str_ends_with($rec, '@lid')) {
+                        if (isset($lidMap[$rec])) {
+                            $normalized[] = $lidMap[$rec];
+                        } elseif (isset($lidMap[$originalKey])) {
+                            $normalized[] = $lidMap[$originalKey];
+                        } else {
+                            $normalized[] = $rec;
+                        }
+                    } else {
+                        $normalized[] = $rec;
+                    }
+                }
+                $target->recipients = $normalized;
+            }
+        }
 
         foreach ($broadcast->logs as $log) {
             // Fix NULL created_at for existing logs
@@ -344,10 +386,29 @@ class BroadcastController extends Controller
 
             // Create new ones
             foreach ($channelsInput as $channelId) {
+                $ch = \App\Models\Channel::find($channelId);
+                $recs = $recipientsMap[$channelId] ?? null;
+                if ($ch && $ch->platform === 'whatsapp' && is_array($recs)) {
+                    $synced = $ch->synced_data ?? [];
+                    $lidMap = $synced['lidMap'] ?? [];
+                    $normalized = [];
+                    foreach ($recs as $rec) {
+                        $originalKey = explode('@', $rec)[0];
+                        if (str_ends_with($rec, '@lid') && isset($lidMap[$rec])) {
+                            $normalized[] = $lidMap[$rec];
+                        } elseif (str_ends_with($rec, '@lid') && isset($lidMap[$originalKey])) {
+                            $normalized[] = $lidMap[$originalKey];
+                        } else {
+                            $normalized[] = $rec;
+                        }
+                    }
+                    $recs = $normalized;
+                }
+
                 \App\Models\BroadcastTarget::create([
                     'broadcast_id' => $broadcast->id,
                     'channel_id'   => $channelId,
-                    'recipients'   => $recipientsMap[$channelId] ?? null,
+                    'recipients'   => $recs,
                 ]);
             }
         }
