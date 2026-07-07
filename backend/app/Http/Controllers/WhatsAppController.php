@@ -800,6 +800,27 @@ class WhatsAppController extends Controller
         return response()->json($logs);
     }
 
+    public function flushSession(Request $request, Channel $channel)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
+
+        $credentials = $channel->credentials;
+        if (!$credentials || !isset($credentials['session_id'])) {
+            return response()->json(['status' => 'error', 'message' => 'Channel tidak terhubung.'], 400);
+        }
+
+        try {
+            $result = $this->wa->flushSession($credentials['session_id']);
+            return response()->json($result);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal melakukan tata ulang sesi: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function clearApiLogs(Request $request)
     {
         \App\Models\ApiLog::where('user_id', $request->user()->id)->delete();

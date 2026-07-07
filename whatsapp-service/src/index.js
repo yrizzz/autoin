@@ -162,6 +162,20 @@ app.post('/sessions/:sessionId/sync', auth, async (req, res) => {
   }
 });
 
+// Flush/Soft reset session (reorganizes chat/data cache and triggers a soft reconnect)
+app.post('/sessions/:sessionId/flush', auth, async (req, res) => {
+  const { sessionId } = req.params;
+  try {
+    if (!sessionManager.has(sessionId)) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+    await sessionManager.flushSession(sessionId);
+    res.json({ ok: true, status: 'flushing' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete/logout session
 app.delete('/sessions/:sessionId', auth, (req, res) => {
   sessionManager.delete(req.params.sessionId).catch(err => {

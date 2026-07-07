@@ -201,6 +201,14 @@ class WhatsAppService
             ->delete("{$this->baseUrl}/sessions/{$sessionId}");
     }
 
+    public function flushSession(string $sessionId): array
+    {
+        $response = Http::withHeader('x-api-secret', $this->secret)
+            ->post("{$this->baseUrl}/sessions/{$sessionId}/flush");
+
+        return $response->json() ?? [];
+    }
+
     public function test(Channel $channel): bool
     {
         $credentials = $channel->credentials;

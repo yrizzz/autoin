@@ -230,6 +230,7 @@ class SessionManager extends EventEmitter {
     this._flushes = new Map();
     this._botSentIds = new Map(); // sessionId → Set(msgId) — anti-loop untuk fromMe autoreply
     this._groupMetadataCache = new Map(); // key: `${sessionId}:${groupId}` → { metadata, timestamp }
+    this._processedMsgIds = new Map(); // sessionId → Set(msgId) — incoming message deduplication for autoreply
   }
 
   // Simpan isi pesan mentah (proto.IMessage) agar Baileys bisa MENGIRIM ULANG saat
@@ -812,6 +813,22 @@ class SessionManager extends EventEmitter {
             if (botSent && botSent.has(m.key.id)) {
               botSent.delete(m.key.id); // cleanup
             } else {
+              // Deduplicate incoming messages to prevent double autoreplies
+              let processed = this._processedMsgIds.get(sessionId);
+              if (!processed) {
+                processed = new Set();
+                this._processedMsgIds.set(sessionId, processed);
+              }
+              if (processed.has(m.key.id)) {
+                console.log(`[sessions] Message ${m.key.id} already processed for autoreply, skipping`);
+                continue;
+              }
+              processed.add(m.key.id);
+              if (processed.size > 1000) {
+                const oldest = processed.values().next().value;
+                processed.delete(oldest);
+              }
+
               this._autoreply(sessionId, chatId, text, m);
             }
           }
@@ -1708,6 +1725,84 @@ class SessionManager extends EventEmitter {
       headers: { 'X-Internal-Secret': INTERNAL_SECRET },
       signal: AbortSignal.timeout(15000)
     }).catch(err => console.error('Failed to delete auth state from database:', err));
+  }
+
+  async flushSession(sessionId) {
+    console.log(`[SessionManager] Soft resetting / flushing session: ${sessionId}`);
+
+    // 1. Clear local memory cache for this session
+    this._contacts.set(sessionId, []);
+    this._chats.set(sessionId, []);
+
+    // Clear message histories for this session
+    const prefix = `${sessionId}:`;
+    for (const key of this._messages.keys()) {
+      if (key.startsWith(prefix)) {
+        this._messages.delete(key);
+      }
+    }
+    for (const key of this._rawMessages.keys()) {
+      if (key.startsWith(prefix)) {
+        this._rawMessages.delete(key);
+      }
+    }
+
+    // Clear other caches
+    this._botSentIds.delete(sessionId);
+    this._processedMsgIds.delete(sessionId);
+
+    // Clear LID mappings for this session
+    for (const key of this._lidToPhone.keys()) {
+      if (key.startsWith(prefix)) {
+        this._lidToPhone.delete(key);
+      }
+    }
+
+    // Clear save timer if exists
+    const timer = this._saveTimers.get(sessionId);
+    if (timer) {
+      clearTimeout(timer);
+      this._saveTimers.delete(sessionId);
+    }
+
+    // 2. Clear Laravel-side synced data for this channel
+    try {
+      const url = `${BACKEND_URL}/api/internal/whatsapp/sync`;
+      await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': INTERNAL_SECRET
+        },
+        body: JSON.stringify({
+          session_id: sessionId,
+          contacts: [],
+          chats: [],
+          groups: [],
+          messages: {},
+          lidMap: {}
+        }),
+        signal: AbortSignal.timeout(10000)
+      });
+    } catch (err) {
+      console.error('[SessionManager] Failed to clear Laravel synced data during flush:', err);
+    }
+
+    // 3. Gracefully end the current socket connection and trigger a soft reconnect
+    const sock = this._sessions.get(sessionId);
+    if (sock) {
+      console.log(`[SessionManager] Closing socket to force reconnect for session: ${sessionId}`);
+      try {
+        sock.end(); // Triggers connection.update 'close' which automatically calls create() again.
+      } catch (err) {
+        console.error(`[SessionManager] Failed to close socket for ${sessionId}:`, err);
+      }
+    } else {
+      // If socket doesn't exist, just create it
+      this.create(sessionId).catch(err => {
+        console.error(`[SessionManager] Failed to recreate session ${sessionId} during flush:`, err);
+      });
+    }
   }
 
   async restoreSessions(attempt = 1) {

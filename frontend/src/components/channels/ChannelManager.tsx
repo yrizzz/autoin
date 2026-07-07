@@ -63,6 +63,11 @@ export default function ChannelManager() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [channelToDelete, setChannelToDelete] = useState<Channel | null>(null);
 
+  // Custom flush/soft-reset confirmation
+  const [flushConfirmOpen, setFlushConfirmOpen] = useState(false);
+  const [channelToFlush, setChannelToFlush] = useState<Channel | null>(null);
+  const [flushing, setFlushing] = useState<number | null>(null);
+
   // Unified Settings (Rename + Chatbot settings)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [settingsChannel, setSettingsChannel] = useState<Channel | null>(null);
@@ -321,6 +326,23 @@ export default function ChannelManager() {
       fetchChannels();
     } catch (e: any) {
       setMsg({ ok: false, text: 'Gagal memutuskan koneksi device.' });
+    }
+  }
+
+  async function confirmFlushChannel() {
+    if (!channelToFlush) return;
+    const ch = channelToFlush;
+    setFlushing(ch.id);
+    setFlushConfirmOpen(false);
+    setChannelToFlush(null);
+    try {
+      await api.post(`/api/whatsapp/${ch.id}/flush`);
+      setMsg({ ok: true, text: `✓ Sesi device "${ch.name}" berhasil ditata ulang. Cache dibersihkan & soft-reconnect dipicu.` });
+      fetchChannels();
+    } catch (e: any) {
+      setMsg({ ok: false, text: e.message ?? 'Gagal menata ulang sesi device.' });
+    } finally {
+      setFlushing(null);
     }
   }
 
@@ -831,6 +853,22 @@ export default function ChannelManager() {
                       </button>
                     )}
 
+                    {ch.platform === 'whatsapp' && ch.status === 'active' && (
+                      <button
+                        onClick={() => { setChannelToFlush(ch); setFlushConfirmOpen(true); }}
+                        disabled={flushing === ch.id}
+                        className="flex-1 text-xs font-bold text-amber-600 dark:text-amber-400 hover:text-amber-500 bg-amber-50/50 dark:bg-amber-500/5 hover:bg-amber-100/10 dark:hover:bg-amber-500/10 border border-amber-100 dark:border-amber-500/10 px-2 py-2 rounded-lg transition-all disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5 min-w-0"
+                        title="Tata ulang sesi device & data cache (tanpa reconnect)"
+                      >
+                        {flushing === ch.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        ) : (
+                          <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                        )}
+                        <span className="truncate">Tata Ulang</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => handleTest(ch)}
                       disabled={testing === ch.id}
@@ -1114,6 +1152,41 @@ export default function ChannelManager() {
                 className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-500/10 transition-all cursor-pointer"
               >
                 Hapus &amp; Putus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flush Confirmation Modal */}
+      {flushConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 dark:bg-zinc-950/70 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl dark:shadow-black/60 w-full max-w-sm overflow-hidden p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto mb-4">
+              <RefreshCw className="w-6 h-6 animate-spin" />
+            </div>
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-2">Tata Ulang Sesi</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Apakah Anda yakin ingin menata ulang sesi device <strong>{channelToFlush?.name}</strong>?
+              <br />
+              <span className="text-[10px] text-amber-600 dark:text-amber-400 block mt-2">
+                Ini akan membersihkan cache lokal dan melakukan soft-reset koneksi agar chat terstruktur ulang dengan segar tanpa memutuskan/scan QR code.
+              </span>
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => { setFlushConfirmOpen(false); setChannelToFlush(null); }}
+                className="flex-1 py-2.5 bg-zinc-100 dark:bg-zinc-900 text-zinc-700 dark:text-zinc-300 font-bold text-xs rounded-xl hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-all cursor-pointer border border-zinc-200 dark:border-zinc-800"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={confirmFlushChannel}
+                className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-500/10 transition-all cursor-pointer"
+              >
+                Tata Ulang Sesi
               </button>
             </div>
           </div>
