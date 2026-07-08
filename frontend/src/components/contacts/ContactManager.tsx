@@ -5,7 +5,7 @@ import AdminLayout from '../layout/AdminLayout';
 import {
   Search, RefreshCw, MessageSquare, Phone, Users, User,
   Download, Upload, LayoutGrid, LayoutList, Copy, Check, X,
-  ChevronLeft, ChevronRight, Info
+  ChevronLeft, ChevronRight, Info, Trash2
 } from 'lucide-react';
 
 interface WaContact { id: string; name: string; }
@@ -85,8 +85,8 @@ function Avatar({ contact, size = 'md' }: { contact: NormalContact; size?: 'sm' 
   );
 }
 
-function ContactCard({ c, platform, onCopy, copied }: {
-  c: NormalContact; platform: string; onCopy: (v: string) => void; copied: string | null;
+function ContactCard({ c, platform, onCopy, copied, onDelete }: {
+  c: NormalContact; platform: string; onCopy: (v: string) => void; copied: string | null; onDelete: (jid: string) => void;
 }) {
   const displayName = c.name || c.phone || c.id;
   const phoneOrId   = c.phone || (platform === 'whatsapp' ? formatWaPhone(c.id) : c.id);
@@ -102,10 +102,18 @@ function ContactCard({ c, platform, onCopy, copied }: {
         </button>
       </div>
       {platform === 'whatsapp' && (
-        <a href={`/chats?to=${encodeURIComponent(c.id.split('@')[0])}`}
-          className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-full flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-xl transition-all border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20">
-          <MessageSquare className="w-3 h-3" />Chat
-        </a>
+        <div className="w-full flex gap-2">
+          <a href={`/chats?to=${encodeURIComponent(c.id.split('@')[0])}`}
+            className="flex-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center gap-1.5 py-1.5 text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 rounded-xl transition-all border border-blue-100 dark:border-blue-500/20 hover:bg-blue-100 dark:hover:bg-blue-500/20">
+            <MessageSquare className="w-3 h-3" />Chat
+          </a>
+          <button onClick={() => onDelete(c.id)}
+            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-red-100 dark:hover:border-red-500/20"
+            title="Hapus Kontak"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
@@ -183,6 +191,47 @@ export default function ContactManager() {
     await fetchContacts(activeChannel);
     setSyncing(false);
   };
+
+  async function handleDeleteContact(jid: string) {
+    if (!activeChannel) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus kontak ini?')) return;
+    try {
+      const res = await api.delete<{ contacts: any[] }>(
+        `/api/whatsapp/${activeChannel.id}/contacts/${encodeURIComponent(jid)}`
+      );
+      if (res.contacts) {
+        const real = (res.contacts || []).filter(c =>
+          c.id.endsWith('@s.whatsapp.net') && !c.id.startsWith('status@') && !c.id.startsWith('0@')
+        );
+        setContacts(real.map(c => ({ id: c.id, name: c.name || '', phone: formatWaPhone(c.id) })));
+        setMsg({ ok: true, text: '✓ Kontak berhasil dihapus.' });
+      }
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message || 'Gagal menghapus kontak.' });
+    }
+  }
+
+  async function handleDeleteSelected() {
+    if (!activeChannel || selectedIds.size === 0) return;
+    if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.size} kontak terpilih?`)) return;
+    
+    setLoading(true);
+    try {
+      const idsArray = Array.from(selectedIds);
+      for (const jid of idsArray) {
+        await api.delete<any>(
+          `/api/whatsapp/${activeChannel.id}/contacts/${encodeURIComponent(jid)}`
+        );
+      }
+      await fetchContacts(activeChannel);
+      setSelectedIds(new Set());
+      setMsg({ ok: true, text: `✓ Berhasil menghapus ${idsArray.length} kontak.` });
+    } catch (err: any) {
+      setMsg({ ok: false, text: err.message || 'Gagal menghapus beberapa kontak.' });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   function handleCopy(val: string) {
     navigator.clipboard.writeText(val);
@@ -444,8 +493,14 @@ export default function ContactManager() {
                   {selectedIds.size} dipilih
                 </span>
                 <button
+                  onClick={handleDeleteSelected}
+                  className="text-xs text-red-650 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-bold cursor-pointer flex items-center gap-1 hover:underline"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Hapus Terpilih
+                </button>
+                <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="text-xs text-red-600 dark:text-red-400 hover:underline font-bold cursor-pointer"
+                  className="text-xs text-zinc-550 dark:text-zinc-400 hover:underline font-bold cursor-pointer"
                 >
                   Batal Pilihan
                 </button>
@@ -517,6 +572,7 @@ export default function ContactManager() {
               copied={copied}
               selected={selectedIds.has(c.id)}
               onSelect={() => toggleSelect(c.id)}
+              onDelete={handleDeleteContact}
             />
           ))}
         </div>
@@ -557,11 +613,18 @@ export default function ContactManager() {
                           {copied === phoneOrId ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                         </button>
                         {platform === 'whatsapp' && (
-                          <a href={`/chats?to=${encodeURIComponent(c.id.split('@')[0])}`}
-                            className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all"
-                            title="Chat">
-                            <MessageSquare className="w-3.5 h-3.5" />
-                          </a>
+                          <>
+                            <a href={`/chats?to=${encodeURIComponent(c.id.split('@')[0])}`}
+                              className="p-2 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-xl transition-all"
+                              title="Chat">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                            </a>
+                            <button onClick={() => handleDeleteContact(c.id)}
+                              className="p-2 text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all cursor-pointer"
+                              title="Hapus Kontak">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
