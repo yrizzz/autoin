@@ -145,6 +145,30 @@ class WhatsAppController extends Controller
 
         // Map internal LID mappings to real phone numbers if available
         $lidMap = $synced['lidMap'] ?? [];
+
+        // Build map of contact JIDs to their group names
+        $contactGroups = [];
+        $groups = $synced['groups'] ?? [];
+        foreach ($groups as $g) {
+            $gName = $g['name'] ?? $g['subject'] ?? 'Grup';
+            $participants = $g['participants'] ?? [];
+            foreach ($participants as $pId) {
+                // Normalize participant ID (strip device suffixes)
+                $pClean = $pId;
+                if (str_contains($pClean, ':')) {
+                    $parts = explode(':', $pClean);
+                    $afterColon = explode('@', $parts[1] ?? '');
+                    $pClean = $parts[0] . (isset($afterColon[1]) ? '@' . $afterColon[1] : '');
+                }
+                
+                if (str_ends_with($pClean, '@lid') && isset($lidMap[$pClean])) {
+                    $pClean = $lidMap[$pClean];
+                }
+                
+                $contactGroups[$pClean][] = $gName;
+            }
+        }
+
         $resolvedContacts = [];
 
         foreach ($contactsMap as $id => $c) {
@@ -172,9 +196,17 @@ class WhatsAppController extends Controller
             }
 
             if (str_ends_with($resolvedId, '@s.whatsapp.net')) {
+                $rawNumber = explode('@', $resolvedId)[0] . '@s.whatsapp.net';
+                $cGroups = array_merge(
+                    $contactGroups[$resolvedId] ?? [],
+                    $contactGroups[$id] ?? [],
+                    $contactGroups[$rawNumber] ?? []
+                );
+
                 $resolvedContacts[$resolvedId] = [
                     'id' => $resolvedId,
                     'name' => $name ?: explode('@', $resolvedId)[0],
+                    'groups' => array_values(array_unique($cGroups)),
                 ];
             }
         }
@@ -222,6 +254,31 @@ class WhatsAppController extends Controller
                 ->post(config('services.whatsapp.url', 'http://localhost:3001') . "/sessions/{$channel->credentials['session_id']}/contacts", [
                     'contacts' => array_values($contactsMap),
                 ]);
+        } catch (\Exception $e) {
+            // Ignore Node.js service failures, DB is source of truth
+        }
+
+        return response()->json(['status' => 'success', 'contacts' => $syncedData['contacts']]);
+    }
+
+    public function deleteContact(Request $request, Channel $channel, string $jid)
+    {
+        abort_if($channel->user_id !== $request->user()->id, 403);
+        abort_if($channel->platform !== 'whatsapp', 422);
+
+        $syncedData = $channel->synced_data ?? [];
+        $existingContacts = $syncedData['contacts'] ?? [];
+
+        $updatedContacts = array_filter($existingContacts, function ($contact) use ($jid) {
+            return ($contact['id'] ?? '') !== $jid;
+        });
+
+        $syncedData['contacts'] = array_values($updatedContacts);
+        $channel->update(['synced_data' => $syncedData]);
+
+        try {
+            \Illuminate\Support\Facades\Http::withHeader('x-api-secret', config('services.whatsapp.secret', 'autoin-wa-secret'))
+                ->delete(config('services.whatsapp.url', 'http://localhost:3001') . "/sessions/{$channel->credentials['session_id']}/contacts/" . urlencode($jid));
         } catch (\Exception $e) {
             // Ignore Node.js service failures, DB is source of truth
         }

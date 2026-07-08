@@ -267,4 +267,37 @@ class BroadcastTest extends TestCase
         $this->assertNotNull($target);
         $this->assertEquals(['456@s.whatsapp.net', '789@s.whatsapp.net'], $target->recipients);
     }
+
+    public function test_can_delete_channel_contact(): void
+    {
+        $user = User::factory()->create();
+        $channel = Channel::create([
+            'user_id'     => $user->id,
+            'name'        => 'WA Delete Test',
+            'platform'    => 'whatsapp',
+            'credentials' => ['session_id' => 'sess_del'],
+            'target_id'   => '1@c.us',
+            'status'      => 'active',
+            'synced_data' => [
+                'contacts' => [
+                    ['id' => '123@s.whatsapp.net', 'name' => 'John Doe'],
+                    ['id' => '456@s.whatsapp.net', 'name' => 'Jane Doe'],
+                ]
+            ]
+        ]);
+
+        $this->actingAs($user, 'api');
+
+        $response = $this->deleteJson("/api/whatsapp/{$channel->id}/contacts/" . urlencode('123@s.whatsapp.net'));
+
+        $response->assertStatus(200);
+        $response->assertJsonFragment(['id' => '456@s.whatsapp.net']);
+        $response->assertJsonMissing(['id' => '123@s.whatsapp.net']);
+
+        // Assert database is updated
+        $channel->refresh();
+        $this->assertEquals([
+            ['id' => '456@s.whatsapp.net', 'name' => 'Jane Doe']
+        ], $channel->synced_data['contacts']);
+    }
 }

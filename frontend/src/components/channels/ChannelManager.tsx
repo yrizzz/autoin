@@ -115,6 +115,9 @@ export default function ChannelManager() {
   const [syncTab, setSyncTab] = useState<'chats' | 'groups' | 'contacts'>('chats');
   const [syncData, setSyncData] = useState<{ chats: any[]; groups: any[]; contacts: any[] }>({ chats: [], groups: [], contacts: [] });
   const [syncLoading, setSyncLoading] = useState(false);
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
+  const [expandedGroupMembers, setExpandedGroupMembers] = useState<{ [groupId: string]: any[] }>({});
+  const [loadingGroupMembers, setLoadingGroupMembers] = useState<string | null>(null);
 
   useEffect(() => {
     fetchChannels();
@@ -388,6 +391,49 @@ export default function ChannelManager() {
       console.error('Failed to refresh data:', err);
     } finally {
       setSyncLoading(false);
+    }
+  }
+
+  async function handleDeleteContact(jid: string) {
+    if (!syncChannel) return;
+    if (!confirm('Apakah Anda yakin ingin menghapus kontak ini?')) return;
+    try {
+      const res = await api.delete<{ status: string; contacts: any[] }>(
+        `/api/whatsapp/${syncChannel.id}/contacts/${encodeURIComponent(jid)}`
+      );
+      if (res.status === 'success') {
+        setSyncData((prev) => ({
+          ...prev,
+          contacts: res.contacts || prev.contacts.filter((c: any) => c.id !== jid),
+        }));
+      }
+    } catch (err: any) {
+      alert(err.message || 'Gagal menghapus kontak.');
+    }
+  }
+
+  async function toggleExpandGroup(groupId: string) {
+    if (!syncChannel) return;
+    if (expandedGroupId === groupId) {
+      setExpandedGroupId(null);
+      return;
+    }
+    setExpandedGroupId(groupId);
+    if (!expandedGroupMembers[groupId]) {
+      setLoadingGroupMembers(groupId);
+      try {
+        const res = await api.get<any>(`/api/whatsapp/${syncChannel.id}/groups/${encodeURIComponent(groupId)}`);
+        if (res.metadata && res.metadata.participants) {
+          setExpandedGroupMembers(prev => ({
+            ...prev,
+            [groupId]: res.metadata.participants
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to load group members:', err);
+      } finally {
+        setLoadingGroupMembers(null);
+      }
     }
   }
 
@@ -1009,24 +1055,57 @@ export default function ChannelManager() {
                       {syncData.groups.length === 0 ? (
                         <p className="text-center py-8 text-zinc-500 text-xs font-medium">Tidak ada grup tersinkron.</p>
                       ) : (
-                        syncData.groups.map((g: any, idx) => (
-                          <div key={idx} className="flex items-center justify-between p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950/20 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400 font-bold text-sm uppercase">
-                                {g.name?.charAt(0) || 'G'}
+                        syncData.groups.map((g: any, idx) => {
+                          const isExpanded = expandedGroupId === g.id;
+                          const members = expandedGroupMembers[g.id] || [];
+                          const isLoading = loadingGroupMembers === g.id;
+                          return (
+                            <div key={idx} className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950/20 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all space-y-3">
+                              <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleExpandGroup(g.id)}>
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-600 dark:text-emerald-400 font-bold text-sm uppercase">
+                                    {g.name?.charAt(0) || 'G'}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{g.name}</div>
+                                    <div className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono truncate mt-0.5">{g.id}</div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0 ml-4">
+                                  <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-zinc-200/50 dark:border-zinc-700/50">
+                                    {g.participantsCount} Member
+                                  </span>
+                                </div>
                               </div>
-                              <div className="min-w-0">
-                                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{g.name}</div>
-                                <div className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono truncate mt-0.5">{g.id}</div>
-                              </div>
+                              
+                              {isExpanded && (
+                                <div className="pt-3 border-t border-zinc-200/60 dark:border-zinc-800/80 space-y-2">
+                                  <h4 className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Daftar Anggota Grup:</h4>
+                                  {isLoading ? (
+                                    <div className="flex items-center gap-2 py-4 justify-center text-xs text-zinc-400">
+                                      <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                                      <span>Memuat anggota grup...</span>
+                                    </div>
+                                  ) : members.length === 0 ? (
+                                    <p className="text-[11px] text-zinc-500 text-center py-2">Gagal memuat atau tidak ada anggota.</p>
+                                  ) : (
+                                    <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1 font-mono text-[10px]">
+                                      {members.map((m: any, mIdx) => {
+                                        const num = m.id.split('@')[0];
+                                        return (
+                                          <div key={mIdx} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-zinc-100/50 dark:hover:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400">
+                                            <span className="truncate">{m.name || num}</span>
+                                            <span className="text-[9px] text-zinc-450 dark:text-zinc-500 shrink-0 font-bold ml-2">+{num}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <div className="shrink-0 ml-4">
-                              <span className="bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold px-2.5 py-1 rounded-lg border border-zinc-200/50 dark:border-zinc-700/50">
-                                {g.participantsCount} Member
-                              </span>
-                            </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   )}
@@ -1037,14 +1116,30 @@ export default function ChannelManager() {
                         <p className="text-center py-8 text-zinc-500 text-xs font-medium">Tidak ada kontak tersinkron.</p>
                       ) : (
                         syncData.contacts.map((c: any, idx) => (
-                          <div key={idx} className="flex items-center gap-3 p-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950/20 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
-                            <div className="w-9 h-9 rounded-full bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 font-bold text-xs uppercase">
-                              {c.name?.charAt(0) || 'C'}
+                          <div key={idx} className="flex items-center justify-between p-2.5 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/30 dark:bg-zinc-950/20 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-full bg-purple-50 dark:bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-600 dark:text-purple-400 font-bold text-xs uppercase">
+                                {c.name?.charAt(0) || 'C'}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{c.name}</div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5 min-w-0">
+                                  <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono shrink-0">{c.id.split('@')[0]}</span>
+                                  {c.groups && c.groups.map((gName: string, gIdx: number) => (
+                                    <span key={gIdx} className="text-[8px] font-black px-1.5 py-0.5 rounded bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-100/50 dark:border-blue-550/20 truncate max-w-[120px]" title={gName}>
+                                      {gName}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">{c.name}</div>
-                              <div className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono truncate mt-0.5">{c.id.split('@')[0]}</div>
-                            </div>
+                            <button
+                              onClick={() => handleDeleteContact(c.id)}
+                              className="p-1.5 text-zinc-455 hover:text-red-500 dark:text-zinc-500 dark:hover:text-red-400 hover:bg-red-50/60 dark:hover:bg-red-500/10 rounded-xl transition shrink-0 ml-4 cursor-pointer"
+                              title="Hapus Kontak"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         ))
                       )}

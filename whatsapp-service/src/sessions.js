@@ -548,6 +548,12 @@ class SessionManager extends EventEmitter {
     this._contacts.set(id, contacts);
   }
 
+  deleteContact(id, jid) {
+    const contacts = this._contacts.get(id) || [];
+    const filtered = contacts.filter(c => (c.id || c.jid) !== jid);
+    this._contacts.set(id, filtered);
+  }
+
   getChats(id) {
     const chats = this._chats.get(id) || [];
     const contacts = this._contacts.get(id) || [];
@@ -639,6 +645,7 @@ class SessionManager extends EventEmitter {
         id: g.id,
         name: g.subject,
         participantsCount: g.participants?.length || 0,
+        participants: g.participants?.map(p => p.id) || [],
         unreadCount: 0,
       }));
     } catch { return []; }

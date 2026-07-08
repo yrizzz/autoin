@@ -113,6 +113,17 @@ app.post('/sessions/:sessionId/contacts', auth, (req, res) => {
   }
 });
 
+// Delete a contact
+app.delete('/sessions/:sessionId/contacts/:jid', auth, (req, res) => {
+  const { sessionId, jid } = req.params;
+  try {
+    sessionManager.deleteContact(sessionId, decodeURIComponent(jid));
+    res.json({ status: 'success' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get chats
 app.get('/sessions/:sessionId/chats', auth, (req, res) => {
   const { sessionId } = req.params;
