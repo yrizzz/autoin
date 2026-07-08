@@ -939,12 +939,12 @@ export default function ScheduleManager() {
                 onClick={() => openDetail(b)}
                 className="bg-white dark:bg-[#0e0e11] border border-zinc-200/70 dark:border-zinc-800/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-blue-400/40 hover:shadow-md dark:hover:shadow-black/35 hover:-translate-y-0.5 transition-all duration-300 shadow-sm cursor-pointer group">
 
-                <div className="flex items-start gap-3.5 min-w-0">
+                <div className="flex items-start gap-3.5 min-w-0 flex-1">
                   <div className={`p-3 rounded-xl shrink-0 ${STATUS_STYLE[b.status] ?? 'bg-zinc-500/10 text-zinc-500'}`}>
                     <Clock className="w-5 h-5" />
                   </div>
 
-                  <div className="space-y-1 min-w-0">
+                  <div className="space-y-1 min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-xs font-extrabold text-zinc-850 dark:text-zinc-150 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate max-w-[200px] sm:max-w-md">
                         {b.title || `Broadcast #${b.id}`}
@@ -979,7 +979,7 @@ export default function ScheduleManager() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-between md:justify-end gap-3 border-t md:border-t-0 border-zinc-100 dark:border-zinc-800/60 pt-3 md:pt-0">
+                <div className="flex items-center justify-between md:justify-end gap-3 border-t md:border-t-0 border-zinc-100 dark:border-zinc-800/60 pt-3 md:pt-0 shrink-0 w-full md:w-auto">
                   {/* Platforms */}
                   {pts.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
