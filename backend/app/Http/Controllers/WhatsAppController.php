@@ -119,6 +119,7 @@ class WhatsAppController extends Controller
         $synced = $channel->synced_data ?? [];
         $contacts = $synced['contacts'] ?? [];
         $chats = $synced['chats'] ?? [];
+        $deletedContacts = $synced['deleted_contacts'] ?? [];
 
         // Build a unique map of contacts by their JID
         $contactsMap = [];
@@ -188,6 +189,11 @@ class WhatsAppController extends Controller
                         }
                     }
                 }
+            }
+
+            // Skip if the contact has been deleted
+            if (in_array($resolvedId, $deletedContacts) || in_array($id, $deletedContacts)) {
+                continue;
             }
 
             $name = $c['name'] ?? '';
@@ -268,9 +274,32 @@ class WhatsAppController extends Controller
 
         $syncedData = $channel->synced_data ?? [];
         $existingContacts = $syncedData['contacts'] ?? [];
+        $lidMap = $syncedData['lidMap'] ?? [];
 
-        $updatedContacts = array_filter($existingContacts, function ($contact) use ($jid) {
-            return ($contact['id'] ?? '') !== $jid;
+        // Save deleted contact JID in deleted_contacts blacklist
+        $deletedContacts = $syncedData['deleted_contacts'] ?? [];
+        if (!in_array($jid, $deletedContacts)) {
+            $deletedContacts[] = $jid;
+        }
+
+        // Find any LID JIDs that map to the deleted phone JID and blacklist them too
+        $matchingLids = [];
+        foreach ($lidMap as $lid => $phone) {
+            if ($phone === $jid) {
+                $matchingLids[] = $lid;
+                if (!in_array($lid, $deletedContacts)) {
+                    $deletedContacts[] = $lid;
+                }
+            }
+        }
+        $syncedData['deleted_contacts'] = $deletedContacts;
+
+        $updatedContacts = array_filter($existingContacts, function ($contact) use ($jid, $matchingLids) {
+            $cId = $contact['id'] ?? '';
+            if ($cId === $jid || in_array($cId, $matchingLids)) {
+                return false;
+            }
+            return true;
         });
 
         $syncedData['contacts'] = array_values($updatedContacts);
@@ -283,7 +312,7 @@ class WhatsAppController extends Controller
             // Ignore Node.js service failures, DB is source of truth
         }
 
-        return response()->json(['status' => 'success', 'contacts' => $syncedData['contacts']]);
+        return $this->getContacts($request, $channel);
     }
 
     public function getChats(Request $request, Channel $channel)

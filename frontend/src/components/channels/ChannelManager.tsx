@@ -398,13 +398,13 @@ export default function ChannelManager() {
     if (!syncChannel) return;
     if (!confirm('Apakah Anda yakin ingin menghapus kontak ini?')) return;
     try {
-      const res = await api.delete<{ status: string; contacts: any[] }>(
+      const res = await api.delete<{ contacts: any[] }>(
         `/api/whatsapp/${syncChannel.id}/contacts/${encodeURIComponent(jid)}`
       );
-      if (res.status === 'success') {
+      if (res.contacts) {
         setSyncData((prev) => ({
           ...prev,
-          contacts: res.contacts || prev.contacts.filter((c: any) => c.id !== jid),
+          contacts: res.contacts,
         }));
       }
     } catch (err: any) {
