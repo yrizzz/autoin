@@ -108,7 +108,16 @@ export function RecipientModal({
           return;
         }
 
-        const newRecipients = participants.map((p: any) => ({
+        const validParticipants = participants.filter((p: any) => p.id && !p.id.endsWith('@lid'));
+        const lidCount = participants.length - validParticipants.length;
+
+        if (validParticipants.length === 0) {
+          if (showToast) showToast('Gagal menambahkan anggota: Semua anggota di grup ini menggunakan format LID privat yang tidak dapat diresolusi ke nomor HP.', 'error');
+          else alert('Gagal menambahkan anggota: Semua anggota di grup ini menggunakan format LID privat yang tidak dapat diresolusi ke nomor HP.');
+          return;
+        }
+
+        const newRecipients = validParticipants.map((p: any) => ({
           id: p.id,
           name: p.name || p.id.split('@')[0],
           phone: p.id.split('@')[0],
@@ -127,7 +136,11 @@ export function RecipientModal({
         }
 
         if (showToast) {
-          showToast(`✓ Berhasil menambahkan ${newRecipients.length} anggota dari "${groupName}" sebagai penerima individu.`, 'success');
+          let msg = `✓ Berhasil menambahkan ${newRecipients.length} anggota dari "${groupName}" sebagai penerima individu.`;
+          if (lidCount > 0) {
+            msg += ` (${lidCount} anggota dilewati karena berformat LID privat)`;
+          }
+          showToast(msg, 'success');
         }
       } else {
         if (showToast) showToast('Gagal memuat anggota grup.', 'error');

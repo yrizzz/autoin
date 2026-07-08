@@ -211,7 +211,16 @@ class WhatsAppService
         }
 
         if ($resolved) {
-            return str_contains($resolved, '@') ? $resolved : $resolved . '@s.whatsapp.net';
+            $finalJid = str_contains($resolved, '@') ? $resolved : $resolved . '@s.whatsapp.net';
+            // Save/backfill mapping for future direct translation
+            $syncedData = $channel->synced_data ?? [];
+            $lidMap = $syncedData['lidMap'] ?? [];
+            if (!isset($lidMap[$jid])) {
+                $lidMap[$jid] = $finalJid;
+                $syncedData['lidMap'] = $lidMap;
+                $channel->update(['synced_data' => $syncedData]);
+            }
+            return $finalJid;
         }
 
         // 2. Name-matching fallback in contacts list
@@ -233,13 +242,27 @@ class WhatsAppService
                 if (str_starts_with($cleanName, '0')) {
                     $cleanName = '62' . substr($cleanName, 1);
                 }
-                return $cleanName . '@s.whatsapp.net';
+                $finalJid = $cleanName . '@s.whatsapp.net';
+                // Backfill mapping
+                $syncedData = $channel->synced_data ?? [];
+                $lidMap = $syncedData['lidMap'] ?? [];
+                $lidMap[$jid] = $finalJid;
+                $syncedData['lidMap'] = $lidMap;
+                $channel->update(['synced_data' => $syncedData]);
+                return $finalJid;
             }
 
             foreach ($contacts as $contact) {
                 $cid = $contact['id'] ?? '';
                 if (!str_contains($cid, '@lid') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
-                    return str_contains($cid, '@') ? $cid : $cid . '@s.whatsapp.net';
+                    $finalJid = str_contains($cid, '@') ? $cid : $cid . '@s.whatsapp.net';
+                    // Backfill mapping
+                    $syncedData = $channel->synced_data ?? [];
+                    $lidMap = $syncedData['lidMap'] ?? [];
+                    $lidMap[$jid] = $finalJid;
+                    $syncedData['lidMap'] = $lidMap;
+                    $channel->update(['synced_data' => $syncedData]);
+                    return $finalJid;
                 }
             }
         }

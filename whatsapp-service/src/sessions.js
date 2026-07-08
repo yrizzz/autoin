@@ -645,7 +645,7 @@ class SessionManager extends EventEmitter {
         id: g.id,
         name: g.subject,
         participantsCount: g.participants?.length || 0,
-        participants: g.participants?.map(p => p.id) || [],
+        participants: g.participants?.map(p => this.translateJid(id, p.id)) || [],
         unreadCount: 0,
       }));
     } catch { return []; }
@@ -654,7 +654,19 @@ class SessionManager extends EventEmitter {
   async getGroupMetadata(id, groupId) {
     const sock = this._sessions.get(id);
     if (!sock) throw new Error('Session not found');
-    return await sock.groupMetadata(groupId);
+    const metadata = await sock.groupMetadata(groupId);
+    if (metadata && Array.isArray(metadata.participants)) {
+      metadata.participants = metadata.participants.map(p => {
+        if (p.id) {
+          return {
+            ...p,
+            id: this.translateJid(id, p.id)
+          };
+        }
+        return p;
+      });
+    }
+    return metadata;
   }
 
   async create(sessionId, usePairingCode = false, phoneNumber = '') {
@@ -671,7 +683,8 @@ class SessionManager extends EventEmitter {
         if (key.startsWith('lid-mapping-') && key.endsWith('_reverse')) {
           const lidNumber = key.slice('lid-mapping-'.length, -'_reverse'.length);
           const lid = `${lidNumber}@lid`;
-          const phone = `${value}@s.whatsapp.net`;
+          const valStr = typeof value === 'string' ? value : (value?.phone || value?.pn || String(value));
+          const phone = valStr.includes('@') ? valStr : `${valStr}@s.whatsapp.net`;
           this._lidToPhone.set(`${sessionId}:${lid}`, phone);
           count++;
         }

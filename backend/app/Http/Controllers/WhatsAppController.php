@@ -417,12 +417,38 @@ class WhatsAppController extends Controller
                     }
                 }
 
+                $updatedLidMap = false;
                 foreach ($data['metadata']['participants'] as &$p) {
                     if (isset($p['id'])) {
                         $originalId = $p['id'];
                         $resolved = $this->wa->resolveJid($channel, $p['id']);
                         if ($resolved) {
                             $p['id'] = $resolved;
+                        }
+
+                        // Fallback name-matching if still a LID JID
+                        if (str_ends_with($p['id'], '@lid')) {
+                            $name = null;
+                            if (isset($contactLookup[$originalId]['name'])) {
+                                $name = $contactLookup[$originalId]['name'];
+                            } elseif (isset($p['name']) && !str_contains($p['name'], '@')) {
+                                $name = $p['name'];
+                            }
+
+                            if ($name) {
+                                $searchName = strtolower(trim($name));
+                                if ($searchName !== '') {
+                                    foreach ($contacts as $contact) {
+                                        $cId = $contact['id'] ?? '';
+                                        if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
+                                            $p['id'] = $cId;
+                                            $lidMap[$originalId] = $cId;
+                                            $updatedLidMap = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         if (empty($p['name']) || str_contains($p['name'], '@')) {
@@ -433,6 +459,12 @@ class WhatsAppController extends Controller
                             }
                         }
                     }
+                }
+
+                if ($updatedLidMap) {
+                    $syncedData = $channel->synced_data ?? [];
+                    $syncedData['lidMap'] = array_merge($syncedData['lidMap'] ?? [], $lidMap);
+                    $channel->update(['synced_data' => $syncedData]);
                 }
             }
 
