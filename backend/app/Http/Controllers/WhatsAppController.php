@@ -75,8 +75,20 @@ class WhatsAppController extends Controller
         $statusData = $this->wa->getStatus($credentials['session_id']);
         $status = $statusData['status'] ?? 'unknown';
 
-        if ($status === 'connected' && $channel->status !== 'active') {
-            $channel->update(['status' => 'active']);
+        if ($status === 'connected') {
+            $updateData = [];
+            if ($channel->status !== 'active') {
+                $updateData['status'] = 'active';
+            }
+            if (isset($statusData['jid']) && !empty($statusData['jid'])) {
+                $resolvedJid = $this->wa->resolveJid($channel, $statusData['jid']);
+                if ($resolvedJid && $resolvedJid !== $channel->target_id) {
+                    $updateData['target_id'] = $resolvedJid;
+                }
+            }
+            if (!empty($updateData)) {
+                $channel->update($updateData);
+            }
         }
 
         return response()->json([

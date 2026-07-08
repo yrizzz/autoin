@@ -165,6 +165,13 @@ class WhatsAppService
             return null;
         }
 
+        // If JID contains device suffix (e.g. :1, :2), strip it first:
+        if (str_contains($jid, ':')) {
+            $parts = explode(':', $jid);
+            $afterColon = explode('@', $parts[1] ?? '');
+            $jid = $parts[0] . (isset($afterColon[1]) ? '@' . $afterColon[1] : '');
+        }
+
         // Normalize raw phone numbers (digits, + prefix, e.g. +628123 or 08123)
         $clean = preg_replace('/\D/', '', $jid);
         if (preg_match('/^[0-9]{9,15}$/', $clean)) {

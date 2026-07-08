@@ -251,12 +251,19 @@ class SessionManager extends EventEmitter {
 
   // ── JID Translation ────────────────────────────────────────────────────────
   translateJid(sessionId, jid) {
-    if (!jid) return jid;
-    if (jid.endsWith('@lid')) {
-      const mapped = this._lidToPhone.get(`${sessionId}:${jid}`);
+    if (!jid || typeof jid !== 'string') return jid;
+    let targetJid = jid;
+    if (jid.includes('@')) {
+      const [local, domain] = jid.split('@');
+      if (local.includes(':')) {
+        targetJid = `${local.split(':')[0]}@${domain}`;
+      }
+    }
+    if (targetJid.endsWith('@lid')) {
+      const mapped = this._lidToPhone.get(`${sessionId}:${targetJid}`);
       if (mapped) return mapped;
     }
-    return jid;
+    return targetJid;
   }
 
   async syncToDb(sessionId) {
@@ -1206,7 +1213,8 @@ class SessionManager extends EventEmitter {
     if (!sock) throw new Error('Session not found');
     if (!message && !mediaUrl) throw new Error('Message or media required');
 
-    const jid = to.includes('@') ? to : `${to}@s.whatsapp.net`;
+    const resolvedJid = this.translateJid(sessionId, to.includes('@') ? to : `${to}@s.whatsapp.net`);
+    const jid = resolvedJid.includes('@') ? resolvedJid : `${resolvedJid}@s.whatsapp.net`;
     let options = {};
     let senderJid = null;
     if (quoted) {

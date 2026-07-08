@@ -75,7 +75,16 @@ app.get('/sessions/:sessionId/status', auth, (req, res) => {
   const status = sessionManager.getStatus(sessionId);
   const code = sessionManager.getPairingCode(sessionId);
   const qr = sessionManager.getQr(sessionId);
-  res.json({ status, code, qr });
+  
+  let userJid = null;
+  if (status === 'connected') {
+    const sock = sessionManager._sessions.get(sessionId);
+    if (sock?.user?.id) {
+      userJid = sessionManager.translateJid(sessionId, sock.user.id);
+    }
+  }
+  
+  res.json({ status, code, qr, jid: userJid });
 });
 
 // Get contacts
