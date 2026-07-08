@@ -125,21 +125,28 @@ class WhatsAppController extends Controller
         $contactsMap = [];
         foreach ($contacts as $c) {
             if (isset($c['id'])) {
-                $contactsMap[$c['id']] = $c;
+                $cleanId = $this->wa->normalizeJid($c['id']);
+                $contactsMap[$cleanId] = [
+                    'id' => $cleanId,
+                    'name' => $c['name'] ?? '',
+                ];
             }
         }
 
         // Add personal chats that are not already present in contacts
         foreach ($chats as $chat) {
             $jid = $chat['id'] ?? null;
-            if ($jid && (str_ends_with($jid, '@s.whatsapp.net') || str_ends_with($jid, '@lid'))) {
-                if (!isset($contactsMap[$jid])) {
-                    $contactsMap[$jid] = [
-                        'id' => $jid,
-                        'name' => $chat['name'] ?? explode('@', $jid)[0],
-                    ];
-                } else if (empty($contactsMap[$jid]['name']) && !empty($chat['name'])) {
-                    $contactsMap[$jid]['name'] = $chat['name'];
+            if ($jid) {
+                $cleanJid = $this->wa->normalizeJid($jid);
+                if (str_ends_with($cleanJid, '@s.whatsapp.net') || str_ends_with($cleanJid, '@lid')) {
+                    if (!isset($contactsMap[$cleanJid])) {
+                        $contactsMap[$cleanJid] = [
+                            'id' => $cleanJid,
+                            'name' => $chat['name'] ?? explode('@', $cleanJid)[0],
+                        ];
+                    } else if (empty($contactsMap[$cleanJid]['name']) && !empty($chat['name'])) {
+                        $contactsMap[$cleanJid]['name'] = $chat['name'];
+                    }
                 }
             }
         }
@@ -154,13 +161,7 @@ class WhatsAppController extends Controller
             $gName = $g['name'] ?? $g['subject'] ?? 'Grup';
             $participants = $g['participants'] ?? [];
             foreach ($participants as $pId) {
-                // Normalize participant ID (strip device suffixes)
-                $pClean = $pId;
-                if (str_contains($pClean, ':')) {
-                    $parts = explode(':', $pClean);
-                    $afterColon = explode('@', $parts[1] ?? '');
-                    $pClean = $parts[0] . (isset($afterColon[1]) ? '@' . $afterColon[1] : '');
-                }
+                $pClean = $this->wa->normalizeJid($pId);
                 
                 if (str_ends_with($pClean, '@lid') && isset($lidMap[$pClean])) {
                     $pClean = $lidMap[$pClean];
@@ -413,14 +414,15 @@ class WhatsAppController extends Controller
                 $contactLookup = [];
                 foreach ($contacts as $contact) {
                     if (isset($contact['id'])) {
-                        $contactLookup[$contact['id']] = $contact;
+                        $cleanCId = $this->wa->normalizeJid($contact['id']);
+                        $contactLookup[$cleanCId] = $contact;
                     }
                 }
 
                 $updatedLidMap = false;
                 foreach ($data['metadata']['participants'] as &$p) {
                     if (isset($p['id'])) {
-                        $originalId = $p['id'];
+                        $originalId = $this->wa->normalizeJid($p['id']);
                         $resolved = $this->wa->resolveJid($channel, $p['id']);
                         if ($resolved) {
                             $p['id'] = $resolved;
@@ -439,7 +441,7 @@ class WhatsAppController extends Controller
                                 $searchName = strtolower(trim($name));
                                 if ($searchName !== '') {
                                     foreach ($contacts as $contact) {
-                                        $cId = $contact['id'] ?? '';
+                                        $cId = $this->wa->normalizeJid($contact['id'] ?? '');
                                         if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
                                             $p['id'] = $cId;
                                             $lidMap[$originalId] = $cId;
@@ -452,8 +454,9 @@ class WhatsAppController extends Controller
                         }
 
                         if (empty($p['name']) || str_contains($p['name'], '@')) {
-                            if (isset($contactLookup[$p['id']])) {
-                                $p['name'] = $contactLookup[$p['id']]['name'] ?? null;
+                            $cleanPId = $this->wa->normalizeJid($p['id']);
+                            if (isset($contactLookup[$cleanPId])) {
+                                $p['name'] = $contactLookup[$cleanPId]['name'] ?? null;
                             } elseif (isset($contactLookup[$originalId])) {
                                 $p['name'] = $contactLookup[$originalId]['name'] ?? null;
                             }

@@ -159,7 +159,10 @@ class WhatsAppService
      * Resolve a JID ending with @lid to a phone JID ending with @s.whatsapp.net if mapped.
      * Otherwise, fallback to name-matching or return the JID as-is.
      */
-    public function resolveJid(Channel $channel, ?string $jid): ?string
+    /**
+     * Normalize JID: strip device suffixes, and fix corrupted LID JIDs ending with @s.whatsapp.net
+     */
+    public function normalizeJid(?string $jid): ?string
     {
         if (!$jid) {
             return null;
@@ -172,13 +175,39 @@ class WhatsAppService
             $jid = $parts[0] . (isset($afterColon[1]) ? '@' . $afterColon[1] : '');
         }
 
-        // Normalize raw phone numbers (digits, + prefix, e.g. +628123 or 08123)
-        $clean = preg_replace('/\D/', '', $jid);
-        if (preg_match('/^[0-9]{9,15}$/', $clean)) {
-            if (str_starts_with($clean, '0')) {
-                $clean = '62' . substr($clean, 1);
+        // Detect and fix corrupted LID JIDs ending with @s.whatsapp.net
+        if (str_ends_with($jid, '@s.whatsapp.net')) {
+            $local = explode('@', $jid)[0];
+            if (preg_match('/^[12]\d{14}$/', $local)) {
+                return $local . '@lid';
             }
-            return $clean . '@s.whatsapp.net';
+        }
+
+        return $jid;
+    }
+
+    /**
+     * Resolve a JID ending with @lid to a phone JID ending with @s.whatsapp.net if mapped.
+     * Otherwise, fallback to name-matching or return the JID as-is.
+     */
+    public function resolveJid(Channel $channel, ?string $jid): ?string
+    {
+        if (!$jid) {
+            return null;
+        }
+
+        $jid = $this->normalizeJid($jid);
+
+        // Normalize raw phone numbers (digits, + prefix, e.g. +628123 or 08123)
+        // Only do this if it doesn't contain '@' to avoid matching LIDs (digits-only prefix)
+        if (!str_contains($jid, '@')) {
+            $clean = preg_replace('/\D/', '', $jid);
+            if (preg_match('/^[0-9]{9,15}$/', $clean)) {
+                if (str_starts_with($clean, '0')) {
+                    $clean = '62' . substr($clean, 1);
+                }
+                return $clean . '@s.whatsapp.net';
+            }
         }
 
         if (!str_ends_with($jid, '@lid')) {
@@ -229,16 +258,17 @@ class WhatsAppService
 
         // Find the name of the LID contact
         foreach ($contacts as $contact) {
-            if (($contact['id'] ?? '') === $jid) {
+            $cId = $this->normalizeJid($contact['id'] ?? '');
+            if ($cId === $jid) {
                 $searchName = strtolower(trim($contact['name'] ?? ''));
                 break;
             }
         }
 
         if ($searchName !== null && $searchName !== '' && $searchName !== $key) {
-            // Check if name itself is a phone number
+            // Check if name itself is a phone number (9 to 15 digits) and is NOT a LID (15 digits starting with 1 or 2)
             $cleanName = preg_replace('/\D/', '', $searchName);
-            if (strlen($cleanName) >= 9 && strlen($cleanName) <= 15) {
+            if (strlen($cleanName) >= 9 && strlen($cleanName) <= 15 && !preg_match('/^[12]\d{14}$/', $cleanName)) {
                 if (str_starts_with($cleanName, '0')) {
                     $cleanName = '62' . substr($cleanName, 1);
                 }
@@ -253,9 +283,9 @@ class WhatsAppService
             }
 
             foreach ($contacts as $contact) {
-                $cid = $contact['id'] ?? '';
-                if (!str_contains($cid, '@lid') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
-                    $finalJid = str_contains($cid, '@') ? $cid : $cid . '@s.whatsapp.net';
+                $cId = $this->normalizeJid($contact['id'] ?? '');
+                if (str_ends_with($cId, '@s.whatsapp.net') && strtolower(trim($contact['name'] ?? '')) === $searchName) {
+                    $finalJid = $cId;
                     // Backfill mapping
                     $syncedData = $channel->synced_data ?? [];
                     $lidMap = $syncedData['lidMap'] ?? [];

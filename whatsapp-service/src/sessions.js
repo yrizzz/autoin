@@ -255,8 +255,15 @@ class SessionManager extends EventEmitter {
     let targetJid = jid;
     if (jid.includes('@')) {
       const [local, domain] = jid.split('@');
+      let cleanLocal = local;
       if (local.includes(':')) {
-        targetJid = `${local.split(':')[0]}@${domain}`;
+        cleanLocal = local.split(':')[0];
+      }
+      // Detect and fix corrupted LID JID (ends with @s.whatsapp.net but local part is 15-digit starting with 1 or 2)
+      if (domain === 's.whatsapp.net' && /^[12]\d{14}$/.test(cleanLocal)) {
+        targetJid = `${cleanLocal}@lid`;
+      } else {
+        targetJid = `${cleanLocal}@${domain}`;
       }
     }
     if (targetJid.endsWith('@lid')) {
@@ -335,27 +342,33 @@ class SessionManager extends EventEmitter {
       if (res.ok) {
         const store = await res.json();
         if (store.contacts?.length) {
-          this._contacts.set(sessionId, store.contacts);
+          const normalizedContacts = store.contacts.map(c => {
+            const cleanId = this.translateJid(sessionId, c.id);
+            return { ...c, id: cleanId };
+          });
+          this._contacts.set(sessionId, normalizedContacts);
           // Rebuild LID → phone mapping from stored contacts
           // Contacts may have an `lid` field stored if we ever save it, but mostly we rely
           // on the chats list: any @lid chat whose name matches a @s.whatsapp.net contact
           // can be resolved. Store contacts have id in @s.whatsapp.net format.
           // We use the chats list to cross-reference: if a @lid chat name matches a phone contact, map it.
           if (store.chats?.length) {
-            const phoneChats = store.chats.filter(c => c.id && c.id.endsWith('@s.whatsapp.net'));
-            const lidChats   = store.chats.filter(c => c.id && c.id.endsWith('@lid'));
+            const phoneChats = store.chats.filter(c => c.id && this.translateJid(sessionId, c.id).endsWith('@s.whatsapp.net'));
+            const lidChats   = store.chats.filter(c => c.id && this.translateJid(sessionId, c.id).endsWith('@lid'));
             for (const lidChat of lidChats) {
+              const cleanLidJid = this.translateJid(sessionId, lidChat.id);
               // Find phone chat with same name
               const match = phoneChats.find(p => p.name && lidChat.name && p.name === lidChat.name);
               if (match) {
-                this._lidToPhone.set(`${sessionId}:${lidChat.id}`, match.id);
+                const cleanPhoneJid = this.translateJid(sessionId, match.id);
+                this._lidToPhone.set(`${sessionId}:${cleanLidJid}`, cleanPhoneJid);
               }
             }
           }
         }
         if (store.chats?.length) {
           const mappedChats = store.chats.map(c => ({
-            id: c.id,
+            id: this.translateJid(sessionId, c.id),
             name: c.name,
             unreadCount: c.unread || 0,
             lastMessage: c.lastMessage || '',
@@ -368,7 +381,8 @@ class SessionManager extends EventEmitter {
         if (store.messages && typeof store.messages === 'object') {
           for (const [chatId, msgs] of Object.entries(store.messages)) {
             if (Array.isArray(msgs) && msgs.length > 0) {
-              this._messages.set(`${sessionId}:${chatId}`, msgs);
+              const cleanChatId = this.translateJid(sessionId, chatId);
+              this._messages.set(`${sessionId}:${cleanChatId}`, msgs);
             }
           }
           console.log(`[_loadFromDb] Restored messages for ${Object.keys(store.messages).length} chats`);
@@ -376,7 +390,9 @@ class SessionManager extends EventEmitter {
         // Restore LID → phone mapping
         if (store.lidMap && typeof store.lidMap === 'object') {
           for (const [lid, phone] of Object.entries(store.lidMap)) {
-            this._lidToPhone.set(`${sessionId}:${lid}`, phone);
+            const cleanLid = this.translateJid(sessionId, lid);
+            const cleanPhone = this.translateJid(sessionId, phone);
+            this._lidToPhone.set(`${sessionId}:${cleanLid}`, cleanPhone);
           }
           console.log(`[_loadFromDb] Restored ${Object.keys(store.lidMap).length} LID mappings`);
         }
