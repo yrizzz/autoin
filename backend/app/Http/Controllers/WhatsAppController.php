@@ -655,6 +655,11 @@ class WhatsAppController extends Controller
         abort_if($channel->user_id !== $request->user()->id, 403);
         abort_if($channel->platform !== 'whatsapp', 422);
 
+        // Clear deleted contacts blacklist on manual synchronization to allow restoring them
+        $syncedData = $channel->synced_data ?? [];
+        $syncedData['deleted_contacts'] = [];
+        $channel->update(['synced_data' => $syncedData]);
+
         try {
             $credentials = $channel->credentials;
             $baseUrl = config('services.whatsapp.url', 'http://localhost:3001');
