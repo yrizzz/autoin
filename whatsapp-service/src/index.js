@@ -45,8 +45,8 @@ app.post('/sessions/:sessionId', auth, async (req, res) => {
   // If session exists but is not connected (e.g. connecting, qr_pending, pairing_pending, disconnected),
   // clean it up first before creating a fresh one to avoid stuck/conflicting states.
   if (sessionManager.has(sessionId)) {
-    console.log(`[index] Session ${sessionId} exists but not connected. Deleting old session before reconnecting...`);
-    await sessionManager.delete(sessionId);
+    console.log(`[index] Session ${sessionId} exists but not connected. Closing old session before reconnecting...`);
+    await sessionManager.closeSession(sessionId);
   }
 
   try {

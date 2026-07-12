@@ -497,9 +497,10 @@ class WhatsAppController extends Controller
         ]);
 
         $sessionId = $data['session_id'];
-        $channel = Channel::all()->first(function ($c) use ($sessionId) {
+        $channelId = Channel::select('id', 'credentials')->get()->first(function ($c) use ($sessionId) {
             return ($c->credentials['session_id'] ?? null) === $sessionId;
-        });
+        })?->id;
+        $channel = $channelId ? Channel::find($channelId) : null;
 
         if (!$channel) {
             return response()->json(['message' => 'Channel not found.'], 404);
@@ -566,9 +567,10 @@ class WhatsAppController extends Controller
         }
 
         $sessionId = $request->query('session_id');
-        $channel = Channel::all()->first(function ($c) use ($sessionId) {
+        $channelId = Channel::select('id', 'credentials')->get()->first(function ($c) use ($sessionId) {
             return ($c->credentials['session_id'] ?? null) === $sessionId;
-        });
+        })?->id;
+        $channel = $channelId ? Channel::find($channelId) : null;
 
         if (!$channel) {
             return response()->json(['message' => 'Channel not found.'], 404);
@@ -673,7 +675,8 @@ class WhatsAppController extends Controller
             return response()->json(['message' => 'Unauthorized.'], 401);
         }
 
-        $sessionIds = Channel::where('platform', 'whatsapp')
+        $sessionIds = Channel::select('id', 'credentials')
+            ->where('platform', 'whatsapp')
             ->where('status', 'active')
             ->get()
             ->map(function ($c) {

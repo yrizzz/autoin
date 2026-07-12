@@ -67,7 +67,7 @@ async function useMySQLAuthState(sessionId) {
       console.log(`[useMySQLAuthState] Loading auth state for ${sessionId} (attempt ${attempt})...`);
       const res = await fetch(getUrl, {
         headers: { 'X-Internal-Secret': INTERNAL_SECRET },
-        signal: AbortSignal.timeout(10000)
+        signal: AbortSignal.timeout(30000)
       });
       if (res.ok) {
         dbData = await res.json();
@@ -119,7 +119,7 @@ async function useMySQLAuthState(sessionId) {
         session_id: sessionId,
         data: payload
       }),
-      signal: AbortSignal.timeout(15000)
+      signal: AbortSignal.timeout(30000)
     })
     .then(r => r.json().then(d => console.log(`[useMySQLAuthState] Save response:`, d)))
     .catch(err => console.error('[useMySQLAuthState] Failed to save auth state to database:', err));
@@ -312,7 +312,7 @@ class SessionManager extends EventEmitter {
           messages,
           lidMap
         }),
-        signal: AbortSignal.timeout(15000)
+        signal: AbortSignal.timeout(45000)
       });
     } catch (err) {
       console.error('Failed to sync to database:', err);
@@ -537,8 +537,7 @@ class SessionManager extends EventEmitter {
 
   has(id) { return this._sessions.has(id); }
   isConnected(id) {
-    const sock = this._sessions.get(id);
-    return this._status.get(id) === 'connected' || !!(sock && sock.user);
+    return this._status.get(id) === 'connected';
   }
   getQr(id) { return this._qrs.get(id) ?? null; }
   getPairingCode(id) { return this._pairingCodes.get(id) ?? null; }
@@ -737,6 +736,7 @@ class SessionManager extends EventEmitter {
         },
       });
       this._sessions.set(sessionId, sock);
+      resolve({ status: 'initialized' });
 
       // Ensure maps exist
       if (!this._contacts.has(sessionId)) this._contacts.set(sessionId, []);
@@ -1790,6 +1790,18 @@ class SessionManager extends EventEmitter {
     return result;
   }
 
+  async closeSession(sessionId) {
+    const sock = this._sessions.get(sessionId);
+    if (sock) { try { sock.end(); } catch { } }
+    this._sessions.delete(sessionId);
+    this._qrs.delete(sessionId);
+    this._status.delete(sessionId);
+    this._rawMessages.delete(sessionId);
+    this._flushes.delete(sessionId);
+    const t = this._saveTimers.get(sessionId);
+    if (t) { clearTimeout(t); this._saveTimers.delete(sessionId); }
+  }
+
   async delete(sessionId) {
     const sock = this._sessions.get(sessionId);
     if (sock) { try { await sock.logout(); } catch { } sock.end(); }
@@ -1898,9 +1910,14 @@ class SessionManager extends EventEmitter {
         const sessionIds = await res.json();
         for (const sessionId of sessionIds) {
           console.log(`Restoring session from MySQL: ${sessionId}`);
-          this.create(sessionId).catch(err => {
-            console.error(`Failed to restore session ${sessionId}:`, err.message);
-          });
+          try {
+            await Promise.race([
+              this.create(sessionId),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout during initialization')), 8000))
+            ]);
+          } catch (err) {
+            console.error(`Failed to restore session ${sessionId}:`, err.message || err);
+          }
         }
       } else {
         throw new Error(`Server returned status ${res.status}`);
