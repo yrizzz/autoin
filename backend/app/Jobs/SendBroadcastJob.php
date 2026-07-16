@@ -119,6 +119,8 @@ class SendBroadcastJob implements ShouldQueue
                     $isValidJid = true;
                 } elseif (str_ends_with($targetId, '@g.us')) {
                     $isValidJid = true;
+                } elseif (str_ends_with($targetId, '@lid')) {
+                    $isValidJid = true;
                 } elseif ($targetId === 'status@broadcast') {
                     $isValidJid = true;
                 }

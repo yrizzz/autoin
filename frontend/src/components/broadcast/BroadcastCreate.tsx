@@ -108,14 +108,8 @@ export function RecipientModal({
           return;
         }
 
-        const validParticipants = participants.filter((p: any) => p.id && !p.id.endsWith('@lid'));
-        const lidCount = participants.length - validParticipants.length;
-
-        if (validParticipants.length === 0) {
-          if (showToast) showToast('Gagal menambahkan anggota: Semua anggota di grup ini menggunakan format LID privat yang tidak dapat diresolusi ke nomor HP.', 'error');
-          else alert('Gagal menambahkan anggota: Semua anggota di grup ini menggunakan format LID privat yang tidak dapat diresolusi ke nomor HP.');
-          return;
-        }
+        const validParticipants = participants.filter((p: any) => p.id);
+        const lidCount = 0;
 
         const newRecipients = validParticipants.map((p: any) => ({
           id: p.id,
