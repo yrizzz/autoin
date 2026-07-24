@@ -18,6 +18,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      max_memory_restart: '150M',
       env: {
         APP_ENV: 'production',
       },
@@ -36,6 +37,7 @@ module.exports = {
       autorestart: true,
       max_restarts: 20,
       restart_delay: 5000,
+      max_memory_restart: '450M',
       env: {
         NODE_ENV: 'production',
         PORT: 3001,
@@ -56,33 +58,12 @@ module.exports = {
       autorestart: true,
       max_restarts: 10,
       restart_delay: 3000,
+      max_memory_restart: '150M',
       env: {
         NODE_ENV: 'production',
-        // PUBLIC_API_URL is baked into the frontend at build time (npm run build).
-        // Set this in the shell before deploying: export PUBLIC_API_URL=http://autoin.my.id:8001
-        // The runtime fallback in api.ts will use window.location.hostname:8001 if not set.
       },
       out_file: '/var/log/autoin/frontend.log',
       error_file: '/var/log/autoin/frontend-err.log',
-      merge_logs: true,
-    },
-
-    // ── Laravel Scheduler Daemon ──────────────────────────
-    {
-      name: 'autoin-scheduler',
-      cwd: path.join(ROOT, 'backend'),
-      script: 'artisan',
-      args: 'schedule:work',
-      interpreter: 'php',
-      watch: false,
-      autorestart: true,
-      max_restarts: 10,
-      restart_delay: 5000,
-      env: {
-        APP_ENV: 'production',
-      },
-      out_file: '/var/log/autoin/scheduler.log',
-      error_file: '/var/log/autoin/scheduler-err.log',
       merge_logs: true,
     },
   ],

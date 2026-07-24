@@ -227,12 +227,8 @@ if [ -f "$ROOT/whatsapp-service/.env" ]; then
     CHANGED_WA=true
     log "Changes detected in whatsapp-service/.env."
   fi
-fi
-
-# Check if pm2 service autoin-wa is running, if not force restart all
-if ! pm2 info autoin-wa &>/dev/null; then
-  CHANGED_WA=true
-fi
+# Delete autoin-scheduler from PM2 if it was previously registered (saves 90%+ CPU compared to schedule:work daemon)
+pm2 delete autoin-scheduler 2>/dev/null || true
 
 if [ "$CHANGED_WA" = true ]; then
   log "whatsapp-service has changes or is not running. Restarting all services..."
@@ -242,7 +238,13 @@ else
   log "whatsapp-service has no changes. Only restarting app services..."
   pm2 restart autoin-backend || pm2 start ecosystem.config.cjs
   pm2 restart autoin-frontend || pm2 start ecosystem.config.cjs
-  pm2 restart autoin-scheduler || pm2 start ecosystem.config.cjs
+fi
+
+# Ensure Laravel Cron Job is registered in system crontab instead of 24/7 PM2 daemon
+CRON_JOB="* * * * * cd $ROOT/backend && php artisan schedule:run >> /dev/null 2>&1"
+if ! crontab -l 2>/dev/null | grep -q "autoin/backend"; then
+  (crontab -l 2>/dev/null; echo "$CRON_JOB") | crontab - 2>/dev/null || true
+  log "Crontab for autoin Laravel scheduler registered."
 fi
 
 pm2 save --force >/dev/null
