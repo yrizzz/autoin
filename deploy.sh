@@ -227,6 +227,8 @@ if [ -f "$ROOT/whatsapp-service/.env" ]; then
     CHANGED_WA=true
     log "Changes detected in whatsapp-service/.env."
   fi
+fi
+
 # Delete autoin-scheduler from PM2 if it was previously registered (saves 90%+ CPU compared to schedule:work daemon)
 pm2 delete autoin-scheduler 2>/dev/null || true
 
